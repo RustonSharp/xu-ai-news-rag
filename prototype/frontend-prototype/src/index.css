@@ -1,5 +1,5 @@
-/* 全局样式重置和基础样式 */
-/* CSS变量已移至App.css中统一管理主题切换 */
+/* Global style reset and base styles */
+/* CSS variables are managed in App.css for unified theme switching */
 
 * {
   box-sizing: border-box;
@@ -44,7 +44,7 @@ input, textarea, select {
   outline: none;
 }
 
-/* 滚动条样式 */
+/* Scrollbar styles */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -63,7 +63,7 @@ input, textarea, select {
   background: var(--muted);
 }
 
-/* 响应式设计 */
+/* Responsive design */
 @media (max-width: 768px) {
   body {
     font-size: 14px;
@@ -97,7 +97,6 @@ input, textarea, select {
   
   .nav-links {
     flex-direction: column;
-    gap: 8px;
   }
 }
 
@@ -120,7 +119,7 @@ input, textarea, select {
   }
 }
 
-/* 可访问性增强 */
+/* Accessibility enhancements */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -129,7 +128,7 @@ input, textarea, select {
   }
 }
 
-/* 高对比度模式 */
+/* High contrast mode */
 @media (prefers-contrast: high) {
   :root {
     --border: #ffffff;
@@ -138,17 +137,15 @@ input, textarea, select {
   }
 }
 
-/* 打印样式 */
+/* Print styles */
 @media print {
   body {
     background: white;
     color: black;
   }
-  
   .no-print {
     display: none;
   }
-  
   .card {
     border: 1px solid #000;
     box-shadow: none;

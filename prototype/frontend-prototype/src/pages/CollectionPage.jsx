@@ -39,23 +39,23 @@ const CollectionPage = () => {
     }
   })
 
-  // 模拟数据
+  // Simulated data
   const mockRssSources = [
     {
       id: 1,
       name: 'TechCrunch',
       url: 'https://techcrunch.com/feed/',
-      description: '科技新闻和创业资讯',
+      description: 'Tech news and startup information',
       schedule: '1h',
       enabled: true,
       status: 'active',
       lastRun: '2024-01-15T10:30:00Z',
       nextRun: '2024-01-15T11:30:00Z',
       articlesCount: 156,
-      tags: ['科技', '创业'],
+      tags: ['Tech', 'Startup'],
       filters: {
-        keywords: 'AI, 人工智能, 机器学习',
-        excludeKeywords: '广告, 推广',
+        keywords: 'AI, Artificial Intelligence, Machine Learning',
+        excludeKeywords: 'Advertisement, Promotion',
         minLength: 200
       }
     },
@@ -63,14 +63,14 @@ const CollectionPage = () => {
       id: 2,
       name: 'AI News',
       url: 'https://artificialintelligence-news.com/feed/',
-      description: '人工智能最新动态',
+      description: 'Latest updates on Artificial Intelligence',
       schedule: '2h',
       enabled: false,
       status: 'paused',
       lastRun: '2024-01-14T15:20:00Z',
       nextRun: null,
       articlesCount: 89,
-      tags: ['AI', '深度学习'],
+      tags: ['AI', 'Deep Learning'],
       filters: {
         keywords: '',
         excludeKeywords: '',
@@ -84,14 +84,14 @@ const CollectionPage = () => {
       id: 1,
       name: 'MIT Technology Review',
       url: 'https://www.technologyreview.com/topic/artificial-intelligence/',
-      description: 'MIT科技评论AI专栏',
+      description: 'MIT Technology Review AI column',
       schedule: '6h',
       enabled: true,
       status: 'active',
       lastRun: '2024-01-15T08:00:00Z',
       nextRun: '2024-01-15T14:00:00Z',
       articlesCount: 45,
-      tags: ['学术', 'AI'],
+      tags: ['Academic', 'AI'],
       filters: {
         keywords: '',
         excludeKeywords: '',
@@ -109,12 +109,12 @@ const CollectionPage = () => {
   const fetchSources = async () => {
     setLoading(true)
     try {
-      // 模拟API调用
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500))
       setRssSources(mockRssSources)
       setWebSources(mockWebSources)
     } catch (error) {
-      console.error('获取数据源失败:', error)
+      console.error('Failed to fetch sources:', error)
     } finally {
       setLoading(false)
     }
@@ -154,9 +154,9 @@ const CollectionPage = () => {
 
   const handleSaveSource = async () => {
     try {
-      // 模拟API调用
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       const newSource = {
         id: editingSource ? editingSource.id : Date.now(),
         ...formData,
@@ -181,28 +181,28 @@ const CollectionPage = () => {
       }
 
       setShowAddModal(false)
-      alert('保存成功')
+      alert('Saved successfully')
     } catch (error) {
-      console.error('保存失败:', error)
-      alert('保存失败，请稍后重试')
+      console.error('Save failed:', error)
+      alert('Save failed, please try again later')
     }
   }
 
   const handleDeleteSource = async (sourceId) => {
-    if (confirm('确定要删除这个数据源吗？')) {
+    if (confirm('Are you sure you want to delete this source?')) {
       try {
         await new Promise(resolve => setTimeout(resolve, 500))
-        
+
         if (activeTab === 'rss') {
           setRssSources(prev => prev.filter(s => s.id !== sourceId))
         } else {
           setWebSources(prev => prev.filter(s => s.id !== sourceId))
         }
-        
-        alert('删除成功')
+
+        alert('Deleted successfully')
       } catch (error) {
-        console.error('删除失败:', error)
-        alert('删除失败，请稍后重试')
+        console.error('Delete failed:', error)
+        alert('Delete failed, please try again later')
       }
     }
   }
@@ -210,7 +210,7 @@ const CollectionPage = () => {
   const handleToggleSource = async (sourceId, enabled) => {
     try {
       await new Promise(resolve => setTimeout(resolve, 500))
-      
+
       const updateSource = (source) => ({
         ...source,
         enabled,
@@ -224,15 +224,15 @@ const CollectionPage = () => {
         setWebSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
       }
     } catch (error) {
-      console.error('更新失败:', error)
-      alert('更新失败，请稍后重试')
+      console.error('Update failed:', error)
+      alert('Update failed, please try again later')
     }
   }
 
   const handleRunNow = async (sourceId) => {
     try {
       await new Promise(resolve => setTimeout(resolve, 2000))
-      
+
       const updateSource = (source) => ({
         ...source,
         lastRun: new Date().toISOString(),
@@ -245,17 +245,17 @@ const CollectionPage = () => {
       } else {
         setWebSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
       }
-      
-      alert('采集完成')
+
+      alert('Collection completed')
     } catch (error) {
-      console.error('采集失败:', error)
-      alert('采集失败，请稍后重试')
+      console.error('Collection failed:', error)
+      alert('Collection failed, please try again later')
     }
   }
 
   const formatDate = (dateString) => {
     if (!dateString) return '-'
-    return new Date(dateString).toLocaleString('zh-CN')
+    return new Date(dateString).toLocaleString('en-US')
   }
 
   const getStatusIcon = (status) => {
@@ -277,42 +277,40 @@ const CollectionPage = () => {
     <div className="collection-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">数据采集配置</h1>
-          <p className="page-subtitle">配置RSS订阅和网页抓取任务</p>
+          <h1 className="page-title">Data Collection Configuration</h1>
+          <p className="page-subtitle">Configure RSS subscriptions and web scraping tasks</p>
         </div>
         <button
           onClick={handleAddSource}
           className="btn btn-primary"
         >
           <Plus size={16} />
-          添加数据源
+          Add Source
         </button>
       </div>
-
-      {/* 标签页 */}
+      {/* Tabs */}
       <div className="tabs">
         <button
           onClick={() => setActiveTab('rss')}
           className={`tab ${activeTab === 'rss' ? 'active' : ''}`}
         >
           <Rss size={16} />
-          RSS订阅 ({rssSources.length})
+          RSS Subscription ({rssSources.length})
         </button>
         <button
           onClick={() => setActiveTab('web')}
           className={`tab ${activeTab === 'web' ? 'active' : ''}`}
         >
           <Globe size={16} />
-          网页抓取 ({webSources.length})
+          Web Scraping ({webSources.length})
         </button>
       </div>
-
-      {/* 数据源列表 */}
+      {/* Source List */}
       <div className="card">
         {loading ? (
           <div className="loading">
             <div className="spinner" />
-            正在加载数据源...
+            Loading sources...
           </div>
         ) : (
           <div className="sources-list">
@@ -325,8 +323,8 @@ const CollectionPage = () => {
                       <div className="source-status">
                         {getStatusIcon(source.status)}
                         <span className={`status-text ${source.status}`}>
-                          {source.status === 'active' ? '运行中' : 
-                           source.status === 'paused' ? '已暂停' : '错误'}
+                          {source.status === 'active' ? 'Running' :
+                            source.status === 'paused' ? 'Paused' : 'Error'}
                         </span>
                       </div>
                     </div>
@@ -348,32 +346,28 @@ const CollectionPage = () => {
                       </div>
                     </div>
                   </div>
-                  
                   <div className="source-actions">
                     <button
                       onClick={() => handleToggleSource(source.id, !source.enabled)}
                       className={`btn btn-sm ${source.enabled ? 'btn-secondary' : 'btn-primary'}`}
                     >
                       {source.enabled ? <Pause size={14} /> : <Play size={14} />}
-                      {source.enabled ? '暂停' : '启用'}
+                      {source.enabled ? 'Pause' : 'Enable'}
                     </button>
-                    
                     <button
                       onClick={() => handleRunNow(source.id)}
                       className="btn btn-sm btn-secondary"
                       disabled={!source.enabled}
                     >
                       <RefreshCw size={14} />
-                      立即运行
+                      Run Now
                     </button>
-                    
                     <button
                       onClick={() => handleEditSource(source)}
                       className="btn-icon"
                     >
                       <Edit3 size={14} />
                     </button>
-                    
                     <button
                       onClick={() => handleDeleteSource(source.id)}
                       className="btn-icon danger"
@@ -382,45 +376,42 @@ const CollectionPage = () => {
                     </button>
                   </div>
                 </div>
-
                 <div className="source-stats">
                   <div className="stat">
-                    <span className="stat-label">采集频率</span>
+                    <span className="stat-label">Collection Frequency</span>
                     <span className="stat-value">{source.schedule}</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-label">文章数量</span>
+                    <span className="stat-label">Article Count</span>
                     <span className="stat-value">{source.articlesCount}</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-label">上次运行</span>
+                    <span className="stat-label">Last Run</span>
                     <span className="stat-value">{formatDate(source.lastRun)}</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-label">下次运行</span>
+                    <span className="stat-label">Next Run</span>
                     <span className="stat-value">{formatDate(source.nextRun)}</span>
                   </div>
                 </div>
               </div>
             ))}
-
             {currentSources.length === 0 && (
               <div className="empty-state">
                 {activeTab === 'rss' ? <Rss size={48} /> : <Globe size={48} />}
-                <h3>暂无{activeTab === 'rss' ? 'RSS' : '网页抓取'}数据源</h3>
-                <p>点击上方按钮添加第一个数据源</p>
+                <h3>No {activeTab === 'rss' ? 'RSS' : 'Web Scraping'} sources</h3>
+                <p>Click the button above to add your first source</p>
               </div>
             )}
           </div>
         )}
       </div>
-
-      {/* 添加/编辑模态框 */}
+      {/* Add/Edit Modal */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingSource ? '编辑' : '添加'}{activeTab === 'rss' ? 'RSS' : '网页抓取'}数据源</h2>
+              <h2>{editingSource ? 'Edit' : 'Add'} {activeTab === 'rss' ? 'RSS' : 'Web Scraping'} Source</h2>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="btn-icon"
@@ -428,19 +419,17 @@ const CollectionPage = () => {
                 <X size={16} />
               </button>
             </div>
-
             <div className="modal-body">
               <div className="form-group">
-                <label className="form-label">名称 *</label>
+                <label className="form-label">Name *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="input"
-                  placeholder="输入数据源名称"
+                  placeholder="Enter source name"
                 />
               </div>
-
               <div className="form-group">
                 <label className="form-label">URL *</label>
                 <input
@@ -448,40 +437,37 @@ const CollectionPage = () => {
                   value={formData.url}
                   onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
                   className="input"
-                  placeholder={activeTab === 'rss' ? '输入RSS订阅地址' : '输入网页URL'}
+                  placeholder={activeTab === 'rss' ? 'Enter RSS subscription address' : 'Enter web page URL'}
                 />
               </div>
-
               <div className="form-group">
-                <label className="form-label">描述</label>
+                <label className="form-label">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="input"
                   rows={3}
-                  placeholder="输入数据源描述"
+                  placeholder="Enter source description"
                 />
               </div>
-
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">采集频率</label>
+                  <label className="form-label">Collection Frequency</label>
                   <select
                     value={formData.schedule}
                     onChange={(e) => setFormData(prev => ({ ...prev, schedule: e.target.value }))}
                     className="input"
                   >
-                    <option value="30m">30分钟</option>
-                    <option value="1h">1小时</option>
-                    <option value="2h">2小时</option>
-                    <option value="6h">6小时</option>
-                    <option value="12h">12小时</option>
-                    <option value="24h">24小时</option>
+                    <option value="30m">30 minutes</option>
+                    <option value="1h">1 hour</option>
+                    <option value="2h">2 hours</option>
+                    <option value="6h">6 hours</option>
+                    <option value="12h">12 hours</option>
+                    <option value="24h">24 hours</option>
                   </select>
                 </div>
-
                 <div className="form-group">
-                  <label className="form-label">状态</label>
+                  <label className="form-label">Status</label>
                   <div className="checkbox-group">
                     <input
                       type="checkbox"
@@ -489,86 +475,77 @@ const CollectionPage = () => {
                       checked={formData.enabled}
                       onChange={(e) => setFormData(prev => ({ ...prev, enabled: e.target.checked }))}
                     />
-                    <label htmlFor="enabled">启用数据源</label>
+                    <label htmlFor="enabled">Enable source</label>
                   </div>
                 </div>
               </div>
-
               <div className="form-group">
-                <label className="form-label">标签</label>
+                <label className="form-label">Tags</label>
                 <input
                   type="text"
                   value={formData.tags.join(', ')}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
                     tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
                   }))}
                   className="input"
-                  placeholder="输入标签，用逗号分隔"
+                  placeholder="Enter tags, separated by commas"
                 />
               </div>
-
               <div className="filters-section">
-                <h3>内容筛选</h3>
-                
-                <div className="form-group">
-                  <label className="form-label">包含关键词</label>
-                  <input
-                    type="text"
-                    value={formData.filters.keywords}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      filters: { ...prev.filters, keywords: e.target.value }
-                    }))}
-                    className="input"
-                    placeholder="用逗号分隔多个关键词"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">排除关键词</label>
-                  <input
-                    type="text"
-                    value={formData.filters.excludeKeywords}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      filters: { ...prev.filters, excludeKeywords: e.target.value }
-                    }))}
-                    className="input"
-                    placeholder="用逗号分隔多个关键词"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">最小内容长度</label>
-                  <input
-                    type="number"
-                    value={formData.filters.minLength}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      filters: { ...prev.filters, minLength: parseInt(e.target.value) || 0 }
-                    }))}
-                    className="input"
-                    min="0"
-                    placeholder="字符数"
-                  />
-                </div>
+                <label className="form-label">Include Keywords</label>
+                <input
+                  type="text"
+                  value={formData.filters.keywords}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    filters: { ...prev.filters, keywords: e.target.value }
+                  }))}
+                  className="input"
+                  placeholder="Separate multiple keywords with commas"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Exclude Keywords</label>
+                <input
+                  type="text"
+                  value={formData.filters.excludeKeywords}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    filters: { ...prev.filters, excludeKeywords: e.target.value }
+                  }))}
+                  className="input"
+                  placeholder="Separate multiple keywords with commas"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Minimum Content Length</label>
+                <input
+                  type="number"
+                  value={formData.filters.minLength}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    filters: { ...prev.filters, minLength: parseInt(e.target.value) || 0 }
+                  }))}
+                  className="input"
+                  min="0"
+                  placeholder="Character count"
+                />
               </div>
             </div>
-
             <div className="modal-footer">
               <button
                 onClick={() => setShowAddModal(false)}
                 className="btn btn-secondary"
               >
-                取消
+                Cancel
               </button>
               <button
                 onClick={handleSaveSource}
                 className="btn btn-primary"
                 disabled={!formData.name || !formData.url}
               >
-                保存
+                Save
               </button>
             </div>
           </div>
@@ -881,6 +858,7 @@ const CollectionPage = () => {
           }
         }
       `}</style>
+
     </div>
   )
 }

@@ -29,33 +29,33 @@ const Layout = ({ children }) => {
   const navItems = [
     {
       path: '/knowledge',
-      label: '知识库',
+      label: 'Knowledge',
       icon: Database,
-      description: '管理文档和知识库内容'
+      description: 'Manage documents and knowledge base content'
     },
     {
       path: '/upload',
-      label: '数据导入',
+      label: 'Import',
       icon: Upload,
-      description: '上传文档到知识库'
+      description: 'Upload documents to the knowledge base'
     },
     {
       path: '/collection',
-      label: '采集',
+      label: 'Collection',
       icon: Rss,
-      description: '配置RSS和网页采集'
+      description: 'Configure RSS and web scraping'
     },
     {
       path: '/search',
-      label: '检索',
+      label: 'Search',
       icon: Search,
-      description: '智能搜索和问答'
+      description: 'Intelligent search and Q&A'
     },
     {
       path: '/analytics',
-      label: '分析',
+      label: 'Analytics',
       icon: BarChart3,
-      description: '数据分析和报表'
+      description: 'Data analysis and reporting'
     }
   ]
 
@@ -96,7 +96,7 @@ const Layout = ({ children }) => {
           <button
             onClick={toggleTheme}
             className="btn btn-secondary btn-sm theme-toggle"
-            title={`当前: ${theme === 'light' ? '浅色' : theme === 'dark' ? '深色' : '跟随系统'} - 点击切换`}
+            title={`Current: ${theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'System'} - Click to switch`}
           >
             {theme === 'light' && <Sun size={14} />}
             {theme === 'dark' && <Moon size={14} />}
@@ -106,10 +106,10 @@ const Layout = ({ children }) => {
           <button
             onClick={handleLogout}
             className="btn btn-secondary btn-sm"
-            title="退出登录"
+            title="Logout"
           >
             <LogOut size={14} />
-            退出
+            Logout
           </button>
         </div>
       </nav>

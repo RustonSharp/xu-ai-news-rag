@@ -22,7 +22,7 @@ const UploadPage = () => {
   const [source, setSource] = useState('')
   const fileInputRef = useRef(null)
 
-  // 支持的文件类型
+  // Supported file types
   const supportedTypes = {
     'application/pdf': { icon: FileText, label: 'PDF', color: '#ef4444' },
     'application/vnd.ms-excel': { icon: File, label: 'Excel', color: '#10b981' },
@@ -33,7 +33,7 @@ const UploadPage = () => {
     'text/html': { icon: FileText, label: 'HTML', color: '#f97316' }
   }
 
-  // 处理文件拖拽
+  // Handle file drag
   const handleDrag = (e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -44,7 +44,7 @@ const UploadPage = () => {
     }
   }
 
-  // 处理文件放置
+  // Handle file drop
   const handleDrop = (e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -54,13 +54,13 @@ const UploadPage = () => {
     addFiles(droppedFiles)
   }
 
-  // 处理文件选择
+  // Handle file selection
   const handleFileSelect = (e) => {
     const selectedFiles = Array.from(e.target.files)
     addFiles(selectedFiles)
   }
 
-  // 添加文件到列表
+  // Add files to list
   const addFiles = (newFiles) => {
     const processedFiles = newFiles.map(file => ({
       id: Date.now() + Math.random(),
@@ -76,17 +76,17 @@ const UploadPage = () => {
     setFiles(prev => [...prev, ...processedFiles])
   }
 
-  // 移除文件
+  // Remove file
   const removeFile = (fileId) => {
     setFiles(prev => prev.filter(f => f.id !== fileId))
   }
 
-  // 清空所有文件
+  // Clear all files
   const clearAllFiles = () => {
     setFiles([])
   }
 
-  // 格式化文件大小
+  // Format file size
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes'
     const k = 1024
@@ -95,7 +95,7 @@ const UploadPage = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
-  // 获取文件图标
+  // Get file icon
   const getFileIcon = (fileType) => {
     const typeInfo = supportedTypes[fileType]
     if (typeInfo) {
@@ -105,13 +105,13 @@ const UploadPage = () => {
     return <File size={20} style={{ color: '#6b7280' }} />
   }
 
-  // 获取文件类型标签
+  // Get file type label
   const getFileTypeLabel = (fileType) => {
     const typeInfo = supportedTypes[fileType]
-    return typeInfo ? typeInfo.label : '未知类型'
+    return typeInfo ? typeInfo.label : 'Unknown Type'
   }
 
-  // 模拟上传过程
+  // Simulate upload process
   const simulateUpload = async () => {
     setUploading(true)
     
@@ -119,12 +119,12 @@ const UploadPage = () => {
       const file = files[i]
       if (file.status !== 'pending') continue
       
-      // 更新状态为上传中
+      // Update status to uploading
       setFiles(prev => prev.map(f => 
         f.id === file.id ? { ...f, status: 'uploading', progress: 0 } : f
       ))
       
-      // 模拟上传进度
+      // Simulate upload progress
       for (let progress = 0; progress <= 100; progress += 10) {
         await new Promise(resolve => setTimeout(resolve, 100))
         setFiles(prev => prev.map(f => 
@@ -132,13 +132,13 @@ const UploadPage = () => {
         ))
       }
       
-      // 随机决定成功或失败（90%成功率）
+      // Randomly determine success or failure (90% success rate)
       const success = Math.random() > 0.1
       setFiles(prev => prev.map(f => 
         f.id === file.id ? {
           ...f,
           status: success ? 'success' : 'error',
-          error: success ? null : '上传失败，请重试'
+          error: success ? null : 'Upload failed, please try again'
         } : f
       ))
     }
@@ -146,17 +146,17 @@ const UploadPage = () => {
     setUploading(false)
   }
 
-  // 处理上传
+  // Handle upload
   const handleUpload = () => {
     if (files.length === 0) {
-      alert('请先选择要上传的文件')
+      alert('Please select files to upload first')
       return
     }
     
     simulateUpload()
   }
 
-  // 统计信息
+  // Statistics
   const stats = {
     total: files.length,
     pending: files.filter(f => f.status === 'pending').length,
@@ -170,15 +170,15 @@ const UploadPage = () => {
       <div className="page-header">
         <h1 className="page-title">
           <Upload size={24} />
-          数据导入
+          Data Import
         </h1>
         <p className="page-subtitle">
-          支持上传 PDF、Excel、CSV、Markdown、HTML 等多种格式的文档到知识库
+          Support uploading documents in various formats including PDF, Excel, CSV, Markdown, HTML to the knowledge base
         </p>
       </div>
 
       <div className="upload-container">
-        {/* 文件拖拽区域 */}
+        {/* File Drag Area */}
         <div 
           className={`upload-dropzone ${dragActive ? 'active' : ''}`}
           onDragEnter={handleDrag}
@@ -189,9 +189,9 @@ const UploadPage = () => {
         >
           <div className="dropzone-content">
             <Upload size={48} className="dropzone-icon" />
-            <h3>拖拽文件到此处或点击选择</h3>
-            <p>支持 PDF、Excel、CSV、Markdown、HTML、TXT 格式</p>
-            <p className="file-limit">单个文件最大 50MB，最多同时上传 20 个文件</p>
+            <h3>Drag files here or click to select</h3>
+            <p>Supports PDF, Excel, CSV, Markdown, HTML, TXT formats</p>
+            <p className="file-limit">Max 50MB per file, up to 20 files at once</p>
           </div>
           <input
             ref={fileInputRef}
@@ -203,19 +203,19 @@ const UploadPage = () => {
           />
         </div>
 
-        {/* 上传配置 */}
+        {/* Upload Configuration */}
         <div className="upload-config">
           <div className="config-row">
             <div className="form-group">
               <label className="form-label">
                 <Tag size={16} />
-                标签（可选）
+                Tags (Optional)
               </label>
               <input
                 type="text"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                placeholder="输入标签，用逗号分隔"
+                placeholder="Enter tags, separated by commas"
                 className="input"
               />
             </div>
@@ -223,24 +223,24 @@ const UploadPage = () => {
             <div className="form-group">
               <label className="form-label">
                 <Folder size={16} />
-                数据源（可选）
+                Data Source (Optional)
               </label>
               <input
                 type="text"
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
-                placeholder="输入数据源名称"
+                placeholder="Enter data source name"
                 className="input"
               />
             </div>
           </div>
         </div>
 
-        {/* 文件列表 */}
+        {/* File List */}
         {files.length > 0 && (
           <div className="files-section">
             <div className="files-header">
-              <h3>待上传文件 ({files.length})</h3>
+              <h3>Pending Files ({files.length})</h3>
               <div className="files-actions">
                 <button
                   onClick={clearAllFiles}
@@ -248,35 +248,35 @@ const UploadPage = () => {
                   disabled={uploading}
                 >
                   <Trash2 size={14} />
-                  清空
+                  Clear All
                 </button>
                 <button
                   onClick={handleUpload}
                   className="btn btn-primary btn-sm"
                   disabled={uploading || stats.pending === 0}
                 >
-                  {uploading ? '上传中...' : `上传 ${stats.pending} 个文件`}
+                  {uploading ? 'Uploading...' : `Upload ${stats.pending} Files`}
                 </button>
               </div>
             </div>
 
-            {/* 上传统计 */}
+            {/* Upload Statistics */}
             {(stats.uploading > 0 || stats.success > 0 || stats.error > 0) && (
               <div className="upload-stats">
                 <div className="stat-item">
-                  <span className="stat-label">待上传:</span>
+                  <span className="stat-label">Pending:</span>
                   <span className="stat-value">{stats.pending}</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">上传中:</span>
+                  <span className="stat-label">Uploading:</span>
                   <span className="stat-value uploading">{stats.uploading}</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">已完成:</span>
+                  <span className="stat-label">Completed:</span>
                   <span className="stat-value success">{stats.success}</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">失败:</span>
+                  <span className="stat-label">Failed:</span>
                   <span className="stat-value error">{stats.error}</span>
                 </div>
               </div>
@@ -300,7 +300,7 @@ const UploadPage = () => {
 
                   <div className="file-status">
                     {file.status === 'pending' && (
-                      <span className="status-badge pending">待上传</span>
+                      <span className="status-badge pending">Pending</span>
                     )}
                     {file.status === 'uploading' && (
                       <div className="upload-progress">
@@ -316,7 +316,7 @@ const UploadPage = () => {
                     {file.status === 'success' && (
                       <span className="status-badge success">
                         <Check size={14} />
-                        上传成功
+                        Upload Successful
                       </span>
                     )}
                     {file.status === 'error' && (
@@ -332,7 +332,7 @@ const UploadPage = () => {
                       <button
                         onClick={() => removeFile(file.id)}
                         className="btn-icon"
-                        title="移除"
+                        title="Remove"
                       >
                         <X size={16} />
                       </button>
@@ -344,15 +344,15 @@ const UploadPage = () => {
           </div>
         )}
 
-        {/* 使用说明 */}
+        {/* Usage Instructions */}
         <div className="upload-help">
-          <h4>使用说明</h4>
+          <h4>Usage Instructions</h4>
           <ul>
-            <li><strong>支持格式：</strong>PDF、Excel (.xlsx/.xls)、CSV、Markdown (.md)、HTML、TXT</li>
-            <li><strong>文件大小：</strong>单个文件最大 50MB</li>
-            <li><strong>批量上传：</strong>最多同时上传 20 个文件</li>
-            <li><strong>标签功能：</strong>为上传的文档添加标签，便于后续分类和检索</li>
-            <li><strong>数据源：</strong>指定文档来源，有助于数据管理和溯源</li>
+            <li><strong>Supported Formats:</strong> PDF, Excel (.xlsx/.xls), CSV, Markdown (.md), HTML, TXT</li>
+            <li><strong>File Size:</strong> Max 50MB per file</li>
+            <li><strong>Batch Upload:</strong> Up to 20 files at once</li>
+            <li><strong>Tagging:</strong> Add tags to uploaded documents for easy categorization and retrieval</li>
+            <li><strong>Data Source:</strong> Specify document source for better data management and traceability</li>
           </ul>
         </div>
       </div>

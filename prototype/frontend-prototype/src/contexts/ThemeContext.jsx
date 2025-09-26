@@ -11,30 +11,30 @@ export const useTheme = () => {
 }
 
 export const ThemeProvider = ({ children }) => {
-  // 从本地存储获取保存的主题，默认为 'system'
+  // Get saved theme from local storage, default to 'system'
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme')
     return savedTheme || 'system'
   })
 
-  // 计算实际应用的主题
+  // Calculate the actual applied theme
   const [actualTheme, setActualTheme] = useState('light')
 
   useEffect(() => {
     const updateActualTheme = () => {
       if (theme === 'system') {
-        // 系统主题：根据系统偏好设置
+        // System theme: based on system preferences
         const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
         setActualTheme(systemPrefersDark ? 'dark' : 'light')
       } else {
-        // 手动设置的主题
+        // Manually set theme
         setActualTheme(theme)
       }
     }
 
     updateActualTheme()
 
-    // 监听系统主题变化
+    // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handleChange = () => {
       if (theme === 'system') {
@@ -47,10 +47,10 @@ export const ThemeProvider = ({ children }) => {
   }, [theme])
 
   useEffect(() => {
-    // 应用主题到文档根元素
+    // Apply theme to document root element
     document.documentElement.setAttribute('data-theme', actualTheme)
     
-    // 保存主题到本地存储
+    // Save theme to local storage
     localStorage.setItem('theme', theme)
   }, [theme, actualTheme])
 

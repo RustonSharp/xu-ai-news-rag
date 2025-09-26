@@ -38,7 +38,7 @@ const AnalyticsPage = () => {
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
 
-  // 模拟数据
+  // Mock data
   const [analyticsData, setAnalyticsData] = useState({
     overview: {
       totalDocuments: 1247,
@@ -89,11 +89,11 @@ const AnalyticsPage = () => {
       { name: 'TXT', value: 10, color: '#ff7300' }
     ],
     topQueries: [
-      { query: '人工智能在医疗领域的应用', count: 156, avgTime: 1.2 },
-      { query: 'GPT模型的发展历程', count: 134, avgTime: 0.9 },
-      { query: '深度学习算法优化', count: 98, avgTime: 1.5 },
-      { query: '机器学习在金融风控中的应用', count: 87, avgTime: 1.1 },
-      { query: '自然语言处理技术发展', count: 76, avgTime: 1.3 }
+      { query: 'AI Applications in Healthcare', count: 156, avgTime: 1.2 },
+      { query: 'GPT Model Development History', count: 134, avgTime: 0.9 },
+      { query: 'Deep Learning Algorithm Optimization', count: 98, avgTime: 1.5 },
+      { query: 'Machine Learning in Financial Risk Control', count: 87, avgTime: 1.1 },
+      { query: 'Natural Language Processing Technology Development', count: 76, avgTime: 1.3 }
     ],
     responseTimeDistribution: [
       { range: '0-0.5s', count: 1245, percentage: 32 },
@@ -110,7 +110,7 @@ const AnalyticsPage = () => {
 
   const loadAnalyticsData = async () => {
     setLoading(true)
-    // 模拟API调用
+    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000))
     setLoading(false)
   }
@@ -132,8 +132,8 @@ const AnalyticsPage = () => {
   }
 
   const exportData = () => {
-    // 模拟导出功能
-    alert('数据导出功能开发中...')
+    // Simulate export function
+    alert('Data export function is under development...')
   }
 
   const StatCard = ({ title, value, change, icon: Icon, trend }) => (
@@ -165,8 +165,8 @@ const AnalyticsPage = () => {
     <div className="analytics-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">数据分析</h1>
-          <p className="page-subtitle">系统使用情况和性能分析</p>
+          <h1 className="page-title">Analytics</h1>
+          <p className="page-subtitle">System usage and performance analysis</p>
         </div>
         
         <div className="header-actions">
@@ -176,10 +176,10 @@ const AnalyticsPage = () => {
               onChange={(e) => setTimeRange(e.target.value)}
               className="input"
             >
-              <option value="1d">最近1天</option>
-              <option value="7d">最近7天</option>
-              <option value="30d">最近30天</option>
-              <option value="90d">最近90天</option>
+              <option value="1d">Last 1 day</option>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
             </select>
           </div>
           
@@ -189,7 +189,7 @@ const AnalyticsPage = () => {
             className="btn btn-secondary"
           >
             <RefreshCw size={16} className={loading ? 'spinning' : ''} />
-            刷新
+            Refresh
           </button>
           
           <button
@@ -197,7 +197,7 @@ const AnalyticsPage = () => {
             className="btn btn-primary"
           >
             <Download size={16} />
-            导出报表
+            Export Report
           </button>
         </div>
       </div>
@@ -208,59 +208,59 @@ const AnalyticsPage = () => {
           className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
         >
           <Activity size={16} />
-          概览
+          Overview
         </button>
         <button
           onClick={() => setActiveTab('documents')}
           className={`tab-btn ${activeTab === 'documents' ? 'active' : ''}`}
         >
           <FileText size={16} />
-          文档分析
+          Document Analysis
         </button>
         <button
           onClick={() => setActiveTab('queries')}
           className={`tab-btn ${activeTab === 'queries' ? 'active' : ''}`}
         >
           <Search size={16} />
-          查询分析
+          Query Analysis
         </button>
         <button
           onClick={() => setActiveTab('users')}
           className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
         >
           <Users size={16} />
-          用户分析
+          User Analysis
         </button>
       </div>
 
       <div className="analytics-content">
         {activeTab === 'overview' && (
           <div className="overview-tab">
-            {/* 关键指标卡片 */}
+            {/* Key Metrics Cards */}
             <div className="stats-grid">
               <StatCard
-                title="总文档数"
+                title="Total Documents"
                 value={analyticsData.overview.totalDocuments}
                 change={analyticsData.overview.documentGrowth}
                 icon={FileText}
                 trend="up"
               />
               <StatCard
-                title="总查询数"
+                title="Total Queries"
                 value={analyticsData.overview.totalQueries}
                 change={analyticsData.overview.queryGrowth}
                 icon={Search}
                 trend="up"
               />
               <StatCard
-                title="活跃用户"
+                title="Active Users"
                 value={analyticsData.overview.activeUsers}
                 change={analyticsData.overview.userGrowth}
                 icon={Users}
                 trend="up"
               />
               <StatCard
-                title="平均响应时间"
+                title="Avg Response Time"
                 value={`${analyticsData.overview.avgResponseTime}s`}
                 change={analyticsData.overview.responseTimeChange}
                 icon={Clock}
@@ -268,19 +268,19 @@ const AnalyticsPage = () => {
               />
             </div>
 
-            {/* 图表区域 */}
+            {/* Chart Area */}
             <div className="charts-grid">
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>文档处理趋势</h3>
+                  <h3>Document Processing Trend</h3>
                   <div className="chart-legend">
                     <span className="legend-item">
                       <span className="legend-color" style={{ backgroundColor: '#8884d8' }}></span>
-                      新增文档
+                      New Documents
                     </span>
                     <span className="legend-item">
                       <span className="legend-color" style={{ backgroundColor: '#82ca9d' }}></span>
-                      处理完成
+                      Processed
                     </span>
                   </div>
                 </div>
@@ -306,14 +306,14 @@ const AnalyticsPage = () => {
                         dataKey="documents" 
                         stroke="#8884d8" 
                         strokeWidth={2}
-                        name="新增文档"
+                        name="New Documents"
                       />
                       <Line 
                         type="monotone" 
                         dataKey="processed" 
                         stroke="#82ca9d" 
                         strokeWidth={2}
-                        name="处理完成"
+                        name="Processed"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -322,7 +322,7 @@ const AnalyticsPage = () => {
 
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>查询成功率</h3>
+                  <h3>Query Success Rate</h3>
                 </div>
                 <div className="chart-container">
                   <ResponsiveContainer width="100%" height={300}>
@@ -341,8 +341,8 @@ const AnalyticsPage = () => {
                           borderRadius: 'var(--radius)'
                         }}
                       />
-                      <Bar dataKey="successful" fill="#82ca9d" name="成功" />
-                      <Bar dataKey="failed" fill="#ff7300" name="失败" />
+                      <Bar dataKey="successful" fill="#82ca9d" name="Success" />
+                      <Bar dataKey="failed" fill="#ff7300" name="Failure" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -356,7 +356,7 @@ const AnalyticsPage = () => {
             <div className="charts-grid">
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>文档类型分布</h3>
+                  <h3>Document Type Distribution</h3>
                 </div>
                 <div className="chart-container">
                   <ResponsiveContainer width="100%" height={300}>
@@ -389,7 +389,7 @@ const AnalyticsPage = () => {
 
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>文档上传趋势</h3>
+                  <h3>Document Upload Trend</h3>
                 </div>
                 <div className="chart-container">
                   <ResponsiveContainer width="100%" height={300}>
@@ -408,7 +408,7 @@ const AnalyticsPage = () => {
                           borderRadius: 'var(--radius)'
                         }}
                       />
-                      <Bar dataKey="uploads" fill="#8884d8" name="上传数量" />
+                      <Bar dataKey="uploads" fill="#8884d8" name="Upload Count" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -422,16 +422,16 @@ const AnalyticsPage = () => {
             <div className="charts-grid">
               <div className="chart-card full-width">
                 <div className="chart-header">
-                  <h3>热门查询</h3>
+                  <h3>Top Queries</h3>
                 </div>
                 <div className="table-container">
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>查询内容</th>
-                        <th>查询次数</th>
-                        <th>平均响应时间</th>
-                        <th>操作</th>
+                        <th>Query Content</th>
+                        <th>Query Count</th>
+                        <th>Avg Response Time</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -450,7 +450,7 @@ const AnalyticsPage = () => {
                             </span>
                           </td>
                           <td>
-                            <button className="action-btn" title="查看详情">
+                            <button className="action-btn" title="View Details">
                               <Eye size={14} />
                             </button>
                           </td>
@@ -463,7 +463,7 @@ const AnalyticsPage = () => {
 
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>响应时间分布</h3>
+                  <h3>Response Time Distribution</h3>
                 </div>
                 <div className="chart-container">
                   <ResponsiveContainer width="100%" height={300}>
@@ -478,7 +478,7 @@ const AnalyticsPage = () => {
                           borderRadius: 'var(--radius)'
                         }}
                       />
-                      <Bar dataKey="count" fill="#8884d8" name="查询数量" />
+                      <Bar dataKey="count" fill="#8884d8" name="Query Count" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -492,7 +492,7 @@ const AnalyticsPage = () => {
             <div className="charts-grid">
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>用户活跃度（24小时）</h3>
+                  <h3>User Activity (24h)</h3>
                 </div>
                 <div className="chart-container">
                   <ResponsiveContainer width="100%" height={300}>
@@ -512,7 +512,7 @@ const AnalyticsPage = () => {
                         dataKey="users" 
                         stroke="#8884d8" 
                         strokeWidth={2}
-                        name="活跃用户数"
+                        name="Active Users"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -521,7 +521,7 @@ const AnalyticsPage = () => {
 
               <div className="chart-card">
                 <div className="chart-header">
-                  <h3>用户行为统计</h3>
+                  <h3>User Behavior Statistics</h3>
                 </div>
                 <div className="user-stats">
                   <div className="user-stat-item">
@@ -529,8 +529,8 @@ const AnalyticsPage = () => {
                       <Search size={24} />
                     </div>
                     <div className="stat-info">
-                      <h4>平均查询次数</h4>
-                      <p>24.8 次/用户</p>
+                      <h4>Average Queries</h4>
+                      <p>24.8 per user</p>
                     </div>
                   </div>
                   
@@ -539,8 +539,8 @@ const AnalyticsPage = () => {
                       <Clock size={24} />
                     </div>
                     <div className="stat-info">
-                      <h4>平均会话时长</h4>
-                      <p>12.5 分钟</p>
+                      <h4>Average Session Time</h4>
+                      <p>12.5 minutes</p>
                     </div>
                   </div>
                   
@@ -549,7 +549,7 @@ const AnalyticsPage = () => {
                       <MessageSquare size={24} />
                     </div>
                     <div className="stat-info">
-                      <h4>满意度评分</h4>
+                      <h4>Satisfaction Score</h4>
                       <p>4.6 / 5.0</p>
                     </div>
                   </div>
@@ -559,7 +559,7 @@ const AnalyticsPage = () => {
                       <TrendingUp size={24} />
                     </div>
                     <div className="stat-info">
-                      <h4>用户留存率</h4>
+                      <h4>User Retention Rate</h4>
                       <p>78.3%</p>
                     </div>
                   </div>

@@ -10,18 +10,20 @@ app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key-change-in-production'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 
-# 启用CORS
+# Enable CORS
 CORS(app)
 
-# 初始化JWT
+# Initialize JWT
 jwt = JWTManager(app)
 
-# 数据库初始化
+# Database initialization
 def init_db():
-    conn = sqlite3.connect('database.db')
+    # Use absolute path to ensure database is created in backend-prototype directory
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # 创建用户表
+    # Create users table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +34,7 @@ def init_db():
         )
     ''')
     
-    # 创建文档表
+    # Create documents table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS documents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +48,7 @@ def init_db():
         )
     ''')
     
-    # 创建任务表
+    # Create jobs table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS jobs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,7 +63,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# 认证相关API
+# Authentication APIs
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     try:
@@ -70,9 +72,11 @@ def login():
         password = data.get('password')
         
         if not email or not password:
-            return jsonify({'message': '邮箱和密码不能为空'}), 400
+            return jsonify({'message': 'Email and password cannot be empty'}), 400
         
-        conn = sqlite3.connect('database.db')
+        # Use absolute path to ensure database is accessed from backend-prototype directory
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute('SELECT id, email, password_hash, role FROM users WHERE email = ?', (email,))
         user = cursor.fetchone()
@@ -90,10 +94,10 @@ def login():
                 'expires_in': 86400
             })
         else:
-            return jsonify({'message': '邮箱或密码错误'}), 401
+            return jsonify({'message': 'Invalid email or password'}), 401
             
     except Exception as e:
-        return jsonify({'message': '登录失败，请稍后重试'}), 500
+        return jsonify({'message': 'Login failed, please try again later'}), 500
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
@@ -103,46 +107,50 @@ def register():
         password = data.get('password')
         
         if not email or not password:
-            return jsonify({'message': '邮箱和密码不能为空'}), 400
+            return jsonify({'message': 'Email and password cannot be empty'}), 400
         
         if len(password) < 6:
-            return jsonify({'message': '密码长度至少6位'}), 400
+            return jsonify({'message': 'Password must be at least 6 characters'}), 400
         
-        conn = sqlite3.connect('database.db')
+        # Use absolute path to ensure database is accessed from backend-prototype directory
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # 检查用户是否已存在
+        # Check if user already exists
         cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
         if cursor.fetchone():
             conn.close()
-            return jsonify({'message': '该邮箱已被注册'}), 400
+            return jsonify({'message': 'This email is already registered'}), 400
         
-        # 创建新用户
+        # Create new user
         password_hash = generate_password_hash(password)
         cursor.execute('INSERT INTO users (email, password_hash) VALUES (?, ?)', (email, password_hash))
         conn.commit()
         conn.close()
         
-        return jsonify({'message': '注册成功'}), 201
+        return jsonify({'message': 'Registration successful'}), 201
         
     except Exception as e:
-        return jsonify({'message': '注册失败，请稍后重试'}), 500
+        return jsonify({'message': 'Registration failed, please try again later'}), 500
 
-# 文档管理API
+# Document Management API
 @app.route('/api/docs', methods=['GET'])
 @jwt_required()
 def get_documents():
     try:
-        # 获取查询参数
+        # Get query parameters
         doc_type = request.args.get('type')
         source = request.args.get('source')
         page = int(request.args.get('page', 1))
         size = int(request.args.get('size', 10))
         
-        conn = sqlite3.connect('database.db')
+        # Use absolute path to ensure database is accessed from backend-prototype directory
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # 构建查询条件
+        # Build query conditions
         where_conditions = []
         params = []
         
@@ -156,11 +164,11 @@ def get_documents():
         
         where_clause = ' WHERE ' + ' AND '.join(where_conditions) if where_conditions else ''
         
-        # 获取总数
+        # Get total count
         cursor.execute(f'SELECT COUNT(*) FROM documents{where_clause}', params)
         total = cursor.fetchone()[0]
         
-        # 获取分页数据
+        # Get paginated data
         offset = (page - 1) * size
         cursor.execute(f'''
             SELECT id, title, type, source, url, tags, created_at, updated_at 
@@ -192,20 +200,22 @@ def get_documents():
         })
         
     except Exception as e:
-        return jsonify({'message': '获取文档列表失败'}), 500
+        return jsonify({'message': 'Failed to get document list'}), 500
 
-# 健康检查
+# Health check
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})
 
 if __name__ == '__main__':
-    # 初始化数据库
+    # Initialize database
     init_db()
     
-    # 创建默认用户（仅用于演示）
+    # Create default user (for demo only)
     try:
-        conn = sqlite3.connect('database.db')
+        # Use absolute path to ensure database is accessed from backend-prototype directory
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute('SELECT id FROM users WHERE email = ?', ('demo@example.com',))
         if not cursor.fetchone():
@@ -216,7 +226,7 @@ if __name__ == '__main__':
     except:
         pass
     
-    print('Flask后端服务启动中...')
-    print('API文档: http://localhost:5001/api/health')
-    print('演示账号: demo@example.com / 123456')
+    print('Flask backend service starting...')
+    print('API documentation: http://localhost:5001/api/health')
+    print('Demo account: demo@example.com / 123456')
     app.run(debug=True, host='0.0.0.0', port=5001)

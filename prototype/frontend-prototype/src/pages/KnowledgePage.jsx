@@ -33,57 +33,47 @@ const DocsPage = () => {
   })
   const [showFilters, setShowFilters] = useState(false)
 
-  // 模拟数据
+  // Simulated data
   const mockDocuments = [
     {
       id: 1,
-      title: 'AI技术发展趋势报告',
+      title: 'AI Technology Development Trend Report',
       type: 'pdf',
       source: 'tech_news',
       url: 'https://example.com/ai-report.pdf',
-      tags: ['AI', '技术', '报告'],
+      tags: ['AI', 'Technology', 'Report'],
       created_at: '2024-01-15T10:30:00Z',
       updated_at: '2024-01-15T10:30:00Z'
     },
     {
       id: 2,
-      title: '机器学习在金融领域的应用',
+      title: 'Applications of Machine Learning in Finance',
       type: 'html',
       source: 'finance_blog',
       url: 'https://example.com/ml-finance',
-      tags: ['机器学习', '金融', '应用'],
+      tags: ['Machine Learning', 'Finance', 'Application'],
       created_at: '2024-01-14T15:20:00Z',
       updated_at: '2024-01-14T15:20:00Z'
     },
     {
       id: 3,
-      title: '深度学习框架对比分析',
+      title: 'Deep Learning Frameworks Comparative Analysis',
       type: 'markdown',
       source: 'research_paper',
       url: null,
-      tags: ['深度学习', '框架', '对比'],
+      tags: ['Deep Learning', 'Framework', 'Comparison'],
       created_at: '2024-01-13T09:15:00Z',
       updated_at: '2024-01-13T09:15:00Z'
     },
     {
       id: 4,
-      title: '自然语言处理最新进展',
+      title: 'Latest Advances in Natural Language Processing',
       type: 'txt',
       source: 'academic_journal',
-      url: 'https://example.com/nlp-progress',
-      tags: ['NLP', '自然语言处理', '进展'],
-      created_at: '2024-01-12T14:45:00Z',
-      updated_at: '2024-01-12T14:45:00Z'
-    },
-    {
-      id: 5,
-      title: '计算机视觉在医疗诊断中的应用',
-      type: 'pdf',
-      source: 'medical_news',
-      url: 'https://example.com/cv-medical.pdf',
-      tags: ['计算机视觉', '医疗', '诊断'],
-      created_at: '2024-01-11T11:30:00Z',
-      updated_at: '2024-01-11T11:30:00Z'
+      url: null,
+      tags: ['NLP', 'Progress'],
+      created_at: '2024-01-12T11:45:00Z',
+      updated_at: '2024-01-12T11:45:00Z'
     }
   ]
 
@@ -94,10 +84,10 @@ const DocsPage = () => {
   const fetchDocuments = async () => {
     setLoading(true)
     try {
-      // 模拟API调用
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // 应用筛选
+
+      // Apply filters
       let filteredDocs = mockDocuments.filter(doc => {
         if (filters.search && !doc.title.toLowerCase().includes(filters.search.toLowerCase())) {
           return false
@@ -114,7 +104,7 @@ const DocsPage = () => {
       setDocuments(filteredDocs)
       setPagination(prev => ({ ...prev, total: filteredDocs.length }))
     } catch (error) {
-      console.error('获取文档失败:', error)
+      console.error('Failed to fetch documents:', error)
     } finally {
       setLoading(false)
     }
@@ -140,37 +130,37 @@ const DocsPage = () => {
 
   const handleBatchDelete = async () => {
     if (selectedDocs.size === 0) return
-    
-    if (confirm(`确定要删除选中的 ${selectedDocs.size} 个文档吗？`)) {
+
+    if (confirm(`Are you sure you want to delete the selected ${selectedDocs.size} documents?`)) {
       try {
-        // 模拟批量删除API调用
+        // Simulate batch delete API call
         await new Promise(resolve => setTimeout(resolve, 1000))
-        
+
         setDocuments(prev => prev.filter(doc => !selectedDocs.has(doc.id)))
         setSelectedDocs(new Set())
-        alert('删除成功')
+        alert('Deletion successful')
       } catch (error) {
-        console.error('删除失败:', error)
-        alert('删除失败，请稍后重试')
+        console.error('Deletion failed:', error)
+        alert('Deletion failed, please try again later')
       }
     }
   }
 
   const handleDeleteDoc = async (docId) => {
-    if (confirm('确定要删除这个文档吗？')) {
+    if (confirm('Are you sure you want to delete this document?')) {
       try {
         await new Promise(resolve => setTimeout(resolve, 500))
         setDocuments(prev => prev.filter(doc => doc.id !== docId))
-        alert('删除成功')
+        alert('Deletion successful')
       } catch (error) {
-        console.error('删除失败:', error)
-        alert('删除失败，请稍后重试')
+        console.error('Deletion failed:', error)
+        alert('Deletion failed, please try again later')
       }
     }
   }
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('zh-CN')
+    return new Date(dateString).toLocaleString('en-US')
   }
 
   const getTypeIcon = (type) => {
@@ -187,8 +177,8 @@ const DocsPage = () => {
     <div className="docs-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">知识库管理</h1>
-          <p className="page-subtitle">管理和组织您的文档知识库</p>
+          <h1 className="page-title">Knowledge Library Management</h1>
+          <p className="page-subtitle">Manage and organize your document knowledge library</p>
         </div>
         <button
           onClick={fetchDocuments}
@@ -196,30 +186,30 @@ const DocsPage = () => {
           disabled={loading}
         >
           <RefreshCw size={16} className={loading ? 'spinning' : ''} />
-          刷新
+          Refresh
         </button>
       </div>
 
-      {/* 工具栏 */}
+      {/* Toolbar */}
       <div className="toolbar">
         <div className="toolbar-left">
           <div className="search-box">
             <Search size={16} />
             <input
               type="text"
-              placeholder="搜索文档标题..."
+              placeholder="Search document title..."
               value={filters.search}
               onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
               className="input"
             />
           </div>
-          
+
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`btn btn-secondary ${showFilters ? 'active' : ''}`}
           >
             <Filter size={16} />
-            筛选
+            Filter
           </button>
         </div>
 
@@ -227,57 +217,57 @@ const DocsPage = () => {
           {selectedDocs.size > 0 && (
             <>
               <span className="selected-count">
-                已选择 {selectedDocs.size} 个文档
+                Selected {selectedDocs.size} documents
               </span>
               <button
                 onClick={handleBatchDelete}
                 className="btn btn-danger btn-sm"
               >
                 <Trash2 size={14} />
-                批量删除
+                Batch Delete
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* 筛选面板 */}
+      {/* Filter Panel */}
       {showFilters && (
         <div className="filters-panel">
           <div className="filters-grid">
             <div className="form-group">
-              <label className="form-label">文档类型</label>
+              <label className="form-label">Document Type</label>
               <select
                 value={filters.type}
                 onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
                 className="input"
               >
-                <option value="">全部类型</option>
+                <option value="">All Types</option>
                 <option value="pdf">PDF</option>
                 <option value="html">HTML</option>
                 <option value="markdown">Markdown</option>
-                <option value="txt">文本</option>
+                <option value="txt">Text</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label className="form-label">来源</label>
+              <label className="form-label">Source</label>
               <select
                 value={filters.source}
                 onChange={(e) => setFilters(prev => ({ ...prev, source: e.target.value }))}
                 className="input"
               >
-                <option value="">全部来源</option>
-                <option value="tech_news">科技新闻</option>
-                <option value="finance_blog">金融博客</option>
-                <option value="research_paper">研究论文</option>
-                <option value="academic_journal">学术期刊</option>
-                <option value="medical_news">医疗新闻</option>
+                <option value="">All Sources</option>
+                <option value="tech_news">Tech News</option>
+                <option value="finance_blog">Finance Blog</option>
+                <option value="research_paper">Research Paper</option>
+                <option value="academic_journal">Academic Journal</option>
+                <option value="medical_news">Medical News</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label className="form-label">开始日期</label>
+              <label className="form-label">Start Date</label>
               <input
                 type="date"
                 value={filters.startDate}
@@ -287,7 +277,7 @@ const DocsPage = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">结束日期</label>
+              <label className="form-label">End Date</label>
               <input
                 type="date"
                 value={filters.endDate}
@@ -299,12 +289,12 @@ const DocsPage = () => {
         </div>
       )}
 
-      {/* 文档列表 */}
+      {/* Document List */}
       <div className="card">
         {loading ? (
           <div className="loading">
             <div className="spinner" />
-            正在加载文档...
+            Loading document...
           </div>
         ) : (
           <>
@@ -320,7 +310,7 @@ const DocsPage = () => {
                     <Square size={16} />
                   )}
                 </button>
-                <span className="table-title">文档列表 ({documents.length})</span>
+                <span className="table-title">Document List ({documents.length})</span>
               </div>
             </div>
 
@@ -329,12 +319,12 @@ const DocsPage = () => {
                 <thead>
                   <tr>
                     <th width="40"></th>
-                    <th>标题</th>
-                    <th width="80">类型</th>
-                    <th width="120">来源</th>
-                    <th width="200">标签</th>
-                    <th width="160">创建时间</th>
-                    <th width="100">操作</th>
+                    <th>Title</th>
+                    <th width="80">Type</th>
+                    <th width="120">Source</th>
+                    <th width="200">Tags</th>
+                    <th width="160">Creation Time</th>
+                    <th width="100">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -365,7 +355,7 @@ const DocsPage = () => {
                                 className="doc-url"
                               >
                                 <ExternalLink size={12} />
-                                查看原文
+                                View Original
                               </a>
                             )}
                           </div>
@@ -397,14 +387,14 @@ const DocsPage = () => {
                         <div className="actions">
                           <button
                             className="btn-icon"
-                            title="编辑"
+                            title="Edit"
                           >
                             <Edit3 size={14} />
                           </button>
                           <button
                             onClick={() => handleDeleteDoc(doc.id)}
                             className="btn-icon danger"
-                            title="删除"
+                            title="Delete"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -418,10 +408,10 @@ const DocsPage = () => {
               {documents.length === 0 && (
                 <div className="empty-state">
                   <FileText size={48} />
-                  <h3>暂无文档</h3>
-                  <p>还没有上传任何文档，去上传页面添加一些内容吧</p>
+                  <h3>No Documents</h3>
+                  <p>No documents uploaded yet, go to upload page to add some content</p>
                   <a href="/upload" className="btn btn-primary">
-                    上传文档
+                    Upload Document
                   </a>
                 </div>
               )}

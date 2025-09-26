@@ -11,10 +11,10 @@ export const useAuth = () => {
   return context
 }
 
-// 配置axios默认设置
+// Configure axios default settings
 axios.defaults.baseURL = 'http://localhost:5001/api'
 
-// 请求拦截器 - 添加token
+// Request interceptor - add token
 axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -28,7 +28,7 @@ axios.interceptors.request.use(
   }
 )
 
-// 响应拦截器 - 处理token过期
+// Response interceptor - handle token expiration
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -46,20 +46,20 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 检查本地存储的token和用户信息
+    // Check token and user info in localStorage
     const token = localStorage.getItem('token')
     const userData = localStorage.getItem('user')
-    
+  
     if (token && userData) {
       try {
         setUser(JSON.parse(userData))
       } catch (error) {
-        console.error('解析用户数据失败:', error)
+        console.error('Failed to parse user data:', error)
         localStorage.removeItem('token')
         localStorage.removeItem('user')
       }
     }
-    
+  
     setLoading(false)
   }, [])
 
@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
       
       const { token, user: userData } = response.data
       
-      // 保存token和用户信息
+      // Save token and user info
       localStorage.setItem('token', token)
       localStorage.setItem('user', JSON.stringify(userData))
       
@@ -80,10 +80,10 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true }
     } catch (error) {
-      console.error('登录失败:', error)
+      console.error('Login failed:', error)
       return {
         success: false,
-        message: error.response?.data?.message || '登录失败，请检查邮箱和密码'
+        message: error.response?.data?.message || 'Login failed, please check your email and password'
       }
     }
   }

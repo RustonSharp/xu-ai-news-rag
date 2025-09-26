@@ -11,7 +11,7 @@ const ProtectedRoute = ({ children }) => {
       <div className="loading-container">
         <div className="loading">
           <div className="spinner" />
-          正在验证身份...
+          Authenticating...
         </div>
       </div>
     )
