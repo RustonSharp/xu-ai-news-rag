@@ -24,6 +24,11 @@ import json
 from langchain_core.tools import Tool
 from utils.logging_config import app_logger 
 from models.document import Document
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.feature_extraction.text import TfidfVectorizer
+from collections import Counter
+
 
 # 在线搜索工具
 def create_online_search_tool():
@@ -214,8 +219,17 @@ def create_knowledge_base_tool():
             all_chunks.extend(chunks)
             all_metadatas.extend(metadatas)
         
-        # 添加到向量数据库（包含元数据）
-        vectorstore.add_texts(all_chunks, all_metadatas)
+        # 如果向量数据库中只有占位符文本，则创建新的向量数据库
+        if len(vectorstore.index_to_docstore_id) == 1 and "Placeholder text" in str(vectorstore.docstore.search(vectorstore.index_to_docstore_id[0])):
+            # 创建新的向量数据库，不包含占位符文本
+            new_vectorstore = FAISS.from_texts(all_chunks, embeddings, metadatas=all_metadatas)
+            # 替换原来的向量数据库
+            vectorstore.index_to_docstore_id = new_vectorstore.index_to_docstore_id
+            vectorstore.docstore = new_vectorstore.docstore
+            vectorstore.index = new_vectorstore.index
+        else:
+            # 添加到向量数据库（包含元数据）
+            vectorstore.add_texts(all_chunks, all_metadatas)
         
         # 保存向量数据库到环境变量指定的路径
         vectorstore.save_local(vectorstore_path)
@@ -290,6 +304,8 @@ def create_knowledge_base_tool():
             return process_and_store_documents(document_objects)
         elif action == "retrieve":
             return retrieve_from_knowledge_base(query, k, rerank)
+        elif action == "cluster_analysis":
+            return knowledge_base_cluster_analysis()
         else:
             return f"不支持的操作：{action}"
     
@@ -301,6 +317,161 @@ def create_knowledge_base_tool():
     
     return knowledge_base_tool
 
+# 知识库数据聚类分析报告，展示关键前10分布
+def knowledge_base_cluster_analysis():
+    """对知识库中的数据进行聚类分析，并展示关键前10分布"""
+    try:
+        app_logger.info("开始知识库数据聚类分析")
+        
+        # 从环境变量获取模型名称和路径
+        embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME")
+        faiss_index_path = os.getenv("FAISS_INDEX_PATH")
+        vectorstore_path = os.path.dirname(faiss_index_path)
+        
+        # 初始化嵌入模型
+        embeddings = HuggingFaceEmbeddings(
+            model_name=embedding_model_name,
+            model_kwargs={'device': 'cpu'}
+        )
+        
+        # 加载向量数据库
+        if os.path.exists(faiss_index_path):
+            try:
+                vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
+                app_logger.info("成功加载向量数据库")
+            except Exception as e:
+                app_logger.error(f"加载向量数据库失败：{str(e)}")
+                return {"error": f"加载向量数据库失败：{str(e)}"}
+        else:
+            app_logger.error("向量数据库文件不存在")
+            return {"error": "向量数据库文件不存在"}
+        
+        # 获取向量数据库中的所有文档
+        # 由于FAISS不直接提供获取所有文档的方法，我们需要通过索引来获取
+        try:
+            # 获取文档向量
+            docstore = vectorstore.docstore
+            index_to_docstore_id = vectorstore.index_to_docstore_id
+            
+            # 提取所有文档内容和元数据
+            documents = []
+            for idx, doc_id in enumerate(index_to_docstore_id.values()):
+                try:
+                    doc = docstore.search(doc_id)
+                    if doc is not None:
+                        # 检查doc是Document对象还是字符串
+                        if hasattr(doc, 'page_content'):
+                            # 这是一个Document对象
+                            documents.append({
+                                "content": doc.page_content,
+                                "metadata": doc.metadata if hasattr(doc, 'metadata') else {}
+                            })
+                        else:
+                            # 这是一个字符串或其他对象
+                            documents.append({
+                                "content": str(doc),
+                                "metadata": {}
+                            })
+                except (KeyError, AttributeError) as e:
+                    # 如果文档ID不存在于docstore中，跳过该文档
+                    continue
+            
+            app_logger.info(f"从向量数据库中提取了{len(documents)}个文档")
+            
+            if len(documents) < 10:
+                app_logger.warning("文档数量不足10个，聚类分析结果可能不准确")
+                
+            # 提取文档内容
+            doc_contents = [doc["content"] for doc in documents]
+            
+            # 如果没有文档内容，直接返回错误
+            if not doc_contents:
+                return {"error": "没有找到可分析的文档内容"}
+                
+            # 使用TF-IDF向量化文档
+            vectorizer = TfidfVectorizer(max_features=1000, stop_words='english')
+            tfidf_matrix = vectorizer.fit_transform(doc_contents)
+            
+            # 确定聚类数量 - 使用肘部法则的简化版本
+            max_clusters = min(10, len(documents) // 2) if len(documents) > 20 else 5
+            if max_clusters < 2:
+                max_clusters = 2
+                
+            # 使用K-means聚类
+            kmeans = KMeans(n_clusters=max_clusters, random_state=42)
+            kmeans.fit(tfidf_matrix)
+            
+            # 获取聚类标签
+            labels = kmeans.labels_
+            
+            # 统计每个聚类的文档数量
+            cluster_counts = Counter(labels)
+            
+            # 提取每个聚类的关键词
+            feature_names = vectorizer.get_feature_names_out()
+            cluster_keywords = {}
+            
+            for i in range(max_clusters):
+                # 获取该聚类中心的特征值
+                cluster_center = kmeans.cluster_centers_[i]
+                # 获取特征值最大的前10个关键词
+                top_indices = cluster_center.argsort()[-10:][::-1]
+                top_keywords = [feature_names[idx] for idx in top_indices]
+                cluster_keywords[i] = top_keywords
+            
+            # 按聚类大小排序
+            sorted_clusters = sorted(cluster_counts.items(), key=lambda x: x[1], reverse=True)
+            
+            # 准备前10个聚类结果
+            top_clusters = []
+            for cluster_id, count in sorted_clusters[:10]:
+                # 获取该聚类的代表性文档
+                cluster_docs = [documents[i] for i, label in enumerate(labels) if label == cluster_id]
+                
+                # 计算聚类在总文档中的占比
+                percentage = (count / len(documents)) * 100
+                
+                top_clusters.append({
+                    "cluster_id": int(cluster_id),
+                    "document_count": count,
+                    "percentage": round(percentage, 2),
+                    "keywords": cluster_keywords[cluster_id],
+                    "sample_documents": [
+                        {
+                            "content": doc["content"][:200] + "..." if len(doc["content"]) > 200 else doc["content"],
+                            "metadata": doc["metadata"]
+                        }
+                        for doc in cluster_docs[:3]  # 每个聚类取前3个文档作为样本
+                    ]
+                })
+            
+            # 生成分析报告
+            analysis_report = {
+                "total_documents": len(documents),
+                "total_clusters": max_clusters,
+                "analysis_date": str(np.datetime64('now')),
+                "top_clusters": top_clusters,
+                "cluster_distribution": {
+                    str(cluster_id): count for cluster_id, count in sorted_clusters
+                }
+            }
+            
+            app_logger.info("知识库数据聚类分析完成")
+            return analysis_report
+            
+        except Exception as e:
+            app_logger.error(f"聚类分析过程中出错：{str(e)}")
+            return {"error": f"聚类分析过程中出错：{str(e)}"}
+            
+    except Exception as e:
+        app_logger.error(f"初始化聚类分析时出错：{str(e)}")
+        return {"error": f"初始化聚类分析时出错：{str(e)}"}
+
+
+
+
+
+
 if __name__ == "__main__":
     # 测试知识库工具
     knowledge_base_tool = create_knowledge_base_tool()
@@ -310,31 +481,46 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     text_path = os.path.join(script_dir, "data/test_input.txt")
     
-    with open(text_path, 'r', encoding='utf-8') as file:
-        content = file.read()
-        # 创建文档字典
-        test_doc = {
-            "title": "倒悬的第七次日落",
-            "description": content,
-            "author": "测试作者",
-            "rss_source_id": 1,
-            "link": "local://test_input.txt"
-        }
+    def test_online_search():
+         # 测试在线搜索
+        app_logger.info("测试在线搜索：")
+        try:
+            # 尝试运行搜索
+            result = online_search_tool.invoke("历史上最大的国家是哪个")
+            app_logger.info(f"搜索结果：{result}")
+        except Exception as e:
+            app_logger.error(f"搜索测试出错：{str(e)}")
+            # 打印工具的描述信息，了解如何正确使用
+        app_logger.info(f"工具描述：{online_search_tool.description}")
+    
+    def test_store_into_faiss():
+        from sqlmodel import Session, select,create_engine
+        from models.document import Document
+        def get_db_engine():
+            db_path = os.getenv("DATABASE_PATH")
+            if not db_path:
+                raise ValueError("DATABASE_PATH environment variable is not set")
+            return create_engine(f"sqlite:///{db_path}")
         # 测试存储文档
-        app_logger.info(knowledge_base_tool.run({"action": "store", "documents": [test_doc]}))
+        # 从 sqlite获取数据
+        engine = get_db_engine()
+        with Session(engine) as session:
+            documents = session.exec(select(Document)).all()
+            # 转换为字典格式
+            documents = [doc.model_dump() for doc in documents]
+            # 测试存储文档
+            app_logger.info(knowledge_base_tool.run({"action": "store", "documents": documents}))
         
-        
-    # 测试检索文档
-    app_logger.info("测试检索文档：")
-    app_logger.info(knowledge_base_tool.run({"action": "retrieve", "query": "倒悬的第七次日落", "k": 3, "rerank": True}))
+    def test_retrieve_from_faiss():
+        # 测试检索文档
+        app_logger.info("测试检索文档：")
+        app_logger.info(knowledge_base_tool.run({"action": "retrieve", "query": "日本", "k": 3, "rerank": True}))
 
-    # # 测试在线搜索
-    # app_logger.info("测试在线搜索：")
-    # try:
-    #     # 尝试运行搜索
-    #     result = online_search_tool.invoke("历史上最大的国家是哪个")
-    #     app_logger.info(f"搜索结果：{result}")
-    # except Exception as e:
-    #     app_logger.error(f"搜索测试出错：{str(e)}")
-    #     # 打印工具的描述信息，了解如何正确使用
-    #     app_logger.info(f"工具描述：{online_search_tool.description}")
+    def test_cluster_analysis():
+        # 测试聚类分析
+        app_logger.info("测试聚类分析：")
+        app_logger.info(knowledge_base_tool.run({"action": "cluster_analysis"}))
+
+    test_cluster_analysis()
+    # test_store_into_faiss()
+    # test_retrieve_from_faiss()
