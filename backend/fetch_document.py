@@ -30,11 +30,21 @@ def fetch_rss_feeds(id:int, session:Session) -> bool:
                 # 检查数据库中是否已存在相同的链接
                 existing_doc = session.exec(select(Document).where(Document.link == entry.link)).first()
                 if not existing_doc:
+                    # 处理标签数据，确保将FeedParserDict对象转换为字符串
+                    tags_list = entry.get("tags", [])
+                    tag_strings = []
+                    for tag in tags_list:
+                        if isinstance(tag, dict) and 'term' in tag:
+                            tag_strings.append(tag['term'])
+                        elif isinstance(tag, str):
+                            tag_strings.append(tag)
+                    
                     # 创建新的Document实例
                     document = Document(
                         title=entry.title,
                         link=entry.link,
                         description=entry.description,
+                        tags=",".join(tag_strings),
                         pub_date=datetime.datetime(*entry.get("published_parsed", time.struct_time((1970, 1, 1, 0, 0, 0, 0, 1, 0)))[:6]) if entry.get("published_parsed") else None,
                         author=entry.get("author", None),
                         rss_source_id=id

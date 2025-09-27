@@ -14,3 +14,7 @@ langchain-tavily>=0.1.5
 pydantic==2.7.4
 sqlmodel
 scikit-learn
+beautifulsoup4
+matplotlib
+umap-learn
+hdbscan
