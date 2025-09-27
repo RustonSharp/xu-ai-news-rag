@@ -22,7 +22,7 @@ import getpass
 import requests
 import json
 from langchain_core.tools import Tool
-from loguru import logger
+from utils.logging_config import app_logger 
 from models.document import Document
 
 # 在线搜索工具
@@ -160,8 +160,8 @@ def create_knowledge_base_tool():
     try:
         reranker = CrossEncoder(rerank_model_name, device='cpu')
     except Exception as e:
-        print(f"警告：无法加载重排模型 {rerank_model_name}，错误：{str(e)}")
-        print("将使用简单相似度检索，不进行重排")
+        app_logger.warning(f"警告：无法加载重排模型 {rerank_model_name}，错误：{str(e)}")
+        app_logger.info("将使用简单相似度检索，不进行重排")
         # 设置一个标志，表示重排模型不可用
         reranker = None
     
@@ -183,7 +183,7 @@ def create_knowledge_base_tool():
         try:
             vectorstore = FAISS.load_local(vectorstore_path, embeddings, allow_dangerous_deserialization=True)
         except Exception as e:
-            print(f"警告：加载向量数据库失败，将创建新的数据库。错误：{str(e)}")
+            app_logger.warning(f"警告：加载向量数据库失败，将创建新的数据库。错误：{str(e)}")
             # 创建新的向量数据库
             vectorstore = FAISS.from_texts(["Placeholder text"], embeddings)
             vectorstore.save_local(vectorstore_path)
@@ -207,7 +207,7 @@ def create_knowledge_base_tool():
         all_metadatas = []
         for i, doc in enumerate(documents):
             # 从Document对象中提取内容
-            content = doc.content if hasattr(doc, 'content') else str(doc)
+            content = doc.description if hasattr(doc, 'description') else str(doc)
             chunks = text_splitter.split_text(content)
             # 为每个文档片段添加元数据
             metadatas = [{"source": f"document_{i}", "chunk": j, "title": doc.title if hasattr(doc, 'title') else f"Document_{i}"} for j in range(len(chunks))]
@@ -281,9 +281,10 @@ def create_knowledge_base_tool():
             for doc_dict in documents:
                 doc = Document(
                     title=doc_dict.get("title", "Untitled"),
-                    content=doc_dict.get("content", ""),
-                    source=doc_dict.get("source", "unknown"),
-                    url=doc_dict.get("url", "")
+                    description=doc_dict.get("description", ""),
+                    author=doc_dict.get("author", None),
+                    rss_source_id=doc_dict.get("rss_source_id", 1),
+                    link=doc_dict.get("link", "")
                 )
                 document_objects.append(doc)
             return process_and_store_documents(document_objects)
@@ -314,25 +315,26 @@ if __name__ == "__main__":
         # 创建文档字典
         test_doc = {
             "title": "倒悬的第七次日落",
-            "content": content,
-            "source": "test_input.txt",
-            "url": "local://test_input.txt"
+            "description": content,
+            "author": "测试作者",
+            "rss_source_id": 1,
+            "link": "local://test_input.txt"
         }
         # 测试存储文档
-        print(knowledge_base_tool.run({"action": "store", "documents": [test_doc]}))
+        app_logger.info(knowledge_base_tool.run({"action": "store", "documents": [test_doc]}))
         
         
     # 测试检索文档
-    print("测试检索文档：")
-    print(knowledge_base_tool.run({"action": "retrieve", "query": "倒悬的第七次日落", "k": 3, "rerank": True}))
+    app_logger.info("测试检索文档：")
+    app_logger.info(knowledge_base_tool.run({"action": "retrieve", "query": "倒悬的第七次日落", "k": 3, "rerank": True}))
 
     # # 测试在线搜索
-    # print("测试在线搜索：")
+    # app_logger.info("测试在线搜索：")
     # try:
     #     # 尝试运行搜索
     #     result = online_search_tool.invoke("历史上最大的国家是哪个")
-    #     print(f"搜索结果：{result}")
+    #     app_logger.info(f"搜索结果：{result}")
     # except Exception as e:
-    #     print(f"搜索测试出错：{str(e)}")
+    #     app_logger.error(f"搜索测试出错：{str(e)}")
     #     # 打印工具的描述信息，了解如何正确使用
-    #     print(f"工具描述：{online_search_tool.description}")
+    #     app_logger.info(f"工具描述：{online_search_tool.description}")
