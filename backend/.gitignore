@@ -127,7 +127,7 @@ ehthumbs.db
 Thumbs.db
 
 # Vector database files
-data/vectorstore_faiss/
+data/
 
 # Temporary files
 *.tmp

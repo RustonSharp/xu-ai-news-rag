@@ -11,3 +11,4 @@ langchain-huggingface==0.0.3
 python-dotenv==1.0.0
 langchain-tavily==0.1.2
 pydantic==2.7.4
+sqlmodel

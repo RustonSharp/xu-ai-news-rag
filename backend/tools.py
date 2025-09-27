@@ -17,10 +17,13 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import CrossEncoder
 import os
+import sys
 import getpass  
 import requests
 import json
 from langchain_core.tools import Tool
+from loguru import logger
+from models.document import Document
 
 # 在线搜索工具
 def create_online_search_tool():
@@ -139,11 +142,11 @@ def create_online_search_tool():
         )
 
 # 知识库工具（向量数据库）
-def create_knowledge_base_tool(embedding_model=None, rerank_model=None):
+def create_knowledge_base_tool():
     """创建一个可以将数据存储在向量数据库并进行检索的工具"""
-    # 设置默认模型名称
-    embedding_model_name = embedding_model["model_name"] if embedding_model and "model_name" in embedding_model else "all-MiniLM-L6-v2"
-    rerank_model_name = rerank_model["model_name"] if rerank_model and "model_name" in rerank_model else "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    # 从环境变量获取模型名称
+    embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME")
+    rerank_model_name = os.getenv("RERANK_MODEL_NAME")
     
     # 初始化嵌入模型
     # 注意：当前版本的langchain_huggingface可能会显示FutureWarning: `resume_download` is deprecated
@@ -164,13 +167,12 @@ def create_knowledge_base_tool(embedding_model=None, rerank_model=None):
     
     # 初始化向量数据库
     # 如果向量数据库文件不存在，则创建新的
-    # 使用绝对路径确保无论从何处运行，数据都存储在backend/data目录下
-    vectorstore_path = os.path.join("/Users/yans/Code/xu-ai-news-rag/backend/data", "vectorstore_faiss")
-    index_faiss_path = os.path.join(vectorstore_path, "index.faiss")
+    # 从环境变量获取路径，数据存储在backend/data目录下
+    faiss_index_path = os.getenv("FAISS_INDEX_PATH")
     
-    # 确保data目录存在
-    if not os.path.exists("/Users/yans/Code/xu-ai-news-rag/backend/data"):
-        os.makedirs("/Users/yans/Code/xu-ai-news-rag/backend/data")
+    # 从FAISS_INDEX_PATH提取目录路径
+    vectorstore_path = os.path.dirname(faiss_index_path)
+    index_faiss_path = faiss_index_path
     
     # 确保vectorstore_faiss目录存在
     if not os.path.exists(vectorstore_path):
@@ -191,7 +193,7 @@ def create_knowledge_base_tool(embedding_model=None, rerank_model=None):
         vectorstore.save_local(vectorstore_path)
     
     # 文档处理函数
-    def process_and_store_documents(documents):
+    def process_and_store_documents(documents: list[Document]):
         """处理文档并存储到向量数据库"""
         # 分割文档
         text_splitter = RecursiveCharacterTextSplitter(
@@ -204,16 +206,18 @@ def create_knowledge_base_tool(embedding_model=None, rerank_model=None):
         all_chunks = []
         all_metadatas = []
         for i, doc in enumerate(documents):
-            chunks = text_splitter.split_text(doc)
+            # 从Document对象中提取内容
+            content = doc.content if hasattr(doc, 'content') else str(doc)
+            chunks = text_splitter.split_text(content)
             # 为每个文档片段添加元数据
-            metadatas = [{"source": f"document_{i}", "chunk": j} for j in range(len(chunks))]
+            metadatas = [{"source": f"document_{i}", "chunk": j, "title": doc.title if hasattr(doc, 'title') else f"Document_{i}"} for j in range(len(chunks))]
             all_chunks.extend(chunks)
             all_metadatas.extend(metadatas)
         
         # 添加到向量数据库（包含元数据）
         vectorstore.add_texts(all_chunks, all_metadatas)
         
-        # 保存向量数据库到已定义的绝对路径
+        # 保存向量数据库到环境变量指定的路径
         vectorstore.save_local(vectorstore_path)
         
         return f"成功处理并存储了{len(all_chunks)}个文档片段到向量数据库"
@@ -261,18 +265,28 @@ def create_knowledge_base_tool(embedding_model=None, rerank_model=None):
         return formatted_results
     
     # 创建工具 - 进一步调整函数实现以处理不同的数据类型
-    def knowledge_base_func(action: str, documents=None, query=None, k: int = 3, rerank: bool = True):
+    def knowledge_base_func(action: str, documents: list[dict] = None, query=None, k: int = 3, rerank: bool = True):
         """处理知识库工具的输入数据
         
         Args:
             action: 操作类型，支持'store'和'retrieve'
-            documents: 对于'store'操作，是文档列表
+            documents: 对于'store'操作，是文档字典列表，每个字典应包含'title'和'content'字段
             query: 对于'retrieve'操作，是查询字符串
             k: 对于'retrieve'操作，返回结果数量，默认为3
             rerank: 对于'retrieve'操作，是否启用结果重排，默认为True
         """
         if action == "store":
-            return process_and_store_documents(documents)
+            # 将字典列表转换为Document对象列表
+            document_objects = []
+            for doc_dict in documents:
+                doc = Document(
+                    title=doc_dict.get("title", "Untitled"),
+                    content=doc_dict.get("content", ""),
+                    source=doc_dict.get("source", "unknown"),
+                    url=doc_dict.get("url", "")
+                )
+                document_objects.append(doc)
+            return process_and_store_documents(document_objects)
         elif action == "retrieve":
             return retrieve_from_knowledge_base(query, k, rerank)
         else:
@@ -291,18 +305,28 @@ if __name__ == "__main__":
     knowledge_base_tool = create_knowledge_base_tool()
     online_search_tool = create_online_search_tool()
     
-    text_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data/test_input.txt')
+    # 从环境变量获取数据目录路径
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    text_path = os.path.join(script_dir, "data/test_input.txt")
+    
     with open(text_path, 'r', encoding='utf-8') as file:
-        test_docs = file.read().splitlines()
+        content = file.read()
+        # 创建文档字典
+        test_doc = {
+            "title": "倒悬的第七次日落",
+            "content": content,
+            "source": "test_input.txt",
+            "url": "local://test_input.txt"
+        }
         # 测试存储文档
-        print(knowledge_base_tool.run({"action": "store", "documents": test_docs}))
+        print(knowledge_base_tool.run({"action": "store", "documents": [test_doc]}))
         
         
     # 测试检索文档
     print("测试检索文档：")
     print(knowledge_base_tool.run({"action": "retrieve", "query": "倒悬的第七次日落", "k": 3, "rerank": True}))
 
-    # 测试在线搜索
+    # # 测试在线搜索
     # print("测试在线搜索：")
     # try:
     #     # 尝试运行搜索

@@ -61,7 +61,7 @@ if __name__ == "__main__":
     
     # 测试查询
     test_queries = [
-        "《倒悬的第七次日落》讲了什么",
+        "《倒悬的第七次日落》是什么",
     ]
     
     for query in test_queries:
