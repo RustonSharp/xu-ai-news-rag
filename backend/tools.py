@@ -158,10 +158,31 @@ def create_knowledge_base_tool():
     # 初始化嵌入模型
     # 注意：当前版本的langchain_huggingface可能会显示FutureWarning: `resume_download` is deprecated
     # 这是一个警告，不影响功能正常运行
-    embeddings = HuggingFaceEmbeddings(
-        model_name=embedding_model_name,
-        model_kwargs={'device': 'cpu'}
-    )
+    embeddings = None
+    try:
+        embeddings = HuggingFaceEmbeddings(
+            model_name=embedding_model_name,
+            model_kwargs={'device': 'cpu'}
+        )
+        print(f"成功加载嵌入模型: {embedding_model_name}")
+    except Exception as e:
+        app_logger.error(f"加载嵌入模型失败: {str(e)}")
+        print(f"警告：无法加载嵌入模型 {embedding_model_name}。错误信息：{str(e)}")
+        print("尝试使用备用模型...")
+        
+        # 尝试使用备用模型
+        fallback_model = "paraphrase-multilingual-MiniLM-L12-v2"
+        try:
+            embeddings = HuggingFaceEmbeddings(
+                model_name=fallback_model,
+                model_kwargs={'device': 'cpu'}
+            )
+            print(f"成功加载备用嵌入模型: {fallback_model}")
+        except Exception as fallback_error:
+            app_logger.error(f"加载备用嵌入模型也失败: {str(fallback_error)}")
+            print(f"错误：无法加载备用嵌入模型 {fallback_model}。错误信息：{str(fallback_error)}")
+            print("请检查网络连接或尝试使用本地模型。")
+            raise fallback_error
     
     # 初始化重排模型 - 使用公开可用的模型
     try:
@@ -200,7 +221,7 @@ def create_knowledge_base_tool():
         vectorstore.save_local(vectorstore_path)
     
     # 文档处理函数
-    def process_and_store_documents(documents: list[Document]):
+    def process_and_store_documents(documents: list):
         """处理文档并存储到向量数据库"""
         # 分割文档
         text_splitter = RecursiveCharacterTextSplitter(
@@ -213,23 +234,49 @@ def create_knowledge_base_tool():
         all_chunks = []
         all_metadatas = []
         for i, doc in enumerate(documents):
-            # 从Document对象中提取内容
-            content = doc.description if hasattr(doc, 'description') else str(doc)
+            # 检查文档类型并提取内容
+            if isinstance(doc, dict):
+                # 如果是字典格式，提取相关字段
+                content = doc.get("description", "")
+                title = doc.get("title", f"Document_{i}")
+                tags = doc.get("tags", "")
+                pub_date = doc.get("pub_date", "")
+                author = doc.get("author", "")
+            else:
+                # 如果是Document对象，提取属性
+                content = doc.description if hasattr(doc, 'description') else str(doc)
+                title = doc.title if hasattr(doc, 'title') else f"Document_{i}"
+                tags = doc.tags if hasattr(doc, 'tags') else ""
+                pub_date = doc.pub_date.isoformat() if hasattr(doc, 'pub_date') and doc.pub_date is not None else ""
+                author = doc.author if hasattr(doc, 'author') else ""
+            
+            # 分割文档内容
             chunks = text_splitter.split_text(content)
-            # 为每个文档片段添加元数据，包括tags字段
+            
+            # 为每个文档片段添加元数据
             metadatas = [{
                 "source": f"document_{i}", 
                 "chunk": j, 
-                "title": doc.title if hasattr(doc, 'title') else f"Document_{i}",
-                "tags": doc.tags if hasattr(doc, 'tags') else "",
-                "pub_date": doc.pub_date.isoformat() if hasattr(doc, 'pub_date') and doc.pub_date is not None else "",
-                "author": doc.author if hasattr(doc, 'author') else "",
+                "title": title,
+                "tags": tags,
+                "pub_date": pub_date,
+                "author": author,
             } for j in range(len(chunks))]
             all_chunks.extend(chunks)
             all_metadatas.extend(metadatas)
         
         # 如果向量数据库中只有占位符文本，则创建新的向量数据库
-        if len(vectorstore.index_to_docstore_id) == 1 and "Placeholder text" in str(vectorstore.docstore.search(vectorstore.index_to_docstore_id[0])):
+        try:
+            # 获取第一个文档ID
+            first_doc_id = list(vectorstore.index_to_docstore_id.values())[0]
+            first_doc = vectorstore.docstore.search(first_doc_id)
+            is_placeholder = len(vectorstore.index_to_docstore_id) == 1 and "Placeholder text" in str(first_doc)
+        except (IndexError, KeyError, AttributeError) as e:
+            # 如果获取第一个文档时出错，假设不是占位符
+            app_logger.warning(f"检查占位符文本时出错: {str(e)}")
+            is_placeholder = False
+            
+        if is_placeholder:
             # 创建新的向量数据库，不包含占位符文本
             new_vectorstore = FAISS.from_texts(all_chunks, embeddings, metadatas=all_metadatas)
             # 替换原来的向量数据库
@@ -288,30 +335,39 @@ def create_knowledge_base_tool():
         return formatted_results
     
     # 创建工具 - 进一步调整函数实现以处理不同的数据类型
-    def knowledge_base_func(action: str, documents: list[dict] = None, query=None, k: int = 3, rerank: bool = True):
+    def knowledge_base_func(action: str, documents: list = None, query=None, k: int = 3, rerank: bool = True):
         """处理知识库工具的输入数据
         
         Args:
             action: 操作类型，支持'store'和'retrieve'
-            documents: 对于'store'操作，是文档字典列表，每个字典应包含'title'和'content'字段
+            documents: 对于'store'操作，是Document对象列表或文档字典列表
             query: 对于'retrieve'操作，是查询字符串
             k: 对于'retrieve'操作，返回结果数量，默认为3
             rerank: 对于'retrieve'操作，是否启用结果重排，默认为True
         """
         if action == "store":
-            # 将字典列表转换为Document对象列表
-            document_objects = []
-            for doc_dict in documents:
-                doc = Document(
-                    title=doc_dict.get("title", "Untitled"),
-                    description=doc_dict.get("description", ""),
-                    author=doc_dict.get("author", None),
-                    tags=doc_dict.get("tags", ""),
-                    rss_source_id=doc_dict.get("rss_source_id", 1),
-                    link=doc_dict.get("link", "")
-                )
-                document_objects.append(doc)
-            return process_and_store_documents(document_objects)
+            # 检查documents参数是否为Document对象列表
+            if documents and len(documents) > 0 and hasattr(documents[0], 'title'):
+                # 如果是Document对象列表，转换为字典格式
+                from models.document import Document
+                document_dicts = []
+                for doc in documents:
+                    if isinstance(doc, Document):
+                        doc_dict = {
+                            "title": doc.title,
+                            "description": doc.description,
+                            "tags": doc.tags,
+                            "pub_date": doc.pub_date,
+                            "author": doc.author
+                        }
+                        document_dicts.append(doc_dict)
+                    else:
+                        # 如果已经是字典格式，直接添加
+                        document_dicts.append(doc)
+                return process_and_store_documents(document_dicts)
+            else:
+                # 如果是字典列表，直接处理
+                return process_and_store_documents(documents)
         elif action == "retrieve":
             return retrieve_from_knowledge_base(query, k, rerank)
         elif action == "cluster_analysis":
@@ -1024,59 +1080,59 @@ def knowledge_base_cluster_analysis():
         return {"error": f"初始化聚类分析时出错：{str(e)}"}
 
 
-
-
-
-
 if __name__ == "__main__":
     # 测试知识库工具
-    knowledge_base_tool = create_knowledge_base_tool()
-    online_search_tool = create_online_search_tool()
-    
-    # 从环境变量获取数据目录路径
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    text_path = os.path.join(script_dir, "data/test_input.txt")
-    
-    def test_online_search():
-         # 测试在线搜索
-        app_logger.info("测试在线搜索：")
-        try:
-            # 尝试运行搜索
-            result = online_search_tool.invoke("历史上最大的国家是哪个")
-            app_logger.info(f"搜索结果：{result}")
-        except Exception as e:
-            app_logger.error(f"搜索测试出错：{str(e)}")
-            # 打印工具的描述信息，了解如何正确使用
-        app_logger.info(f"工具描述：{online_search_tool.description}")
-    
-    def test_store_into_faiss():
-        from sqlmodel import Session, select,create_engine
-        from models.document import Document
-        def get_db_engine():
-            db_path = os.getenv("DATABASE_PATH")
-            if not db_path:
-                raise ValueError("DATABASE_PATH environment variable is not set")
-            return create_engine(f"sqlite:///{db_path}")
-        # 测试存储文档
-        # 从 sqlite获取数据
-        engine = get_db_engine()
-        with Session(engine) as session:
-            documents = session.exec(select(Document)).all()
-            # 转换为字典格式
-            documents = [doc.model_dump() for doc in documents]
-            # 测试存储文档
-            app_logger.info(knowledge_base_tool.run({"action": "store", "documents": documents}))
+    try:
+        knowledge_base_tool = create_knowledge_base_tool()
+        online_search_tool = create_online_search_tool()
         
-    def test_retrieve_from_faiss():
-        # 测试检索文档
-        app_logger.info("测试检索文档：")
-        app_logger.info(knowledge_base_tool.run({"action": "retrieve", "query": "日本", "k": 3, "rerank": True}))
+        # 从环境变量获取数据目录路径
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        text_path = os.path.join(script_dir, "data/test_input.txt")
+        
+        def test_online_search():
+             # 测试在线搜索
+            app_logger.info("测试在线搜索：")
+            try:
+                # 尝试运行搜索
+                result = online_search_tool.invoke("历史上最大的国家是哪个")
+                app_logger.info(f"搜索结果：{result}")
+            except Exception as e:
+                app_logger.error(f"搜索测试出错：{str(e)}")
+                # 打印工具的描述信息，了解如何正确使用
+            app_logger.info(f"工具描述：{online_search_tool.description}")
+        
+        def test_store_into_faiss():
+            from sqlmodel import Session, select,create_engine
+            from models.document import Document
+            def get_db_engine():
+                db_path = os.getenv("DATABASE_PATH")
+                if not db_path:
+                    raise ValueError("DATABASE_PATH environment variable is not set")
+                return create_engine(f"sqlite:///{db_path}")
+            # 测试存储文档
+            # 从 sqlite获取数据
+            engine = get_db_engine()
+            with Session(engine) as session:
+                documents = session.exec(select(Document)).all()
 
-    def test_cluster_analysis():
-        # 测试聚类分析
-        app_logger.info("测试聚类分析：")
-        app_logger.info(knowledge_base_tool.run({"action": "cluster_analysis"}))
+                # 测试存储文档 - 直接传递Document对象列表
+                app_logger.info(knowledge_base_tool.run({"action": "store", "documents": documents}))
+            
+        def test_retrieve_from_faiss():
+            # 测试检索文档
+            app_logger.info("测试检索文档：")
+            app_logger.info(knowledge_base_tool.run({"action": "retrieve", "query": "日本", "k": 3, "rerank": True}))
 
-    test_cluster_analysis()
-    # test_store_into_faiss()
-    # test_retrieve_from_faiss()
+        def test_cluster_analysis():
+            # 测试聚类分析
+            app_logger.info("测试聚类分析：")
+            app_logger.info(knowledge_base_tool.run({"action": "cluster_analysis"}))
+
+        # test_cluster_analysis()
+        test_store_into_faiss()
+        # test_retrieve_from_faiss()
+    except Exception as e:
+        app_logger.error(f"执行测试函数时出错：{str(e)}")
+        print(f"错误：无法初始化知识库工具。错误信息：{str(e)}")
+        print("请检查网络连接或尝试使用本地模型。")

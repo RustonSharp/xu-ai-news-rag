@@ -67,22 +67,8 @@ def fetch_rss_feeds(id:int, session:Session) -> bool:
         tool = create_knowledge_base_tool()
         # 确保所有文档都已正确保存并刷新后再转换为字典
         try:
-            documents = []
-            for doc in document_list:
-                # 确保文档对象有所有必要的属性
-                doc_dict = {
-                    "title": getattr(doc, "title", ""),
-                    "description": getattr(doc, "description", ""),
-                    "link": getattr(doc, "link", ""),
-                    "author": getattr(doc, "author", None),
-                    "tags": getattr(doc, "tags", ""),
-                    "rss_source_id": getattr(doc, "rss_source_id", 1),
-                    "pub_date": getattr(doc, "pub_date", None)
-                }
-                documents.append(doc_dict)
-            
             # 执行写入操作
-            result = tool.run({"action": "store", "documents": documents})
+            result = tool.run({"action": "store", "documents": document_list})
             # 记录结果
             app_logger.info(f"Knowledge Base Tool Result: {result}")
         except Exception as e:
