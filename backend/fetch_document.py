@@ -9,7 +9,7 @@ from models.document import Document
 import feedparser
 import time
 import datetime
-
+from tools import create_knowledge_base_tool
 
 # 定义一个函数，用于从RSS源中获取数据
 def fetch_rss_feeds(id:int, session:Session) -> bool:
@@ -21,6 +21,7 @@ def fetch_rss_feeds(id:int, session:Session) -> bool:
         app_logger.info(f"完整信息: {rss_feed}")
         if rss_feed.entries:
             app_logger.info(f"Successfully fetched {len(rss_feed.entries)} entries from {rss_source.url}")
+            document_list = []
             # 处理每个条目
             for entry in rss_feed.entries:
                 app_logger.info(f"Entry Title: {entry.title}")
@@ -51,13 +52,45 @@ def fetch_rss_feeds(id:int, session:Session) -> bool:
                     )
                     session.add(document)
                     session.commit()
+                    # 刷新对象以确保所有属性都已正确设置
+                    session.refresh(document)
                     app_logger.info(f"Added new document: {entry.title}")
+                    document_list.append(document)
                 else:
                     app_logger.info(f"Document already exists in DB: {entry.title}")
         else:
             app_logger.warning(f"No entries found in RSS feed from {rss_source.url}")
             return False
         
+        # 调用工具函数创建知识库 - 异步写入
+        # 启动异步写入进程
+        tool = create_knowledge_base_tool()
+        # 确保所有文档都已正确保存并刷新后再转换为字典
+        try:
+            documents = []
+            for doc in document_list:
+                # 确保文档对象有所有必要的属性
+                doc_dict = {
+                    "title": getattr(doc, "title", ""),
+                    "description": getattr(doc, "description", ""),
+                    "link": getattr(doc, "link", ""),
+                    "author": getattr(doc, "author", None),
+                    "tags": getattr(doc, "tags", ""),
+                    "rss_source_id": getattr(doc, "rss_source_id", 1),
+                    "pub_date": getattr(doc, "pub_date", None)
+                }
+                documents.append(doc_dict)
+            
+            # 执行写入操作
+            result = tool.run({"action": "store", "documents": documents})
+            # 记录结果
+            app_logger.info(f"Knowledge Base Tool Result: {result}")
+        except Exception as e:
+            app_logger.error(f"Failed to process documents for knowledge base: {str(e)}")
+            # 即使知识库存储失败，也继续执行其他任务
+            pass
+
+        # 主进程可以继续执行其他任务，不会被阻塞
         return True
 
 

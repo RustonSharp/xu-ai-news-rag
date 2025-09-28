@@ -3,12 +3,15 @@ from apis.rss import rss_bp
 from dotenv import load_dotenv
 import os
 from utils.logging_config import app_logger
-
+from utils.init_sqlite import init_db
 # 加载环境变量
 load_dotenv()
 
+# 执行初始化程序，不会覆盖或删除现有数据，会创建缺失的表，不会修改表结构
+init_db()
+
 # 初始化日志配置
-app_logger.info("Starting application...")
+app_logger.info("Initializing application...")
 
 app = Flask(__name__)
 

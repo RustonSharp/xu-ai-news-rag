@@ -487,7 +487,8 @@ def knowledge_base_cluster_analysis():
             # 添加自定义停用词
             custom_stop_words = [
                 '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这', '作者', '笔者', '日电', '她说', '另有', '今年', '去年', '明年', '早些',
-                'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'am', 'http', 'https', 'www', 'com', 'cn', 'org', 'net', 'href', 'target', 'blank', 'src', 'img', 'figure', 'figcaption', 'div', 'class', 'style', 'id', 'title', 'alt', 'author', 'margin', 'auto', 'display', 'block', 'float', 'none', 'width', 'height', 'padding', 'border', 'background', 'color', 'font', 'text', 'align', 'center', 'left', 'right', 'top', 'bottom', 'position', 'relative', 'absolute', 'fixed', 'clear', 'overflow', 'hidden', 'visible', 'scroll', 'z-index', 'opacity', 'transition', 'transform', 'box-shadow', 'border-radius', 'outline', 'cursor', 'pointer', 'box', 'index', 'radius', 'shadow'
+                'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'am', 'http', 'https', 'www', 'com', 'cn', 'org', 'net', 'href', 'target', 'blank', 'src', 'img', 'figure', 'figcaption', 'div', 'class', 'style', 'id', 'title', 'alt', 'author', 'margin', 'auto', 'display', 'block', 'float', 'none', 'width', 'height', 'padding', 'border', 'background', 'color', 'font', 'text', 'align', 'center', 'left', 'right', 'top', 'bottom', 'position', 'relative', 'absolute', 'fixed', 'clear', 'overflow', 'hidden', 'visible', 'scroll', 'z-index', 'opacity', 'transition', 'transform', 'box-shadow', 'border-radius', 'outline', 'cursor', 'pointer', 'box', 'index', 'radius', 'shadow',
+                'as', 'it', 'than', 'said', 'say', 'new', 'old', 'up', 'more', 'he', 'she', 'him', 'her', 'me', 'my', 'mine'
             ]
             
             vectorizer = TfidfVectorizer(
@@ -904,7 +905,8 @@ def knowledge_base_cluster_analysis():
                     custom_stop_words = [
                         '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这', '作者',
                         '笔者',
-                        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'am', 'http', 'https', 'www', 'com', 'cn', 'org', 'net', 'href', 'target', 'blank', 'src', 'img', 'figure', 'figcaption', 'div', 'class', 'style', 'id', 'title', 'alt', 'author'
+                        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'am', 'http', 'https', 'www', 'com', 'cn', 'org', 'net', 'href', 'target', 'blank', 'src', 'img', 'figure', 'figcaption', 'div', 'class', 'style', 'id', 'title', 'alt', 'author',
+                        'as', 'it', 'than', 'said', 'say', 'new', 'old', 'up', 'more', 'he', 'she', 'him', 'her', 'me', 'my', 'mine'
                     ]
                     
                     filtered_words = [(word, freq) for word, freq in word_freq.most_common() 
