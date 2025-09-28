@@ -1,5 +1,6 @@
 from flask import Flask, jsonify
 from apis.rss import rss_bp
+from apis.document import document_bp
 from dotenv import load_dotenv
 import os
 from utils.logging_config import app_logger
@@ -17,6 +18,8 @@ app = Flask(__name__)
 
 # 注册RSS API蓝图
 app.register_blueprint(rss_bp)
+# 注册文档API蓝图
+app.register_blueprint(document_bp)
 
 @app.route('/')
 def hello_world():

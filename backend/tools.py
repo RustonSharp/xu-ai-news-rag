@@ -1129,8 +1129,8 @@ if __name__ == "__main__":
             app_logger.info("测试聚类分析：")
             app_logger.info(knowledge_base_tool.run({"action": "cluster_analysis"}))
 
-        # test_cluster_analysis()
-        test_store_into_faiss()
+        test_cluster_analysis()
+        # test_store_into_faiss()
         # test_retrieve_from_faiss()
     except Exception as e:
         app_logger.error(f"执行测试函数时出错：{str(e)}")
