@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { searchAPI } from '../api'
+import { assistantAPI } from '../api'
 import {
   Search,
   Send,
@@ -40,7 +40,7 @@ interface SearchResult {
 
 
 
-const SearchPage: React.FC = () => {
+const AssistantPage: React.FC = () => {
   const [query, setQuery] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
@@ -67,65 +67,70 @@ const SearchPage: React.FC = () => {
     if (!query.trim()) return
 
     setLoading(true)
-    
-    if (searchMode === 'chat') {
-      // 添加用户消息
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        type: 'user' as const,
-        content: query,
-        timestamp: new Date().toISOString()
-      }
-      setMessages(prev => [...prev, userMessage])
-      
-      try {
-        // 调用问答API
-        const response = await searchAPI.chat({
+
+    try {
+      if (searchMode === 'chat') {
+        // 聊天模式
+        // 添加用户消息
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          type: 'user' as const,
+          content: query,
+          timestamp: new Date().toISOString()
+        }
+        setMessages(prev => [...prev, userMessage])
+
+        // 调用助手API
+        const response = await assistantAPI.query({
           query: query,
-          conversation_id: null, // 可以添加会话ID支持
-          filters: filters
+          options: {
+            use_knowledge_base: true,
+            use_online_search: false
+          }
         })
-        
-        const { answer, sources } = response.data
-        
+
+        const answer = response.data?.answer || response.answer || `基于您的问题"${query}"，我为您找到了相关信息。`
+        const sources = response.data?.sources || response.sources || []
+
         // 生成AI回复
         const aiResponse: Message = {
           id: (Date.now() + 1).toString(),
           type: 'bot' as const,
-          content: answer || `基于您的问题"${query}"，我为您找到了相关信息。`,
+          content: answer,
           timestamp: new Date().toISOString(),
-          sources: sources || []
+          sources: sources
         }
-        
+
         setMessages(prev => [...prev, aiResponse])
-      } catch (error) {
-        console.error('搜索失败:', error)
+      } else {
+        // 搜索模式
+        // 调用助手API进行搜索
+        const response = await assistantAPI.query({
+          query: query,
+          options: {
+            use_knowledge_base: true,
+            use_online_search: false
+          }
+        })
+
+        const sources = response.data?.sources || response.sources || []
+        setSearchResults(sources)
+      }
+    } catch (error) {
+      console.error('助手查询失败:', error)
+      if (searchMode === 'chat') {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: 'bot' as const,
-          content: '抱歉，搜索过程中出现了错误，请稍后重试。',
+          content: '抱歉，助手查询过程中出现了错误，请稍后重试。',
           timestamp: new Date().toISOString()
         }
         setMessages(prev => [...prev, errorMessage])
-      }
-    } else {
-      // 语义搜索模式
-      try {
-        // 调用搜索API
-        const response = await searchAPI.search({
-          query: query,
-          filters: filters,
-          size: 20
-        })
-        
-        const { results } = response.data
-        setSearchResults(results || [])
-      } catch (error) {
-        console.error('搜索失败:', error)
-        setSearchResults([])
+      } else {
+        alert('搜索失败，请稍后重试')
       }
     }
-    
+
     setLoading(false)
     setQuery('')
   }
@@ -163,24 +168,24 @@ const SearchPage: React.FC = () => {
     <div className="search-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">智能检索</h1>
-          <p className="page-subtitle">基于语义理解的智能搜索和问答</p>
+          <h1 className="page-title">AI助手</h1>
+          <p className="page-subtitle">基于知识库的智能问答助手</p>
         </div>
-        
+
         <div className="mode-switcher">
           <button
             onClick={() => setSearchMode('chat')}
             className={`mode-btn ${searchMode === 'chat' ? 'active' : ''}`}
           >
             <Bot size={16} />
-            智能问答
+            对话模式
           </button>
           <button
             onClick={() => setSearchMode('search')}
             className={`mode-btn ${searchMode === 'search' ? 'active' : ''}`}
           >
             <Search size={16} />
-            语义搜索
+            知识搜索
           </button>
         </div>
       </div>
@@ -195,7 +200,7 @@ const SearchPage: React.FC = () => {
                 <span>AI助手</span>
                 <span className="status online">在线</span>
               </div>
-              
+
               {messages.length > 0 && (
                 <button
                   onClick={clearChat}
@@ -212,8 +217,8 @@ const SearchPage: React.FC = () => {
                 <div className="welcome-message">
                   <Bot size={48} />
                   <h3>您好！我是AI助手</h3>
-                  <p>我可以帮您搜索和分析知识库中的信息，请输入您的问题。</p>
-                  
+                  <p>我可以帮您解答问题、分析信息，请输入您的问题。</p>
+
                   <div className="example-questions">
                     <h4>示例问题：</h4>
                     <div className="examples">
@@ -249,14 +254,14 @@ const SearchPage: React.FC = () => {
                           <Bot size={20} />
                         )}
                       </div>
-                      
+
                       <div className="message-content">
                         <div className="message-text">
                           {message.content.split('\n').map((line, index) => (
                             <p key={index}>{line}</p>
                           ))}
                         </div>
-                        
+
                         {message.sources && (
                           <div className="message-sources">
                             <h4>相关文档：</h4>
@@ -270,33 +275,33 @@ const SearchPage: React.FC = () => {
                                     <h5>{source.title}</h5>
                                     <p>{source.content.substring(0, 100)}...</p>
                                     <div className="source-meta">
-                              <span className="relevance">
-                                相关度: {Math.round(source.relevance * 100)}%
-                              </span>
-                              {source.url && (
-                                <a
-                                  href={source.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="source-link"
-                                >
-                                  <ExternalLink size={12} />
-                                  查看原文
-                                </a>
-                              )}
-                            </div>
+                                      <span className="relevance">
+                                        相关度: {Math.round(source.relevance * 100)}%
+                                      </span>
+                                      {source.url && (
+                                        <a
+                                          href={source.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="source-link"
+                                        >
+                                          <ExternalLink size={12} />
+                                          查看原文
+                                        </a>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
-                        
+
                         <div className="message-actions">
                           <span className="message-time">
                             {formatDate(message.timestamp)}
                           </span>
-                          
+
                           {message.type === 'bot' && (
                             <div className="action-buttons">
                               <button
@@ -318,7 +323,7 @@ const SearchPage: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  
+
                   {loading && (
                     <div className="message assistant">
                       <div className="message-avatar">
@@ -333,7 +338,7 @@ const SearchPage: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -352,10 +357,10 @@ const SearchPage: React.FC = () => {
                   筛选
                 </button>
               </div>
-              
+
               {searchResults.length > 0 && (
                 <div className="search-stats">
-                  找到 {searchResults.length} 个相关结果
+                  找到 {searchResults.length} 个相关文档
                 </div>
               )}
             </div>
@@ -427,7 +432,7 @@ const SearchPage: React.FC = () => {
                             {Math.round(result.relevance * 100)}%
                           </span>
                         </div>
-                        
+
                         <div className="result-actions">
                           <button className="action-btn" title="收藏">
                             <Bookmark size={16} />
@@ -440,18 +445,18 @@ const SearchPage: React.FC = () => {
                           </button>
                         </div>
                       </div>
-                      
+
                       <div className="result-content">
                         <p>{result.content}</p>
                       </div>
-                      
+
                       <div className="result-meta">
                         <div className="result-info">
                           <span className="result-date">
                             <Clock size={12} />
                             {formatDate(result.timestamp)}
                           </span>
-                          
+
                           {result.url && (
                             <a
                               href={result.url}
@@ -471,13 +476,13 @@ const SearchPage: React.FC = () => {
               ) : query && !loading ? (
                 <div className="empty-results">
                   <Search size={48} />
-                  <h3>未找到相关结果</h3>
+                  <h3>未找到相关文档</h3>
                   <p>请尝试使用不同的关键词或调整筛选条件</p>
                 </div>
               ) : (
                 <div className="search-placeholder">
                   <Search size={48} />
-                  <h3>开始您的搜索</h3>
+                  <h3>搜索知识库</h3>
                   <p>输入关键词来搜索知识库中的相关文档</p>
                 </div>
               )}
@@ -494,11 +499,11 @@ const SearchPage: React.FC = () => {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={searchMode === 'chat' ? '输入您的问题...' : '输入搜索关键词...'}
+              placeholder={searchMode === 'chat' ? '输入您的问题...' : '搜索知识库...'}
               className="search-input"
               disabled={loading}
             />
-            
+
             <button
               onClick={handleSearch}
               disabled={!query.trim() || loading}
@@ -1114,4 +1119,4 @@ const SearchPage: React.FC = () => {
   )
 }
 
-export default SearchPage
+export default AssistantPage

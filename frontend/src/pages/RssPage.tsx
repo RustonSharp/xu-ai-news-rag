@@ -90,36 +90,35 @@ const RssPage: React.FC = () => {
     try {
       // 获取RSS数据源
       const response = await rssAPI.getRssSources()
-      const sources = response.data.items || []
+      const sources = response.data || []
 
       // 转换API数据为前端格式，确保所有必要属性存在
-      const transformedSources = sources.map((source: ApiSourceItem) => ({
+      const transformedSources = sources.map((source: any) => ({
         id: source.id,
         name: source.name,
-        url: source.entry,
-        description: source.description || '',
-        schedule: source.schedule || '1h',
-        enabled: source.enabled !== false,
-        status: source.enabled !== false ? 'active' : 'paused',
-        lastRun: source.last_run || null,
-        nextRun: source.next_run || null,
-        articlesCount: source.articles_count || 0,
-        tags: source.tags || [],
-        filters: source.filters || {
+        url: source.url,
+        description: '', // 后端当前不提供description字段
+        schedule: source.interval === 60 ? '1h' :
+          source.interval === 3600 ? '1h' :
+            source.interval === 86400 ? '24h' : '1h',
+        enabled: true, // 后端当前不提供enabled字段，默认为true
+        status: 'active', // 后端当前不提供status字段，默认为active
+        lastRun: null, // 后端当前不提供last_run字段
+        nextRun: null, // 后端当前不提供next_run字段
+        articlesCount: 0, // 后端当前不提供articles_count字段
+        tags: [], // 后端当前不提供tags字段
+        filters: { // 后端当前不提供filters字段，使用默认值
           keywords: '',
           excludeKeywords: '',
           minLength: 100
         },
-        lastSync: source.last_run || new Date().toISOString(),
-        type: source.template?.type || 'css' // 从template中获取类型
+        lastSync: new Date().toISOString(),
+        type: 'rss' // 后端当前只有RSS源，没有web源
       }))
 
-      // 分离RSS和Web数据源 - 使用template.type字段
-      const rss = transformedSources.filter((source: any) => source.type === 'rss')
-      const web = transformedSources.filter((source: any) => source.type === 'css')
-
-      setRssSources(rss)
-      setWebSources(web)
+      // 由于后端当前只有RSS源，没有web源，所以所有源都归类为RSS
+      setRssSources(transformedSources)
+      setWebSources([]) // 清空web源列表
     } catch (error) {
       console.error('获取数据源失败:', error)
     } finally {
@@ -165,41 +164,32 @@ const RssPage: React.FC = () => {
 
   const handleSaveSource = async () => {
     try {
-      // 构建Agent源数据
-      const agentSource = {
-        id: editingSource ? editingSource.id : undefined,
+      // 构建符合后端期望的数据格式
+      const sourceData = {
         name: formData.name,
-        entry: formData.url,
-        template: {
-          type: activeTab === 'rss' ? 'rss' : 'css',
-          config: {
-            keywords: formData.filters.keywords,
-            excludeKeywords: formData.filters.excludeKeywords,
-            minLength: formData.filters.minLength
-          }
-        },
-        max_concurrency: 2,
-        rate_limit_per_min: 30,
-        enabled: formData.enabled
+        url: formData.url,
+        interval: 60 // 后端期望的interval值，使用MINUTE对应的值60
       }
 
       // 调用保存API
       const response = editingSource
-        ? await rssAPI.updateRssSource(editingSource.id, agentSource)
-        : await rssAPI.createRssSource(agentSource)
+        ? await rssAPI.updateRssSource(editingSource.id, sourceData)
+        : await rssAPI.createRssSource(sourceData)
       const savedSource = response.data
 
       // 转换为前端显示格式
       const newSource: DataSource = {
         id: savedSource.id,
         name: savedSource.name,
-        url: savedSource.entry,
+        url: savedSource.url,
         description: formData.description,
-        schedule: formData.schedule,
-        enabled: savedSource.enabled,
-        status: savedSource.enabled ? 'active' : 'paused',
+        schedule: savedSource.interval === 60 ? '1h' :
+          savedSource.interval === 3600 ? '1h' :
+            savedSource.interval === 86400 ? '24h' : '1h',
+        enabled: true, // 后端当前不提供enabled字段，默认为true
+        status: 'active', // 后端当前不提供status字段，默认为active
         lastRun: null,
-        nextRun: savedSource.enabled ? new Date(Date.now() + 3600000).toISOString() : null,
+        nextRun: null,
         articlesCount: 0,
         tags: formData.tags,
         filters: formData.filters,
@@ -254,11 +244,11 @@ const RssPage: React.FC = () => {
       const currentSource = [...rssSources, ...webSources].find(s => s.id === sourceId)
       if (!currentSource) return
 
-      // 更新数据源配置
+      // 更新数据源配置 - 使用后端期望的格式
       const updatedSource = {
-        ...currentSource,
-        enabled,
-        status: enabled ? 'active' as const : 'paused' as const
+        name: currentSource.name,
+        url: currentSource.url,
+        interval: 60 // 后端期望的interval值，使用MINUTE对应的值60
       }
 
       await rssAPI.updateRssSource(sourceId, updatedSource)
@@ -283,25 +273,27 @@ const RssPage: React.FC = () => {
 
   const handleRunNow = async (sourceId: string | number) => {
     try {
-      // 调用Agent运行API
-      const response = await axios.post('/agent/run', {
-        source_id: sourceId
-      })
+      // 调用RSS采集API
+      const response = await rssAPI.triggerRssCollection(sourceId)
+      
+      // 检查响应是否成功
+      if (response && response.message) {
+        alert('采集任务已启动')
+        
+        const updateSource = (source: DataSource) => ({
+          ...source,
+          lastRun: new Date().toISOString(),
+          nextRun: new Date(Date.now() + 3600000).toISOString(), // 默认1小时后再次运行
+          articlesCount: (source.articlesCount || 0) + Math.floor(Math.random() * 10) + 1
+        })
 
-      const jobId = response.data.id
-      alert(`采集任务已启动，任务ID: ${jobId}`)
-
-      const updateSource = (source: DataSource) => ({
-        ...source,
-        lastRun: new Date().toISOString(),
-        nextRun: new Date(Date.now() + parseInt(source.schedule) * 3600000).toISOString(),
-        articlesCount: (source.articlesCount || 0) + Math.floor(Math.random() * 10) + 1
-      })
-
-      if (activeTab === 'rss') {
-        setRssSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
+        if (activeTab === 'rss') {
+          setRssSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
+        } else {
+          setWebSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
+        }
       } else {
-        setWebSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
+        throw new Error('采集响应无效')
       }
     } catch (error) {
       console.error('采集失败:', error)

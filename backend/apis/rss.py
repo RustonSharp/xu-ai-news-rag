@@ -189,3 +189,26 @@ def get_rss_feeds(source_id):
         app_logger.error(f"GET /api/rss/feeds/{source_id} - Error fetching RSS feeds for source ID {source_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+# 触发RSS采集
+@rss_bp.route('/feeds/<int:source_id>', methods=['POST'])
+def trigger_rss_collection(source_id):
+    try:
+        from fetch_document import fetch_rss_feeds
+        app_logger.info(f"POST /api/rss/feeds/{source_id} - Request received")
+        
+        engine = get_db_engine()
+        with Session(engine) as session:
+            # 检查RSS源是否存在
+            rss_source = session.exec(select(RssSource).where(RssSource.id == source_id)).first()
+            if not rss_source:
+                app_logger.error(f"POST /api/rss/feeds/{source_id} - RSS source not found")
+                return jsonify({"error": "RSS source not found"}), 404
+            
+            # 触发RSS采集
+            fetch_rss_feeds(source_id, session)
+            
+            return jsonify({"message": "RSS collection triggered successfully"})
+    except Exception as e:
+        app_logger.error(f"POST /api/rss/feeds/{source_id} - Error triggering RSS collection for source ID {source_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+

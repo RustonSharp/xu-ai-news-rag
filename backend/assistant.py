@@ -49,7 +49,7 @@ def create_assistant():
         verbose=True,
         handle_parsing_errors=True,
         max_iterations=5,
-        max_execution_time=60,
+        max_execution_time=180,  # 3分钟超时
         agent_kwargs=agent_kwargs
     )
     

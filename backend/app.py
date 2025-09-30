@@ -3,6 +3,7 @@ from flask_cors import CORS
 from apis.rss import rss_bp
 from apis.document import document_bp
 from apis.auth import auth_bp
+from apis.assistant import assistant_bp
 from dotenv import load_dotenv
 import os
 from utils.logging_config import app_logger
@@ -33,6 +34,8 @@ app.register_blueprint(rss_bp)
 app.register_blueprint(document_bp)
 # 注册鉴权API蓝图
 app.register_blueprint(auth_bp)
+# 注册助手API蓝图
+app.register_blueprint(assistant_bp)
 
 @app.route('/')
 def hello_world():

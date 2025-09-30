@@ -28,11 +28,14 @@ export const rssAPI = {
    * @param {Object} rssData - RSS 源数据
    * @param {string} rssData.name - RSS 源名称
    * @param {string} rssData.url - RSS 源URL
-   * @param {string} rssData.description - 描述
-   * @param {number} rssData.update_interval - 更新间隔（分钟）
+   * @param {number} rssData.interval - 采集间隔（秒）
    * @returns {Promise} 创建结果
    */
-  createRssSource: (rssData: {}) => {
+  createRssSource: (rssData: {
+    name: string;
+    url: string;
+    interval?: number;
+  }) => {
     return request.post(API_ENDPOINTS.COLLECTION.RSS_SOURCES, rssData)
   },
 
@@ -40,9 +43,16 @@ export const rssAPI = {
    * 更新 RSS 源
    * @param {string|number} id - RSS 源ID
    * @param {Object} rssData - RSS 源数据
+   * @param {string} rssData.name - RSS 源名称
+   * @param {string} rssData.url - RSS 源URL
+   * @param {number} rssData.interval - 采集间隔（秒）
    * @returns {Promise} 更新结果
    */
-  updateRssSource: (id: string | number, rssData: {}) => {
+  updateRssSource: (id: string | number, rssData: {
+    name?: string;
+    url?: string;
+    interval?: number;
+  }) => {
     return request.put(API_ENDPOINTS.COLLECTION.RSS_SOURCE(id), rssData)
   },
 
@@ -56,11 +66,26 @@ export const rssAPI = {
   },
 
   /**
+   * 获取 RSS 订阅内容
+   * @param {string|number} id - RSS 源ID
+   * @returns {Promise} RSS 订阅内容
+   */
+  getRssFeeds: (id: string | number) => {
+    return request.get(API_ENDPOINTS.COLLECTION.RSS_FEEDS(id)).then(response => {
+      // 处理后端返回的数据
+      return response.data || response;
+    })
+  },
+
+  /**
    * 手动触发 RSS 采集
    * @param {string|number} id - RSS 源ID
    * @returns {Promise} 采集结果
    */
   triggerRssCollection: (id: string | number) => {
-    return request.post(`${API_ENDPOINTS.COLLECTION.RSS_SOURCE(id)}/collect`)
+    return request.post(API_ENDPOINTS.COLLECTION.RSS_FEEDS(id)).then(response => {
+      // 处理后端返回的数据
+      return response.data || response;
+    })
   },
 }

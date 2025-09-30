@@ -6,9 +6,9 @@ import type { ApiResponse } from '@/types'
 // 导入所有 API 模块
 import { authAPI } from './modules/auth'
 import { documentAPI } from './modules/document'
-import { searchAPI } from './modules/search'
 import { rssAPI } from './modules/rss'
 import { analyticsAPI } from './modules/analytics'
+import { assistantAPI } from './modules/assistant'
 
 // API 配置类型
 interface APIConfig {
@@ -21,9 +21,9 @@ interface APIConfig {
 interface APIInstance {
   auth: typeof authAPI
   documents: typeof documentAPI
-  search: typeof searchAPI
   rss: typeof rssAPI
   analytics: typeof analyticsAPI
+  assistant: typeof assistantAPI
 }
 
 // 统一导出所有 API
@@ -39,18 +39,18 @@ export {
   // API 模块
   authAPI,
   documentAPI,
-  searchAPI,
   rssAPI,
-  analyticsAPI
+  analyticsAPI,
+  assistantAPI
 }
 
 // 默认导出（方便直接导入使用）
 const api: APIInstance = {
   auth: authAPI,
   documents: documentAPI,
-  search: searchAPI,
   rss: rssAPI,
-  analytics: analyticsAPI
+  analytics: analyticsAPI,
+  assistant: assistantAPI
 }
 
 export default api
@@ -60,9 +60,9 @@ export const createAPIInstance = (config: APIConfig = {}): APIInstance => {
   return {
     auth: authAPI,
     documents: documentAPI,
-    search: searchAPI,
     rss: rssAPI,
-    analytics: analyticsAPI
+    analytics: analyticsAPI,
+    assistant: assistantAPI
   }
 }
 

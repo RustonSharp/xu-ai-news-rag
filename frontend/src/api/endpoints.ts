@@ -31,6 +31,7 @@ interface SearchEndpoints {
 interface CollectionEndpoints {
   RSS_SOURCES: string
   RSS_SOURCE: EndpointFunction
+  RSS_FEEDS: EndpointFunction
   WEB_CRAWL: string
   CRAWL_TASKS: string
   CRAWL_TASK: EndpointFunction
@@ -42,6 +43,11 @@ interface AnalyticsEndpoints {
   SEARCH_STATS: string
   USER_ACTIVITY: string
   TRENDS: string
+}
+
+interface AssistantEndpoints {
+  QUERY: string
+  HEALTH: string
 }
 
 interface UploadEndpoints {
@@ -57,6 +63,7 @@ interface ApiEndpoints {
   COLLECTION: CollectionEndpoints
   ANALYTICS: AnalyticsEndpoints
   UPLOAD: UploadEndpoints
+  ASSISTANT: AssistantEndpoints
 }
 
 // API 端点常量
@@ -95,6 +102,7 @@ export const API_ENDPOINTS: ApiEndpoints = {
   COLLECTION: {
     RSS_SOURCES: '/rss/sources',
     RSS_SOURCE: (id: string | number) => `/rss/sources/${id}`,
+    RSS_FEEDS: (id: string | number) => `/rss/feeds/${id}`,
     WEB_CRAWL: '/collection/crawl',
     CRAWL_TASKS: '/collection/tasks',
     CRAWL_TASK: (id: string | number) => `/collection/tasks/${id}`
@@ -114,6 +122,12 @@ export const API_ENDPOINTS: ApiEndpoints = {
     FILE: '/upload/file',
     BATCH: '/upload/batch',
     PROGRESS: (taskId: string | number) => `/upload/progress/${taskId}`
+  },
+
+  // 助手相关
+  ASSISTANT: {
+    QUERY: '/assistant/query',
+    HEALTH: '/assistant/health'
   }
 }
 
