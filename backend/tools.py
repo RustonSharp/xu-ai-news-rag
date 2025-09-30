@@ -147,6 +147,123 @@ def create_online_search_tool():
             func=mock_search,
             description="用于搜索最新的网络信息，当你需要最新的、实时的或者知识库中没有的信息时使用此工具"
         )
+def create_online_search_tool_v2():
+    """创建一个可以进行在线搜索的工具"""
+    # 尝试获取TAVILY API密钥
+    tavily_api_key = os.environ.get('TAVILY_API_KEY')
+    
+    # 如果没有API密钥，提示用户输入
+    if not tavily_api_key:
+        print("提示：TAVILY_API_KEY环境变量未设置clear，将请求用户输入")
+        try:
+            # 使用getpass安全获取API密钥
+            tavily_api_key = getpass.getpass("请输入Tavily API密钥：")
+            os.environ["TAVILY_API_KEY"] = tavily_api_key
+        except Exception as e:
+            print(f"获取API密钥失败：{str(e)}")
+            print("警告：将使用模拟搜索功能")
+            
+            # 创建模拟搜索函数
+            def mock_search(query):
+                return [
+                    {"content": f"这是关于'{query}'的模拟搜索结果。", "url": "https://example.com"}
+                ]
+            
+            # 创建模拟搜索工具
+            return Tool(
+                name="OnlineSearchV2",
+                func=mock_search,
+                description="使用无头浏览器访问Bing搜索网站，用于搜索最新的网络信息，当你需要最新的、实时的或者知识库中没有的信息时使用此工具"
+            )
+    
+    try:
+        print("已成功配置Tavily在线搜索功能")
+        
+        # 定义搜索包装函数，使用requests直接调用Tavily API
+        def search_wrapper(query):
+            try:
+                # Tavily API的基础URL
+                url = "https://api.tavily.com/search"
+                
+                # 检查API密钥是否为空
+                if not tavily_api_key:
+                    return "错误：TAVILY_API_KEY未设置，请确保环境变量已正确配置或通过提示输入API密钥。"
+                
+                # 准备请求参数
+                payload = {
+                    "api_key": tavily_api_key,
+                    "query": query,
+                    "search_depth": "basic",  # 基础搜索深度
+                    "max_results": 5,  # 返回5个结果
+                    "include_answer": False,  # 不包含直接回答
+                    "include_raw_content": False,  # 不包含原始内容
+                    "include_images": False  # 不包含图片
+                }
+                
+                # 发送POST请求
+                response = requests.post(url, json=payload)
+                
+                # 检查响应状态
+                if response.status_code != 200:
+                    # 更安全地显示API密钥信息，避免泄露完整密钥
+                    if len(tavily_api_key) > 10:
+                        api_key_display = f"{tavily_api_key[:5]}...{tavily_api_key[-5:]}"
+                    else:
+                        api_key_display = "密钥长度不足，无法安全显示"
+                    return f"搜索请求失败，状态码：{response.status_code}，错误信息：{response.text}，API密钥检查：{api_key_display}"
+                
+                # 解析响应JSON
+                try:
+                    results = response.json()
+                except json.JSONDecodeError:
+                    return f"无法解析搜索结果：{response.text}"
+                
+                # 提取结果列表
+                if "results" not in results:
+                    return f"搜索结果格式不正确，缺少'results'字段"
+                
+                # 格式化结果
+                formatted_results = []
+                for i, result in enumerate(results["results"]):
+                    formatted_results.append({
+                        "content": result.get("content", ""),
+                        "url": result.get("url", ""),
+                        "title": result.get("title", ""),
+                        "published_date": "",
+                        "score": 1.0 - (i * 0.1),  # 简单评分，结果越靠前分数越高
+                        "is_direct_answer": False
+                    })
+                
+                return formatted_results
+            except requests.RequestException as e:
+                return f"搜索请求出错：{str(e)}"
+            except Exception as e:
+                return f"搜索出错：{str(e)}。请检查TAVILY_API_KEY是否正确设置。"
+        
+        # 创建在线搜索工具
+        online_search_tool = Tool(
+            name="OnlineSearchV2",
+            func=search_wrapper,
+            description="使用Tavily API进行搜索，用于搜索最新的网络信息，当你需要最新的、实时的或者知识库中没有的信息时使用此工具"
+        )
+        
+        return online_search_tool
+    except Exception as e:
+        print(f"创建Tavily搜索工具失败：{str(e)}")
+        print("警告：将使用模拟搜索功能")
+        
+        # 创建模拟搜索函数
+        def mock_search(query):
+            return [
+                {"content": f"这是关于'{query}'的模拟搜索结果。", "url": "https://example.com"}
+            ]
+        
+        # 创建模拟搜索工具
+        return Tool(
+            name="OnlineSearchV2",
+            func=mock_search,
+            description="使用无头浏览器访问Bing搜索网站，用于搜索最新的网络信息，当你需要最新的、实时的或者知识库中没有的信息时使用此工具"
+        )
 
 # 知识库工具（向量数据库）
 def create_knowledge_base_tool():
@@ -1085,6 +1202,7 @@ if __name__ == "__main__":
     try:
         knowledge_base_tool = create_knowledge_base_tool()
         online_search_tool = create_online_search_tool()
+        online_search_tool_v2 = create_online_search_tool_v2()
         
         # 从环境变量获取数据目录路径
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1101,6 +1219,18 @@ if __name__ == "__main__":
                 app_logger.error(f"搜索测试出错：{str(e)}")
                 # 打印工具的描述信息，了解如何正确使用
             app_logger.info(f"工具描述：{online_search_tool.description}")
+        
+        def test_online_search_v2():
+            # 测试在线搜索v2
+            app_logger.info("测试在线搜索v2：")
+            try:
+                # 尝试运行搜索
+                result = online_search_tool_v2.invoke("人工智能最新发展")
+                app_logger.info(f"搜索结果：{result}")
+            except Exception as e:
+                app_logger.error(f"搜索测试出错：{str(e)}")
+                # 打印工具的描述信息，了解如何正确使用
+            app_logger.info(f"工具描述：{online_search_tool_v2.description}")
         
         def test_store_into_faiss():
             from sqlmodel import Session, select,create_engine
@@ -1129,9 +1259,10 @@ if __name__ == "__main__":
             app_logger.info("测试聚类分析：")
             app_logger.info(knowledge_base_tool.run({"action": "cluster_analysis"}))
 
-        test_cluster_analysis()
+        # test_cluster_analysis()
         # test_store_into_faiss()
         # test_retrieve_from_faiss()
+        test_online_search()
     except Exception as e:
         app_logger.error(f"执行测试函数时出错：{str(e)}")
         print(f"错误：无法初始化知识库工具。错误信息：{str(e)}")

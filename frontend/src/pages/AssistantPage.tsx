@@ -89,7 +89,11 @@ const AssistantPage: React.FC = () => {
           }
         })
 
-        const answer = response.data?.answer || response.answer || `基于您的问题"${query}"，我为您找到了相关信息。`
+        // 处理后端返回的数据结构：{query: "...", response: "...", answer: "...", sources: [...], status: "success"}
+        const rawAnswer = response.data?.answer || response.answer || `基于您的问题"${query}"，我为您找到了相关信息。`
+        // 使用formatAnswer函数格式化答案
+        const answer = formatAnswer(rawAnswer)
+        // 从响应中提取sources
         const sources = response.data?.sources || response.sources || []
 
         // 生成AI回复
@@ -113,6 +117,8 @@ const AssistantPage: React.FC = () => {
           }
         })
 
+        // 处理后端返回的数据结构：{query: "...", response: "...", answer: "...", sources: [...], status: "success"}
+        // 从响应中提取sources
         const sources = response.data?.sources || response.sources || []
         setSearchResults(sources)
       }
@@ -162,6 +168,42 @@ const AssistantPage: React.FC = () => {
 
   const clearChat = () => {
     setMessages([])
+  }
+
+  // 格式化后端返回的答案
+  const formatAnswer = (answer: any): string => {
+    // 如果答案是字符串，直接返回
+    if (typeof answer === 'string') {
+      return answer;
+    }
+
+    // 如果答案是对象，尝试提取output字段
+    if (typeof answer === 'object' && answer !== null) {
+      // 如果有output字段，使用output字段的值
+      if ('output' in answer) {
+        return answer.output;
+      }
+
+      // 如果有answer字段，使用answer字段的值
+      if ('answer' in answer) {
+        return answer.answer;
+      }
+
+      // 如果有response字段，使用response字段的值
+      if ('response' in answer) {
+        return answer.response;
+      }
+
+      // 如果对象可以转换为字符串，则转换
+      try {
+        return JSON.stringify(answer, null, 2);
+      } catch (e) {
+        return String(answer);
+      }
+    }
+
+    // 其他情况，转换为字符串
+    return String(answer);
   }
 
   return (

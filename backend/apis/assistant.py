@@ -38,10 +38,35 @@ def query_assistant():
         # 处理查询
         result = assistant.invoke(query)
         
-        # 返回结果
+        # 提取sources信息
+        sources = []
+        
+        # 尝试从result中提取sources
+        # 如果result是字符串，则sources为空数组
+        if isinstance(result, str):
+            answer = result
+        # 如果result是字典且包含sources字段
+        elif isinstance(result, dict) and 'sources' in result:
+            answer = result.get('answer', str(result))
+            sources = result.get('sources', [])
+        # 如果result是字典但不包含sources字段
+        elif isinstance(result, dict):
+            answer = result.get('answer', str(result))
+            # 尝试从其他字段提取sources
+            if 'source_documents' in result:
+                sources = result['source_documents']
+            elif 'documents' in result:
+                sources = result['documents']
+        # 其他情况
+        else:
+            answer = str(result)
+        
+        # 返回结果，格式化为前端期望的结构
         return jsonify({
             "query": query,
             "response": result,
+            "answer": answer,
+            "sources": sources,
             "status": "success"
         })
     
