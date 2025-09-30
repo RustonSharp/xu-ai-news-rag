@@ -5,6 +5,7 @@ from sqlmodel import SQLModel, create_engine
 from utils.logging_config import app_logger
 from models.rss_source import RssSource
 from models.document import Document
+from models.user import User
 
 # Try to load dotenv to support reading environment variables from .env file
 try:

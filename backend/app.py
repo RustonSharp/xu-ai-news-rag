@@ -1,6 +1,8 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 from apis.rss import rss_bp
 from apis.document import document_bp
+from apis.auth import auth_bp
 from dotenv import load_dotenv
 import os
 from utils.logging_config import app_logger
@@ -16,10 +18,21 @@ app_logger.info("Initializing application...")
 
 app = Flask(__name__)
 
+# 配置CORS，允许前端应用访问
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+
 # 注册RSS API蓝图
 app.register_blueprint(rss_bp)
 # 注册文档API蓝图
 app.register_blueprint(document_bp)
+# 注册鉴权API蓝图
+app.register_blueprint(auth_bp)
 
 @app.route('/')
 def hello_world():
