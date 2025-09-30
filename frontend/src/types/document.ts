@@ -1,32 +1,23 @@
 // 文档相关类型定义
 
-// 文档状态
-export type DocumentStatus = 'pending' | 'processing' | 'processed' | 'failed'
-
-// 文档类型
-export type DocumentType = 'pdf' | 'docx' | 'txt' | 'md'
-
-// 文档实体
+// 文档实体 - 与后端Document模型保持一致
 export interface Document {
   id: number
   title: string
-  content: string
-  type: DocumentType
-  size: number
-  uploadedAt: string
-  created_at: string
-  status: DocumentStatus
-  source: string
-  url?: string
+  link: string
+  description: string
+  pub_date?: string | null
+  author?: string | null
   tags: string[]
+  rss_source_id: number
+  crawled_at: string
 }
 
 // 文档过滤器
 export interface DocumentFilter {
   keyword?: string
   tags?: string[]
-  status?: DocumentStatus
-  type?: DocumentType
+  type?: string
   dateRange?: [string, string]
   source?: string
 }
@@ -43,10 +34,9 @@ export interface DocumentUploadData {
 export interface DocumentListItem {
   id: number
   title: string
-  type: DocumentType
+  type: string
   size: number
   uploadedAt: string
-  status: DocumentStatus
   tags: string[]
   source: string
 }
@@ -54,7 +44,6 @@ export interface DocumentListItem {
 // 文档统计
 export interface DocumentStats {
   total: number
-  byStatus: Record<DocumentStatus, number>
-  byType: Record<DocumentType, number>
+  byType: Record<string, number>
   totalSize: number
 }

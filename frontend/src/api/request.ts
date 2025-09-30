@@ -29,10 +29,10 @@ const request = axios.create({
 const mockRequest = async (config: InternalAxiosRequestConfig): Promise<any> => {
   const { method, url, data } = config
   const path = url?.replace('/api', '').split('?')[0] || ''
-  
+
   try {
     let result
-    
+
     // 根据路径和方法路由到对应的 mock 函数
     if (path === '/auth/login' && method === 'post') {
       result = await mockAPI.auth.login(data.email, data.password)
@@ -78,7 +78,7 @@ const mockRequest = async (config: InternalAxiosRequestConfig): Promise<any> => 
       // 默认成功响应
       result = { success: true, data: null }
     }
-    
+
     return result
   } catch (error: any) {
     throw { response: { data: { message: error.message } } }
@@ -102,7 +102,7 @@ request.interceptors.request.use(
       // 抛出一个特殊的错误，在响应拦截器中捕获并返回 mock 数据
       throw { __isMockResponse: true, response: mockResponse }
     }
-    
+
     const token = localStorage.getItem('token')
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
@@ -117,7 +117,20 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
   (response: AxiosResponse) => {
-    // 直接返回 data 部分，简化调用
+    // 检查响应格式，如果包含code、message和data字段，则返回整个响应
+    // 否则，将响应包装为标准格式
+    if (response.data && typeof response.data === 'object') {
+      if ('code' in response.data && 'message' in response.data && 'data' in response.data) {
+        return response.data
+      } else {
+        // 包装为标准格式
+        return {
+          code: response.status,
+          message: 'success',
+          data: response.data
+        }
+      }
+    }
     return response.data
   },
   (error: AxiosError) => {
@@ -125,9 +138,9 @@ request.interceptors.response.use(
     if ((error as any).__isMockResponse) {
       return (error as any).response.data
     }
-    
+
     const { response } = error
-    
+
     // 处理 401 未授权
     if (response?.status === 401) {
       localStorage.removeItem('token')
@@ -138,22 +151,22 @@ request.interceptors.response.use(
       }
       return Promise.reject(new Error('登录已过期，请重新登录'))
     }
-    
+
     // 处理 403 权限不足
     if (response?.status === 403) {
       return Promise.reject(new Error('权限不足，无法访问该资源'))
     }
-    
+
     // 处理 404 资源不存在
     if (response?.status === 404) {
       return Promise.reject(new Error('请求的资源不存在'))
     }
-    
+
     // 处理 500+ 服务器错误
     if (response?.status && response.status >= 500) {
       return Promise.reject(new Error('服务器错误，请稍后重试'))
     }
-    
+
     // 处理其他错误
     const errorMessage = (response?.data as any)?.message || (response?.data as any)?.error || '请求失败'
     return Promise.reject(new Error(errorMessage))

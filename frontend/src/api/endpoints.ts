@@ -18,6 +18,7 @@ interface DocumentsEndpoints {
   SEARCH: string
   BATCH_DELETE: string
   UPLOAD: string
+  UPLOAD_EXCEL: string
 }
 
 interface SearchEndpoints {
@@ -68,7 +69,7 @@ export const API_ENDPOINTS: ApiEndpoints = {
     LOGOUT: '/auth/logout',
     PROFILE: '/auth/profile'
   },
-  
+
   // 文档相关
   DOCUMENTS: {
     LIST: '/documents',
@@ -78,9 +79,10 @@ export const API_ENDPOINTS: ApiEndpoints = {
     DELETE: (id: string | number) => `/documents/${id}`,
     SEARCH: '/documents/search',
     BATCH_DELETE: '/documents/batch',
-    UPLOAD: '/documents/upload'
+    UPLOAD: '/documents/upload',
+    UPLOAD_EXCEL: '/documents/upload_excel'
   },
-  
+
   // 搜索相关
   SEARCH: {
     QUERY: '/search/query',
@@ -88,16 +90,16 @@ export const API_ENDPOINTS: ApiEndpoints = {
     HISTORY: '/search/history',
     SUGGESTIONS: '/search/suggestions'
   },
-  
+
   // 采集相关
   COLLECTION: {
-    RSS_SOURCES: '/collection/rss',
-    RSS_SOURCE: (id: string | number) => `/collection/rss/${id}`,
+    RSS_SOURCES: '/rss/sources',
+    RSS_SOURCE: (id: string | number) => `/rss/sources/${id}`,
     WEB_CRAWL: '/collection/crawl',
     CRAWL_TASKS: '/collection/tasks',
     CRAWL_TASK: (id: string | number) => `/collection/tasks/${id}`
   },
-  
+
   // 分析相关
   ANALYTICS: {
     OVERVIEW: '/analytics/overview',
@@ -106,7 +108,7 @@ export const API_ENDPOINTS: ApiEndpoints = {
     USER_ACTIVITY: '/analytics/activity',
     TRENDS: '/analytics/trends'
   },
-  
+
   // 上传相关
   UPLOAD: {
     FILE: '/upload/file',

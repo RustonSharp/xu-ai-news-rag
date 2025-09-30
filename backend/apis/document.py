@@ -3,9 +3,13 @@ from sqlmodel import Session, create_engine, select, func
 from models.document import Document
 from models.rss_source import RssSource
 import os
+import pandas as pd
+import threading
 from dotenv import load_dotenv
 from utils.logging_config import app_logger
 from tools import knowledge_base_cluster_analysis
+from werkzeug.utils import secure_filename
+from fetch_document import store_documents_in_knowledge_base
 
 # 加载环境变量
 load_dotenv()
@@ -261,8 +265,6 @@ def get_documents_by_source_id(source_id):
 
 # Add these file extensions according to your requirements
 ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
-from fetch_document import store_documents_in_knowledge_base
-import threading
 def allowed_file(filename):
     """Check if the file extension is allowed."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -308,12 +310,23 @@ def upload_excel():
                             rss_source_id=row.get('rss_source_id', None),
                             crawled_at=row.get('crawled_at', None)
                         )
-                        document_list.append(new_doc)
                         session.add(new_doc)
+                        session.commit()
+                        # 刷新对象以确保所有属性都已正确设置
+                        session.refresh(new_doc)
+                        # 将文档数据转换为字典格式，避免会话绑定问题
+                        document_list.append({
+                            "id": new_doc.id,
+                            "title": new_doc.title,
+                            "link": new_doc.link,
+                            "description": new_doc.description,
+                            "tags": new_doc.tags,
+                            "pub_date": new_doc.pub_date.isoformat() if new_doc.pub_date else None,
+                            "author": new_doc.author
+                        })
                     except Exception as e:
                         app_logger.error(f"Error creating document from Excel row: {str(e)}")
                         continue
-                session.commit()
                 app_logger.info(f"Successfully added {len(df)} documents from {filename}")
                  # 在新线程中执行知识库存储操作
                 if document_list:  # 只有当有文档需要存储时才创建线程

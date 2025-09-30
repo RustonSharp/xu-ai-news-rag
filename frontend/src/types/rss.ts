@@ -1,16 +1,12 @@
 // 数据源相关类型定义
 
-// 数据源类型
-export type SourceType = 'rss' | 'web' | 'api'
-
 // 数据源状态
 export type SourceStatus = 'active' | 'inactive' | 'error'
 
 // 数据源实体
-export interface Source {
+export interface RssSource {
   id: number
   name: string
-  type: SourceType
   url: string
   status: SourceStatus
   lastSync?: string
@@ -44,7 +40,6 @@ export interface SourceConfig {
 // 创建数据源请求
 export interface CreateSourceRequest {
   name: string
-  type: SourceType
   url: string
   description?: string
   config?: SourceConfig
@@ -56,16 +51,14 @@ export interface UpdateSourceRequest extends Partial<CreateSourceRequest> {
 }
 
 // 数据源过滤器
-export interface SourceFilter {
-  type?: SourceType
+export interface RssSourceFilter {
   status?: SourceStatus
   keyword?: string
 }
 
 // 数据源统计
-export interface SourceStats {
+export interface RssSourceStats {
   total: number
-  byType: Record<SourceType, number>
   byStatus: Record<SourceStatus, number>
   lastSyncTime?: string
 }

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { documentsAPI } from '../api'
+import { documentAPI } from '../api'
 import {
   Upload,
   FileText,
@@ -60,7 +60,7 @@ const UploadPage: React.FC = () => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    
+
     const droppedFiles = Array.from(e.dataTransfer.files)
     addFiles(droppedFiles)
   }
@@ -82,7 +82,7 @@ const UploadPage: React.FC = () => {
       status: 'pending', // pending, uploading, success, error
       progress: 0
     }))
-    
+
     setFiles(prev => [...prev, ...processedFiles])
   }
 
@@ -124,52 +124,67 @@ const UploadPage: React.FC = () => {
   // 真实文件上传过程
   const uploadFiles = async () => {
     setUploading(true)
-    
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       if (file.status !== 'pending') continue
-      
+
       // 更新状态为上传中
-      setFiles(prev => prev.map(f => 
+      setFiles(prev => prev.map(f =>
         f.id === file.id ? { ...f, status: 'uploading', progress: 0 } : f
       ))
-      
+
       try {
-        // 创建FormData
-        const formData = new FormData()
-        formData.append('file', file.file)
-        if (tags) formData.append('tags', tags)
-        if (source) formData.append('source', source)
-        
-        // 调用上传API
-        const response = await documentsAPI.uploadDocument(formData, (progressEvent: ProgressEvent) => {
-          const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-          setFiles(prev => prev.map(f => 
-            f.id === file.id ? { ...f, progress } : f
+        // 检查是否为Excel文件
+        const isExcelFile = file.type === 'application/vnd.ms-excel' ||
+          file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+        let response
+        if (isExcelFile) {
+          // 使用Excel上传API
+          response = await documentAPI.uploadExcel(file.file)
+
+          // Excel文件上传成功后立即设置为100%进度
+          setFiles(prev => prev.map(f =>
+            f.id === file.id ? { ...f, progress: 100 } : f
           ))
-        })
-        
+        } else {
+          // 创建FormData
+          const formData = new FormData()
+          formData.append('file', file.file)
+          if (tags) formData.append('tags', tags)
+          if (source) formData.append('source', source)
+
+          // 调用上传API
+          response = await documentAPI.uploadDocument(formData, (progressEvent: ProgressEvent) => {
+            const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+            setFiles(prev => prev.map(f =>
+              f.id === file.id ? { ...f, progress } : f
+            ))
+          })
+        }
+
         // 上传成功
-        setFiles(prev => prev.map(f => 
+        setFiles(prev => prev.map(f =>
           f.id === file.id ? {
             ...f,
             status: 'success',
             progress: 100,
-            uploadedId: response.data.id
+            uploadedId: 'id' in response.data ? response.data.id : 'success'
           } : f
         ))
       } catch (error: any) {
         console.error('上传失败:', error)
-        setFiles(prev => prev.map(f => 
+        setFiles(prev => prev.map(f =>
           f.id === file.id ? {
             ...f,
             status: 'error',
-            error: error.response?.data?.message || '上传失败，请重试'
+            error: error.response?.data?.message || error.response?.data?.error || '上传失败，请重试'
           } : f
         ))
       }
     }
-    
+
     setUploading(false)
   }
 
@@ -179,7 +194,7 @@ const UploadPage: React.FC = () => {
       alert('请先选择要上传的文件')
       return
     }
-    
+
     uploadFiles()
   }
 
@@ -206,7 +221,7 @@ const UploadPage: React.FC = () => {
 
       <div className="upload-container">
         {/* 文件拖拽区域 */}
-        <div 
+        <div
           className={`upload-dropzone ${dragActive ? 'active' : ''}`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -246,7 +261,7 @@ const UploadPage: React.FC = () => {
                 className="input"
               />
             </div>
-            
+
             <div className="form-group">
               <label className="form-label">
                 <Folder size={16} />
@@ -332,8 +347,8 @@ const UploadPage: React.FC = () => {
                     {file.status === 'uploading' && (
                       <div className="upload-progress">
                         <div className="progress-bar">
-                          <div 
-                            className="progress-fill" 
+                          <div
+                            className="progress-fill"
                             style={{ width: `${file.progress}%` }}
                           />
                         </div>
@@ -380,6 +395,7 @@ const UploadPage: React.FC = () => {
             <li><strong>批量上传：</strong>最多同时上传 20 个文件</li>
             <li><strong>标签功能：</strong>为上传的文档添加标签，便于后续分类和检索</li>
             <li><strong>数据源：</strong>指定文档来源，有助于数据管理和溯源</li>
+            <li><strong>Excel文件：</strong>Excel文件将直接导入为知识库文档，支持批量导入。Excel文件应包含以下列：title（标题）、link（链接）、description（描述）、pub_date（发布日期）、author（作者）、tags（标签）、rss_source_id（RSS源ID）、crawled_at（爬取时间）。</li>
           </ul>
         </div>
       </div>

@@ -22,9 +22,17 @@ export interface DocumentsResponse {
 }
 
 // 获取所有文档
-export const getDocuments = async (params?: Record<string, any>): Promise<ApiResponse<DocumentsResponse>> => {
+export const getDocuments = async (): Promise<ApiResponse<DocumentsResponse>> => {
     return request({
         url: API_ENDPOINTS.DOCUMENTS.LIST,
+        method: HTTP_METHODS.GET,
+    })
+}
+
+// 获取文档分页列表
+export const getDocumentsPage = async (params?: Record<string, any>): Promise<ApiResponse<DocumentsResponse>> => {
+    return request({
+        url: "/documents/page",
         method: HTTP_METHODS.GET,
         params
     })
@@ -60,7 +68,7 @@ export const uploadExcel = async (file: File): Promise<ApiResponse<{ message: st
     formData.append('file', file)
 
     return request({
-        url: '/documents/upload_excel',
+        url: API_ENDPOINTS.DOCUMENTS.UPLOAD_EXCEL,
         method: HTTP_METHODS.POST,
         data: formData,
         headers: {
@@ -69,13 +77,31 @@ export const uploadExcel = async (file: File): Promise<ApiResponse<{ message: st
     })
 }
 
+// 上传文档
+export const uploadDocument = async (
+    formData: FormData, 
+    onProgress?: (progressEvent: ProgressEvent) => void
+): Promise<ApiResponse<{ id: string }>> => {
+    return request({
+        url: API_ENDPOINTS.DOCUMENTS.UPLOAD,
+        method: HTTP_METHODS.POST,
+        data: formData,
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: onProgress
+    })
+}
+
 // 导出API对象
 export const documentAPI = {
+    getDocumentsPage,
     getDocuments,
     getDocument,
     getDocumentsBySourceId,
     getClusterAnalysis,
-    uploadExcel
+    uploadExcel,
+    uploadDocument
 }
 
 export default documentAPI

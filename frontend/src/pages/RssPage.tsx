@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { collectionAPI } from '../api'
+import { rssAPI } from '../api'
 import axios from 'axios'
 import {
   Plus,
@@ -19,7 +19,7 @@ import {
 
 // 类型定义
 interface DataSource {
-  id: string 
+  id: string
   name: string
   url: string
   status: string
@@ -40,7 +40,7 @@ interface DataSource {
 
 // API响应数据类型
 interface ApiSourceItem {
-  id: string 
+  id: string
   name: string
   entry: string
   description?: string
@@ -60,7 +60,7 @@ interface ApiSourceItem {
   }
 }
 
-const CollectionPage: React.FC = () => {
+const RssPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('rss')
   const [rssSources, setRssSources] = useState<DataSource[]>([])
   const [webSources, setWebSources] = useState<DataSource[]>([])
@@ -89,9 +89,9 @@ const CollectionPage: React.FC = () => {
     setLoading(true)
     try {
       // 获取RSS数据源
-      const response = await collectionAPI.getRssSources()
+      const response = await rssAPI.getRssSources()
       const sources = response.data.items || []
-      
+
       // 转换API数据为前端格式，确保所有必要属性存在
       const transformedSources = sources.map((source: ApiSourceItem) => ({
         id: source.id,
@@ -113,11 +113,11 @@ const CollectionPage: React.FC = () => {
         lastSync: source.last_run || new Date().toISOString(),
         type: source.template?.type || 'css' // 从template中获取类型
       }))
-      
+
       // 分离RSS和Web数据源 - 使用template.type字段
       const rss = transformedSources.filter((source: any) => source.type === 'rss')
       const web = transformedSources.filter((source: any) => source.type === 'css')
-      
+
       setRssSources(rss)
       setWebSources(web)
     } catch (error) {
@@ -182,13 +182,13 @@ const CollectionPage: React.FC = () => {
         rate_limit_per_min: 30,
         enabled: formData.enabled
       }
-      
+
       // 调用保存API
-      const response = editingSource 
-        ? await collectionAPI.updateRssSource(editingSource.id, agentSource)
-        : await collectionAPI.createRssSource(agentSource)
+      const response = editingSource
+        ? await rssAPI.updateRssSource(editingSource.id, agentSource)
+        : await rssAPI.createRssSource(agentSource)
       const savedSource = response.data
-      
+
       // 转换为前端显示格式
       const newSource: DataSource = {
         id: savedSource.id,
@@ -232,14 +232,14 @@ const CollectionPage: React.FC = () => {
     if (window.confirm('确定要删除这个数据源吗？')) {
       try {
         // 调用删除API
-        await collectionAPI.deleteRssSource(sourceId)
-        
+        await rssAPI.deleteRssSource(sourceId)
+
         if (activeTab === 'rss') {
           setRssSources(prev => prev.filter(s => s.id !== sourceId))
         } else {
           setWebSources(prev => prev.filter(s => s.id !== sourceId))
         }
-        
+
         alert('删除成功')
       } catch (error) {
         console.error('删除失败:', error)
@@ -253,16 +253,16 @@ const CollectionPage: React.FC = () => {
       // 获取当前数据源信息
       const currentSource = [...rssSources, ...webSources].find(s => s.id === sourceId)
       if (!currentSource) return
-      
+
       // 更新数据源配置
       const updatedSource = {
         ...currentSource,
         enabled,
         status: enabled ? 'active' as const : 'paused' as const
       }
-      
-      await collectionAPI.updateRssSource(sourceId, updatedSource)
-      
+
+      await rssAPI.updateRssSource(sourceId, updatedSource)
+
       const updateSource = (source: DataSource) => ({
         ...source,
         enabled,
@@ -287,10 +287,10 @@ const CollectionPage: React.FC = () => {
       const response = await axios.post('/agent/run', {
         source_id: sourceId
       })
-      
+
       const jobId = response.data.id
       alert(`采集任务已启动，任务ID: ${jobId}`)
-      
+
       const updateSource = (source: DataSource) => ({
         ...source,
         lastRun: new Date().toISOString(),
@@ -381,8 +381,8 @@ const CollectionPage: React.FC = () => {
                       <div className="source-status">
                         {getStatusIcon(source.status)}
                         <span className={`status-text ${source.status}`}>
-                          {source.status === 'active' ? '运行中' : 
-                           source.status === 'paused' ? '已暂停' : '错误'}
+                          {source.status === 'active' ? '运行中' :
+                            source.status === 'paused' ? '已暂停' : '错误'}
                         </span>
                       </div>
                     </div>
@@ -399,12 +399,12 @@ const CollectionPage: React.FC = () => {
                       </a>
                       <div className="source-tags">
                         {source.tags?.map((tag, index) => (
-                        <span key={index} className="tag">{tag}</span>
-                      ))}
+                          <span key={index} className="tag">{tag}</span>
+                        ))}
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="source-actions">
                     <button
                       onClick={() => handleToggleSource(source.id, !source.enabled)}
@@ -413,7 +413,7 @@ const CollectionPage: React.FC = () => {
                       {source.enabled ? <Pause size={14} /> : <Play size={14} />}
                       {source.enabled ? '暂停' : '启用'}
                     </button>
-                    
+
                     <button
                       onClick={() => handleRunNow(source.id)}
                       className="btn btn-sm btn-secondary"
@@ -422,14 +422,14 @@ const CollectionPage: React.FC = () => {
                       <RefreshCw size={14} />
                       立即运行
                     </button>
-                    
+
                     <button
                       onClick={() => handleEditSource(source)}
                       className="btn-icon"
                     >
                       <Edit3 size={14} />
                     </button>
-                    
+
                     <button
                       onClick={() => handleDeleteSource(source.id)}
                       className="btn-icon danger"
@@ -555,8 +555,8 @@ const CollectionPage: React.FC = () => {
                 <input
                   type="text"
                   value={formData.tags.join(', ')}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
                     tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
                   }))}
                   className="input"
@@ -566,14 +566,14 @@ const CollectionPage: React.FC = () => {
 
               <div className="filters-section">
                 <h3>内容筛选</h3>
-                
+
                 <div className="form-group">
                   <label className="form-label">包含关键词</label>
                   <input
                     type="text"
                     value={formData.filters.keywords}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
                       filters: { ...prev.filters, keywords: e.target.value }
                     }))}
                     className="input"
@@ -586,8 +586,8 @@ const CollectionPage: React.FC = () => {
                   <input
                     type="text"
                     value={formData.filters.excludeKeywords}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
                       filters: { ...prev.filters, excludeKeywords: e.target.value }
                     }))}
                     className="input"
@@ -600,8 +600,8 @@ const CollectionPage: React.FC = () => {
                   <input
                     type="number"
                     value={formData.filters.minLength}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
                       filters: { ...prev.filters, minLength: parseInt(e.target.value) || 0 }
                     }))}
                     className="input"
@@ -941,4 +941,4 @@ const CollectionPage: React.FC = () => {
   )
 }
 
-export default CollectionPage
+export default RssPage

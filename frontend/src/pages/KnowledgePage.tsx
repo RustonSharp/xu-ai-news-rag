@@ -1,37 +1,27 @@
 import React, { useState, useEffect } from 'react'
-import { documentsAPI } from '../api'
+import { documentAPI, rssAPI } from '../api'
+import { Document } from '../types/document'
+import { RssSource } from '../types/rss'
+
 import axios from 'axios'
 import {
   Search,
   Filter,
   Trash2,
-  Edit3,
   FileText,
   Calendar,
   Tag,
   ExternalLink,
   CheckSquare,
   Square,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
-
-// 类型定义
-interface Document {
-  id: number
-  title: string
-  content: string
-  source: string
-  type: string
-  createdAt: string
-  updatedAt: string
-  tags: string[]
-  url?: string
-}
-
-
 
 const DocsPage: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([])
+  const [rssSources, setRssSources] = useState<RssSource[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDocs, setSelectedDocs] = useState<Set<number>>(new Set())
   const [filters, setFilters] = useState({
@@ -50,7 +40,18 @@ const DocsPage: React.FC = () => {
 
   useEffect(() => {
     fetchDocuments()
+    fetchRssSources()
   }, [filters, pagination.page])
+
+  const fetchRssSources = async () => {
+    try {
+      const response = await rssAPI.getRssSources()
+      setRssSources(response.data || [])
+    } catch (error) {
+      console.error('获取RSS源失败:', error)
+      setRssSources([])
+    }
+  }
 
   const fetchDocuments = async () => {
     setLoading(true)
@@ -60,17 +61,17 @@ const DocsPage: React.FC = () => {
         page: pagination.page,
         size: pagination.size
       }
-      
+
       if (filters.search) (params as any).search = filters.search
       if (filters.type) (params as any).type = filters.type
       if (filters.source) (params as any).source = filters.source
       if (filters.startDate) (params as any).start = filters.startDate
       if (filters.endDate) (params as any).end = filters.endDate
-      
+
       // 调用文档列表API
-      const response = await documentsAPI.getDocuments(params)
+      const response = await documentAPI.getDocumentsPage(params)
       const { items, total } = response.data
-      
+
       setDocuments(items || [])
       setPagination(prev => ({ ...prev, total: total || 0 }))
     } catch (error) {
@@ -102,30 +103,16 @@ const DocsPage: React.FC = () => {
 
   const handleBatchDelete = async () => {
     if (selectedDocs.size === 0) return
-    
+
     if (confirm(`确定要删除选中的 ${selectedDocs.size} 个文档吗？`)) {
       try {
         // 调用批量删除API
         await axios.delete('/docs/batch', {
           data: { ids: Array.from(selectedDocs) }
         })
-        
+
         setDocuments(prev => prev.filter(doc => !selectedDocs.has(doc.id)))
         setSelectedDocs(new Set())
-        alert('删除成功')
-      } catch (error) {
-        console.error('删除失败:', error)
-        alert('删除失败，请稍后重试')
-      }
-    }
-  }
-
-  const handleDeleteDoc = async (docId: number) => {
-    if (confirm('确定要删除这个文档吗？')) {
-      try {
-        // 调用删除文档API
-        await axios.delete(`/docs/${docId}`)
-        setDocuments(prev => prev.filter(doc => doc.id !== docId))
         alert('删除成功')
       } catch (error) {
         console.error('删除失败:', error)
@@ -138,14 +125,22 @@ const DocsPage: React.FC = () => {
     return new Date(dateString).toLocaleString('zh-CN')
   }
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'pdf': return '📄'
-      case 'html': return '🌐'
-      case 'markdown': return '📝'
-      case 'txt': return '📃'
-      default: return '📄'
-    }
+  // 计算总页数
+  const totalPages = Math.ceil(pagination.total / pagination.size)
+
+  // 处理页码变化
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return
+    setPagination(prev => ({ ...prev, page }))
+  }
+
+  // 处理每页大小变化
+  const handleSizeChange = (size: number) => {
+    setPagination(prev => ({
+      ...prev,
+      size,
+      page: 1 // 重置到第一页
+    }))
   }
 
   return (
@@ -178,7 +173,7 @@ const DocsPage: React.FC = () => {
               className="input"
             />
           </div>
-          
+
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`btn btn-secondary ${showFilters ? 'active' : ''}`}
@@ -218,10 +213,10 @@ const DocsPage: React.FC = () => {
                 className="input"
               >
                 <option value="">全部类型</option>
+                <option value="web">网页</option>
                 <option value="pdf">PDF</option>
-                <option value="html">HTML</option>
-                <option value="markdown">Markdown</option>
-                <option value="txt">文本</option>
+                <option value="article">文章</option>
+                <option value="news">新闻</option>
               </select>
             </div>
 
@@ -293,13 +288,11 @@ const DocsPage: React.FC = () => {
               <table className="table">
                 <thead>
                   <tr>
-                    <th style={{width: '40px'}}></th>
+                    <th style={{ width: '40px' }}></th>
                     <th>标题</th>
-                    <th style={{width: '80px'}}>类型</th>
-                    <th style={{width: '120px'}}>来源</th>
-                    <th style={{width: '200px'}}>标签</th>
-                    <th style={{width: '160px'}}>创建时间</th>
-                    <th style={{width: '100px'}}>操作</th>
+                    <th style={{ width: '120px' }}>来源</th>
+                    <th style={{ width: '200px' }}>标签</th>
+                    <th style={{ width: '160px' }}>获取时间</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -319,12 +312,11 @@ const DocsPage: React.FC = () => {
                       </td>
                       <td>
                         <div className="doc-title">
-                          <span className="doc-icon">{getTypeIcon(doc.type)}</span>
                           <div>
                             <div className="title">{doc.title}</div>
-                            {doc.url && (
+                            {doc.link && (
                               <a
-                                href={doc.url}
+                                href={doc.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="doc-url"
@@ -336,11 +328,9 @@ const DocsPage: React.FC = () => {
                           </div>
                         </div>
                       </td>
+
                       <td>
-                        <span className="badge badge-secondary">{doc.type}</span>
-                      </td>
-                      <td>
-                        <span className="source">{doc.source}</span>
+                        <span className="source">{rssSources.find(source => source.id === doc.rss_source_id)?.name || '未知'}</span>
                       </td>
                       <td>
                         <div className="tags">
@@ -355,24 +345,7 @@ const DocsPage: React.FC = () => {
                       <td>
                         <div className="date">
                           <Calendar size={12} />
-                          {formatDate(doc.createdAt)}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="actions">
-                          <button
-                            className="btn-icon"
-                            title="编辑"
-                          >
-                            <Edit3 size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteDoc(doc.id)}
-                            className="btn-icon danger"
-                            title="删除"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {formatDate(doc.crawled_at)}
                         </div>
                       </td>
                     </tr>
@@ -391,6 +364,72 @@ const DocsPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* 分页组件 */}
+            {documents.length > 0 && (
+              <div className="pagination-container">
+                <div className="pagination-info">
+                  显示 {(pagination.page - 1) * pagination.size + 1} - {Math.min(pagination.page * pagination.size, pagination.total)} 条，共 {pagination.total} 条
+                </div>
+                <div className="pagination-controls">
+                  <div className="page-size-selector">
+                    <span>每页显示</span>
+                    <select
+                      value={pagination.size}
+                      onChange={(e) => handleSizeChange(Number(e.target.value))}
+                      className="page-size-select"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                    <span>条</span>
+                  </div>
+                  <div className="page-numbers">
+                    <button
+                      onClick={() => handlePageChange(pagination.page - 1)}
+                      disabled={pagination.page <= 1}
+                      className="page-btn"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {/* 显示页码按钮 */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum
+                      if (totalPages <= 5) {
+                        pageNum = i + 1
+                      } else if (pagination.page <= 3) {
+                        pageNum = i + 1
+                      } else if (pagination.page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i
+                      } else {
+                        pageNum = pagination.page - 2 + i
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`page-btn ${pagination.page === pageNum ? 'active' : ''}`}
+                        >
+                          {pageNum}
+                        </button>
+                      )
+                    })}
+
+                    <button
+                      onClick={() => handlePageChange(pagination.page + 1)}
+                      disabled={pagination.page >= totalPages}
+                      className="page-btn"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -525,11 +564,6 @@ const DocsPage: React.FC = () => {
           gap: 12px;
         }
 
-        .doc-icon {
-          font-size: 20px;
-          flex-shrink: 0;
-        }
-
         .title {
           font-weight: 500;
           color: var(--text);
@@ -547,15 +581,6 @@ const DocsPage: React.FC = () => {
 
         .doc-url:hover {
           text-decoration: underline;
-        }
-
-        .badge-secondary {
-          background: var(--elev);
-          color: var(--text);
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 12px;
-          font-weight: 500;
         }
 
         .source {
@@ -587,31 +612,6 @@ const DocsPage: React.FC = () => {
           gap: 6px;
           color: var(--muted);
           font-size: 12px;
-        }
-
-        .actions {
-          display: flex;
-          gap: 8px;
-        }
-
-        .btn-icon {
-          background: none;
-          border: none;
-          color: var(--muted);
-          cursor: pointer;
-          padding: 6px;
-          border-radius: 4px;
-          transition: all 0.2s ease;
-        }
-
-        .btn-icon:hover {
-          background: var(--elev);
-          color: var(--text);
-        }
-
-        .btn-icon.danger:hover {
-          background: rgba(239, 85, 82, 0.1);
-          color: var(--danger);
         }
 
         .empty-state {
@@ -665,6 +665,94 @@ const DocsPage: React.FC = () => {
 
           .table-container {
             overflow-x: scroll;
+          }
+        }
+
+        /* 分页组件样式 */
+        .pagination-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px 20px;
+          border-top: 1px solid var(--border);
+        }
+
+        .pagination-info {
+          color: var(--muted);
+          font-size: 14px;
+        }
+
+        .pagination-controls {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .page-size-selector {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--muted);
+          font-size: 14px;
+        }
+
+        .page-size-select {
+          background: var(--elev);
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          padding: 4px 8px;
+          color: var(--text);
+          font-size: 14px;
+        }
+
+        .page-numbers {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .page-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 32px;
+          height: 32px;
+          background: var(--elev);
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          color: var(--muted);
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .page-btn:hover:not(:disabled) {
+          background: var(--primary);
+          color: white;
+          border-color: var(--primary);
+        }
+
+        .page-btn.active {
+          background: var(--primary);
+          color: white;
+          border-color: var(--primary);
+        }
+
+        .page-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+          .pagination-container {
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start;
+          }
+          
+          .pagination-controls {
+            width: 100%;
+            justify-content: space-between;
           }
         }
       `}</style>

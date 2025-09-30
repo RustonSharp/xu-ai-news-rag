@@ -23,7 +23,7 @@ src/api/
 
 ```javascript
 // 导入单个模块
-import { authAPI, documentsAPI, searchAPI } from "../api";
+import { authAPI, documentAPI, searchAPI } from "../api";
 
 // 或者导入默认对象
 import api from "../api";
@@ -51,7 +51,7 @@ await authAPI.logout();
 
 ```javascript
 // 获取文档列表
-const documents = await documentsAPI.getDocuments({
+const documents = await documentAPI.getDocuments({
   page: 1,
   size: 20,
   search: "关键词",
@@ -59,20 +59,20 @@ const documents = await documentsAPI.getDocuments({
 });
 
 // 获取文档详情
-const document = await documentsAPI.getDocument(documentId);
+const document = await documentAPI.getDocument(documentId);
 
 // 上传文档
 const formData = new FormData();
 formData.append("file", file);
-const uploadResult = await documentsAPI.uploadDocument(formData, (progress) => {
+const uploadResult = await documentAPI.uploadDocument(formData, (progress) => {
   console.log(`上传进度: ${progress}%`);
 });
 
 // 删除文档
-await documentsAPI.deleteDocument(documentId);
+await documentAPI.deleteDocument(documentId);
 
 // 批量删除
-await documentsAPI.batchDeleteDocuments([id1, id2, id3]);
+await documentAPI.batchDeleteDocuments([id1, id2, id3]);
 ```
 
 #### 搜索功能
