@@ -93,8 +93,6 @@ def get_cluster_analysis():
     except Exception as e:
         app_logger.error(f"Error in cluster analysis: {str(e)}")
         return jsonify({"error": str(e)}), 500
-    
-    
 
 # 获取所有文档
 @document_bp.route('', methods=['GET'])
@@ -179,4 +177,75 @@ def get_documents_by_source_id(source_id):
             } for doc in documents])
     except Exception as e:
         app_logger.error(f"Error getting documents for RSS source ID {source_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+# Add these file extensions according to your requirements
+ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
+from fetch_document import store_documents_in_knowledge_base
+import threading
+def allowed_file(filename):
+    """Check if the file extension is allowed."""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Upload Excel file to add documents
+@document_bp.route('/upload_excel', methods=['POST'])
+def upload_excel():
+    try:
+        app_logger.info("POST /api/documents/upload_excel - Request received")
+        # Check if the post request has the file part
+        if 'file' not in request.files:
+            app_logger.error("No file part in the request")
+            return jsonify({"error": "No file part"}), 400
+        
+        file = request.files['file']
+        # If the user does not select a file, the browser submits an empty file without a filename
+        if file.filename == '':
+            app_logger.error("No selected file")
+            return jsonify({"error": "No selected file"}), 400
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            # Read Excel file
+            try:
+                df = pd.read_excel(file)
+            except Exception as e:
+                app_logger.error(f"Error reading Excel file: {str(e)}")
+                return jsonify({"error": f"Error reading Excel file: {str(e)}"}), 400
+            
+            document_list = []
+            engine = get_db_engine()
+            with Session(engine) as session:
+                for _, row in df.iterrows():
+                    try:
+                        # Create a new Document instance
+                        new_doc = Document(
+                            title=row.get('title', ''),
+                            link=row.get('link', ''),
+                            description=row.get('description', ''),
+                            pub_date=row.get('pub_date', None),
+                            author=row.get('author', ''),
+                            tags=','.join(map(str, row.get('tags', []))) if isinstance(row.get('tags', []), list) else str(row.get('tags', '')),
+                            rss_source_id=row.get('rss_source_id', None),
+                            crawled_at=row.get('crawled_at', None)
+                        )
+                        document_list.append(new_doc)
+                        session.add(new_doc)
+                    except Exception as e:
+                        app_logger.error(f"Error creating document from Excel row: {str(e)}")
+                        continue
+                session.commit()
+                app_logger.info(f"Successfully added {len(df)} documents from {filename}")
+                 # 在新线程中执行知识库存储操作
+                if document_list:  # 只有当有文档需要存储时才创建线程
+                    kb_thread = threading.Thread(target=store_documents_in_knowledge_base, args=(document_list,))
+                    kb_thread.daemon = True  # 设置为守护线程，主线程退出时自动结束
+                    kb_thread.start()
+                    app_logger.info(f"Started background thread to store {len(document_list)} documents in knowledge base")
+                return jsonify({"message": f"Successfully added {len(df)} documents from {filename}"}), 201
+        else:
+            app_logger.error("Invalid file type")
+            return jsonify({"error": "Invalid file type, only .xlsx and .xls are allowed"}), 400
+    except Exception as e:
+        app_logger.error(f"Error in uploading Excel file: {str(e)}")
         return jsonify({"error": str(e)}), 500
