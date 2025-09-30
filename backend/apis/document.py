@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, create_engine, select, func
 from models.document import Document
 from models.rss_source import RssSource
 import os
 from dotenv import load_dotenv
 from utils.logging_config import app_logger
 from tools import knowledge_base_cluster_analysis
+
 # 加载环境变量
 load_dotenv()
 
@@ -116,6 +117,84 @@ def get_documents():
                 "rss_source_id": doc.rss_source_id,
                 "crawled_at": doc.crawled_at.isoformat()
             } for doc in documents])
+    except Exception as e:
+        app_logger.error(f"Error getting documents: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@document_bp.route('/page', methods=['GET'])
+def get_documents_page():
+    try:
+        app_logger.info("GET /api/documents/page - Request received")   
+        
+        # 获取查询参数
+        page = request.args.get('page', 1, type=int)
+        size = request.args.get('size', 20, type=int)
+        search = request.args.get('search', '', type=str)
+        doc_type = request.args.get('type', '', type=str)
+        source = request.args.get('source', '', type=str)
+        start_date = request.args.get('start', '', type=str)
+        end_date = request.args.get('end', '', type=str)
+        
+        # 计算偏移量
+        offset = (page - 1) * size
+        
+        engine = get_db_engine()
+        with Session(engine) as session:
+            # 构建查询
+            query = select(Document)
+            
+            # 添加搜索条件
+            if search:
+                query = query.where(Document.title.contains(search) | Document.description.contains(search))
+            
+            # 添加类型过滤
+            if doc_type:
+                # 假设类型存储在tags字段中，可以根据实际情况调整
+                query = query.where(Document.tags.contains(doc_type))
+            
+            # 添加来源过滤
+            if source:
+                # 需要关联RSS源表进行过滤
+                query = query.join(RssSource).where(RssSource.name.contains(source))
+            
+            # 添加日期范围过滤
+            if start_date:
+                query = query.where(Document.crawled_at >= start_date)
+            if end_date:
+                query = query.where(Document.crawled_at <= end_date)
+            
+            # 获取总数
+            count_query = select(func.count()).select_from(query.subquery())
+            total = session.exec(count_query).one()
+            
+            # 添加分页和排序
+            query = query.order_by(Document.crawled_at.desc()).offset(offset).limit(size)
+            
+            # 执行查询
+            app_logger.info("Querying documents from database...")
+            documents = session.exec(query).all()
+            app_logger.info(f"Found {len(documents)} documents in database.")
+            
+            # 计算总页数
+            total_pages = (total + size - 1) // size
+            
+            return jsonify({
+                "items": [{
+                    "id": doc.id,
+                    "title": doc.title,
+                    "link": doc.link,
+                    "description": doc.description,
+                    "pub_date": doc.pub_date.isoformat() if doc.pub_date else None,
+                    "author": doc.author,
+                    "tags": doc.tags.split(",") if doc.tags else [],
+                    "rss_source_id": doc.rss_source_id,
+                    "crawled_at": doc.crawled_at.isoformat()
+                } for doc in documents],
+                "total": total,
+                "page": page,
+                "size": size,
+                "total_pages": total_pages
+            })
     except Exception as e:
         app_logger.error(f"Error getting documents: {str(e)}")
         return jsonify({"error": str(e)}), 500
