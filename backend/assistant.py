@@ -55,6 +55,40 @@ def create_assistant():
     
     return assistant
 
+def query_with_sources(query):
+    """查询助手并返回答案和原始来源信息"""
+    assistant = create_assistant()
+
+    # 首先从知识库检索相关信息
+    knowledge_base_tool = create_knowledge_base_tool()
+    raw_sources = knowledge_base_tool.invoke({"action": "retrieve", "query": query, "k": 3, "rerank": True})
+
+    # 判断来源：优先知识库；若知识库为空或为占位内容，则尝试联网搜索
+    origin = "knowledge_base"
+    if not isinstance(raw_sources, list) or len(raw_sources) == 0:
+        origin = "online_search"
+        online_search_tool = create_online_search_tool()
+        raw_sources = online_search_tool.invoke(query)
+    else:
+        # 检查占位内容
+        try:
+            first_content = str(raw_sources[0].get("content", ""))
+            if first_content.strip() == "Placeholder text":
+                origin = "online_search"
+                online_search_tool = create_online_search_tool()
+                raw_sources = online_search_tool.invoke(query)
+        except Exception:
+            pass
+
+    # 使用助手生成最终答案
+    final_answer = assistant.invoke(query)
+
+    return {
+        "answer": final_answer,
+        "raw_sources": raw_sources,
+        "origin": origin
+    }
+
 if __name__ == "__main__":
     # 创建并测试助手
     assistant = create_assistant()

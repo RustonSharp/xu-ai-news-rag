@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from utils.logging_config import app_logger
-from assistant import create_assistant
+from assistant import create_assistant, query_with_sources
 
 # 创建蓝图
 assistant_bp = Blueprint('assistant', __name__, url_prefix='/api/assistant')
@@ -35,38 +35,41 @@ def query_assistant():
         # 获取助手实例
         assistant = get_assistant()
         
-        # 处理查询
-        result = assistant.invoke(query)
+        # 使用新的查询函数获取答案、原始来源和来源类型
+        result = query_with_sources(query)
         
-        # 提取sources信息
+        # 提取答案、原始来源和来源类型
+        final_answer = result.get("answer", "")
+        raw_sources = result.get("raw_sources", [])
+        origin = result.get("origin", "knowledge_base")
+        
+        # 格式化sources信息
         sources = []
+        if isinstance(raw_sources, list):
+            for i, source in enumerate(raw_sources):
+                if isinstance(source, dict):
+                    sources.append({
+                        "id": str(i + 1),
+                        "title": source.get("metadata", {}).get("title", f"文档片段 {i + 1}"),
+                        "content": source.get("content", ""),
+                        "url": "",
+                        "score": 1.0 - (i * 0.1),
+                        "type": "document",
+                        "source": source.get("metadata", {}).get("source", "知识库"),
+                        "relevance": 1.0 - (i * 0.1),
+                        "timestamp": source.get("metadata", {}).get("pub_date", "")
+                    })
         
-        # 尝试从result中提取sources
-        # 如果result是字符串，则sources为空数组
-        if isinstance(result, str):
-            answer = result
-        # 如果result是字典且包含sources字段
-        elif isinstance(result, dict) and 'sources' in result:
-            answer = result.get('answer', str(result))
-            sources = result.get('sources', [])
-        # 如果result是字典但不包含sources字段
-        elif isinstance(result, dict):
-            answer = result.get('answer', str(result))
-            # 尝试从其他字段提取sources
-            if 'source_documents' in result:
-                sources = result['source_documents']
-            elif 'documents' in result:
-                sources = result['documents']
-        # 其他情况
-        else:
-            answer = str(result)
-        
+        if sources == [] or sources[0]['title'] == "":
+            sources = []
         # 返回结果，格式化为前端期望的结构
         return jsonify({
             "query": query,
-            "response": result,
-            "answer": answer,
+            "response": final_answer,
+            "answer": final_answer,
             "sources": sources,
+            "raw_answer": raw_sources,  # 添加原始来源信息
+            "origin": origin,
             "status": "success"
         })
     

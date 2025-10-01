@@ -1,20 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { assistantAPI } from '../api'
 import {
-  Search,
   Send,
   Bot,
   User,
-  ExternalLink,
   Copy,
   ThumbsUp,
   ThumbsDown,
-  RefreshCw,
-  Filter,
-  Clock,
-  Bookmark,
-  Share,
-  MoreHorizontal
+  RefreshCw
 } from 'lucide-react'
 
 // 类型定义
@@ -24,6 +17,8 @@ interface Message {
   content: string
   timestamp: string
   sources?: SearchResult[]
+  rawAnswer?: any // 添加rawAnswer字段到Message接口
+  origin?: 'knowledge_base' | 'online_search'
 }
 
 interface SearchResult {
@@ -38,20 +33,21 @@ interface SearchResult {
   timestamp: string
 }
 
-
+// 后端返回的响应数据结构
+interface AssistantResponse {
+  query: string
+  response: string
+  answer: string | object
+  sources: SearchResult[]
+  status: string
+  origin?: 'knowledge_base' | 'online_search'
+}
 
 const AssistantPage: React.FC = () => {
   const [query, setQuery] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
-  const [searchMode, setSearchMode] = useState('chat') // 'chat' or 'search'
-  const [filters, setFilters] = useState({
-    dateRange: '',
-    source: '',
-    type: ''
-  })
-  const [showFilters, setShowFilters] = useState(false)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -69,72 +65,70 @@ const AssistantPage: React.FC = () => {
     setLoading(true)
 
     try {
-      if (searchMode === 'chat') {
-        // 聊天模式
-        // 添加用户消息
-        const userMessage: Message = {
-          id: Date.now().toString(),
-          type: 'user' as const,
-          content: query,
-          timestamp: new Date().toISOString()
-        }
-        setMessages(prev => [...prev, userMessage])
-
-        // 调用助手API
-        const response = await assistantAPI.query({
-          query: query,
-          options: {
-            use_knowledge_base: true,
-            use_online_search: false
-          }
-        })
-
-        // 处理后端返回的数据结构：{query: "...", response: "...", answer: "...", sources: [...], status: "success"}
-        const rawAnswer = response.data?.answer || response.answer || `基于您的问题"${query}"，我为您找到了相关信息。`
-        // 使用formatAnswer函数格式化答案
-        const answer = formatAnswer(rawAnswer)
-        // 从响应中提取sources
-        const sources = response.data?.sources || response.sources || []
-
-        // 生成AI回复
-        const aiResponse: Message = {
-          id: (Date.now() + 1).toString(),
-          type: 'bot' as const,
-          content: answer,
-          timestamp: new Date().toISOString(),
-          sources: sources
-        }
-
-        setMessages(prev => [...prev, aiResponse])
-      } else {
-        // 搜索模式
-        // 调用助手API进行搜索
-        const response = await assistantAPI.query({
-          query: query,
-          options: {
-            use_knowledge_base: true,
-            use_online_search: false
-          }
-        })
-
-        // 处理后端返回的数据结构：{query: "...", response: "...", answer: "...", sources: [...], status: "success"}
-        // 从响应中提取sources
-        const sources = response.data?.sources || response.sources || []
-        setSearchResults(sources)
+      // 聊天模式
+      // 添加用户消息
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        type: 'user' as const,
+        content: query,
+        timestamp: new Date().toISOString()
       }
+      setMessages(prev => [...prev, userMessage])
+
+      // 调用助手API
+      const response = await assistantAPI.query({
+        query: query,
+        options: {
+          use_knowledge_base: true,
+          use_online_search: false
+        }
+      })
+      console.log('助手查询响应:', response)
+
+      // 使用AssistantResponse类型处理后端返回的数据结构
+      // 检查响应是否包含必要字段
+      if (!response) {
+        throw new Error('后端返回数据为空')
+      }
+
+      // 根据实际响应结构，数据可能直接在response中，也可能在response.data中
+      const responseData: AssistantResponse = (response.data || response) as AssistantResponse
+      const rawAnswer = responseData.answer || `基于您的问题"${query}"，我为您找到了相关信息。`
+      let rawSources = (responseData as any).raw_answer || [] // 获取原始来源信息
+      if (rawSources.length == 0 || rawSources[0]['title'] == "" || rawSources[0]['content'] == "Placeholder text") {
+        rawSources = []
+      }
+      console.log('原始答案数据:', rawAnswer)
+      console.log('原始来源数据:', rawSources)
+      console.log('答案类型:', typeof rawAnswer)
+      // 使用formatAnswer函数格式化答案
+      const answer = formatAnswer(rawAnswer)
+      console.log('格式化后的答案:', answer)
+      // 从响应中提取sources
+      const sources = responseData.sources || []
+      const origin = responseData.origin || (sources.length > 0 ? 'knowledge_base' : 'online_search')
+
+      // 生成AI回复
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot' as const,
+        content: answer,
+        timestamp: new Date().toISOString(),
+        sources: sources,
+        rawAnswer: rawSources, // 保存原始来源信息
+        origin: origin
+      }
+
+      setMessages(prev => [...prev, aiResponse])
     } catch (error) {
       console.error('助手查询失败:', error)
-      if (searchMode === 'chat') {
-        const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          type: 'bot' as const,
-          content: '抱歉，助手查询过程中出现了错误，请稍后重试。',
-          timestamp: new Date().toISOString()
-        }
-        setMessages(prev => [...prev, errorMessage])
-      } else {
-        alert('搜索失败，请稍后重试')
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot' as const,
+        content: '抱歉，助手查询过程中出现了错误，请稍后重试。',
+        timestamp: new Date().toISOString()
       }
+      setMessages(prev => [...prev, errorMessage])
     }
 
     setLoading(false)
@@ -157,52 +151,64 @@ const AssistantPage: React.FC = () => {
     return new Date(dateString).toLocaleString('zh-CN')
   }
 
-  const getTypeIcon = (type?: string) => {
-    switch (type) {
-      case 'pdf': return '📄'
-      case 'html': return '🌐'
-      case 'markdown': return '📝'
-      default: return '📄'
-    }
-  }
+  // 已移除知识搜索展示，保留占位避免误用
 
   const clearChat = () => {
     setMessages([])
   }
 
-  // 格式化后端返回的答案
+  // 格式化后端返回的答案 - 仅展示answer.output部分
   const formatAnswer = (answer: any): string => {
-    // 如果答案是字符串，直接返回
+    console.log('formatAnswer 输入:', answer)
+    console.log('formatAnswer 输入类型:', typeof answer)
+
+    // 如果答案是字符串，尝试解析其中的JSON结构
     if (typeof answer === 'string') {
+      console.log('答案是字符串，尝试解析JSON')
+      try {
+        // 尝试解析字符串为对象
+        const parsedAnswer = JSON.parse(answer)
+        console.log('解析成功:', parsedAnswer)
+
+        // 如果解析成功且包含output字段，返回output值
+        if (parsedAnswer && typeof parsedAnswer === 'object' && parsedAnswer.hasOwnProperty('output')) {
+          console.log('找到output字段，值:', parsedAnswer.output)
+          return String(parsedAnswer.output);
+        }
+      } catch (e) {
+        console.log('JSON解析失败，尝试其他方法')
+        // 如果JSON解析失败，尝试使用正则表达式提取output字段
+        const outputMatch = answer.match(/'output':\s*'([^']*)'/);
+        if (outputMatch && outputMatch[1]) {
+          console.log('正则匹配到output字段，值:', outputMatch[1])
+          return outputMatch[1];
+        }
+      }
+
+      // 如果无法解析或没有output字段，直接返回原字符串
+      console.log('无法提取output字段，返回原字符串')
       return answer;
     }
 
-    // 如果答案是对象，尝试提取output字段
+    // 如果答案是对象，仅提取output字段
     if (typeof answer === 'object' && answer !== null) {
+      console.log('答案是对象，检查output字段')
+      console.log('对象键:', Object.keys(answer))
+      console.log('是否有output字段:', answer.hasOwnProperty('output'))
+
       // 如果有output字段，使用output字段的值
-      if ('output' in answer) {
-        return answer.output;
+      if (answer.hasOwnProperty('output')) {
+        console.log('找到output字段，值:', answer.output)
+        return String(answer.output);
       }
 
-      // 如果有answer字段，使用answer字段的值
-      if ('answer' in answer) {
-        return answer.answer;
-      }
-
-      // 如果有response字段，使用response字段的值
-      if ('response' in answer) {
-        return answer.response;
-      }
-
-      // 如果对象可以转换为字符串，则转换
-      try {
-        return JSON.stringify(answer, null, 2);
-      } catch (e) {
-        return String(answer);
-      }
+      // 如果没有output字段，返回空字符串或提示信息
+      console.log('没有output字段，返回提示信息')
+      return '暂无可用内容';
     }
 
     // 其他情况，转换为字符串
+    console.log('其他情况，转换为字符串')
     return String(answer);
   }
 
@@ -213,324 +219,199 @@ const AssistantPage: React.FC = () => {
           <h1 className="page-title">AI助手</h1>
           <p className="page-subtitle">基于知识库的智能问答助手</p>
         </div>
-
-        <div className="mode-switcher">
-          <button
-            onClick={() => setSearchMode('chat')}
-            className={`mode-btn ${searchMode === 'chat' ? 'active' : ''}`}
-          >
-            <Bot size={16} />
-            对话模式
-          </button>
-          <button
-            onClick={() => setSearchMode('search')}
-            className={`mode-btn ${searchMode === 'search' ? 'active' : ''}`}
-          >
-            <Search size={16} />
-            知识搜索
-          </button>
-        </div>
       </div>
 
       <div className="search-container">
-        {searchMode === 'chat' ? (
-          // 聊天模式
-          <div className="chat-container">
-            <div className="chat-header">
-              <div className="chat-info">
-                <Bot size={20} />
-                <span>AI助手</span>
-                <span className="status online">在线</span>
-              </div>
-
-              {messages.length > 0 && (
-                <button
-                  onClick={clearChat}
-                  className="btn btn-secondary btn-sm"
-                >
-                  <RefreshCw size={14} />
-                  清空对话
-                </button>
-              )}
+        {/* 聊天模式 */}
+        <div className="chat-container">
+          <div className="chat-header">
+            <div className="chat-info">
+              <Bot size={20} />
+              <span>AI助手</span>
+              <span className="status online">在线</span>
             </div>
 
-            <div className="messages-container">
-              {messages.length === 0 ? (
-                <div className="welcome-message">
-                  <Bot size={48} />
-                  <h3>您好！我是AI助手</h3>
-                  <p>我可以帮您解答问题、分析信息，请输入您的问题。</p>
+            {messages.length > 0 && (
+              <button
+                onClick={clearChat}
+                className="btn btn-secondary btn-sm"
+              >
+                <RefreshCw size={14} />
+                清空对话
+              </button>
+            )}
+          </div>
 
-                  <div className="example-questions">
-                    <h4>示例问题：</h4>
-                    <div className="examples">
-                      <button
-                        onClick={() => setQuery('人工智能在医疗领域的应用有哪些？')}
-                        className="example-btn"
-                      >
-                        人工智能在医疗领域的应用有哪些？
-                      </button>
-                      <button
-                        onClick={() => setQuery('深度学习和机器学习的区别是什么？')}
-                        className="example-btn"
-                      >
-                        深度学习和机器学习的区别是什么？
-                      </button>
-                      <button
-                        onClick={() => setQuery('GPT模型的发展历程')}
-                        className="example-btn"
-                      >
-                        GPT模型的发展历程
-                      </button>
-                    </div>
+          <div className="messages-container">
+            {messages.length === 0 ? (
+              <div className="welcome-message">
+                <Bot size={48} />
+                <h3>您好！我是AI助手</h3>
+                <p>我可以帮您解答问题、分析信息，请输入您的问题。</p>
+
+                <div className="example-questions">
+                  <h4>示例问题：</h4>
+                  <div className="examples">
+                    <button
+                      onClick={() => setQuery('人工智能在医疗领域的应用有哪些？')}
+                      className="example-btn"
+                    >
+                      人工智能在医疗领域的应用有哪些？
+                    </button>
+                    <button
+                      onClick={() => setQuery('深度学习和机器学习的区别是什么？')}
+                      className="example-btn"
+                    >
+                      深度学习和机器学习的区别是什么？
+                    </button>
+                    <button
+                      onClick={() => setQuery('GPT模型的发展历程')}
+                      className="example-btn"
+                    >
+                      GPT模型的发展历程
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className="messages">
-                  {messages.map((message) => (
-                    <div key={message.id} className={`message ${message.type}`}>
-                      <div className="message-avatar">
-                        {message.type === 'user' ? (
-                          <User size={20} />
+              </div>
+            ) : (
+              <div className="messages">
+                {messages.map((message) => (
+                  <div key={message.id} className={`message ${message.type}`}>
+                    <div className="message-avatar">
+                      {message.type === 'user' ? <User size={20} /> : <Bot size={20} />}
+                    </div>
+                    <div className="message-content">
+                      {message.type === 'bot' && (
+                        <div style={{ marginBottom: 6 }}>
+                          <span style={{
+                            fontSize: 12,
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            background: 'var(--elev)',
+                            color: 'var(--muted)'
+                          }}>
+                            {message.origin === 'online_search' ? '来源：联网搜索' : '来源：知识库'}
+                          </span>
+                        </div>
+                      )}
+                      <div className="message-text">
+                        {message.type === 'bot' ? (
+                          // 机器人回答使用特殊格式
+                          <div className="bot-answer">
+                            {message.content.split('\n').map((paragraph, index) => (
+                              <p key={index}>{paragraph}</p>
+                            ))}
+                          </div>
                         ) : (
-                          <Bot size={20} />
+                          // 用户消息保持原格式
+                          message.content.split('\n').map((paragraph, index) => (
+                            <p key={index}>{paragraph}</p>
+                          ))
                         )}
                       </div>
 
-                      <div className="message-content">
-                        <div className="message-text">
-                          {message.content.split('\n').map((line, index) => (
-                            <p key={index}>{line}</p>
-                          ))}
-                        </div>
+                      {/* 显示原始答案信息，仅在有rawAnswer且为bot消息时显示 */}
+                      {message.type === 'bot' && message.rawAnswer && (
+                        <details className="raw-answer-details">
+                          <summary>查看原始答案</summary>
+                          <div className="raw-answer-content">
+                            {(() => {
+                              // 如果rawAnswer是数组（原始来源信息）
+                              if (Array.isArray(message.rawAnswer)) {
+                                return (
+                                  <div className="raw-sources-list">
+                                    {message.rawAnswer.map((source, index) => (
+                                      <div key={index} className="raw-source-item">
+                                        <h5>来源 {index + 1}:</h5>
+                                        <div className="raw-source-content">
+                                          <p><strong>内容:</strong> {source.content || '无内容'}</p>
+                                          {source.metadata && (
+                                            <div className="raw-source-meta">
+                                              <p><strong>标题:</strong> {source.metadata.title || '无标题'}</p>
+                                              <p><strong>作者:</strong> {source.metadata.author || '未知'}</p>
+                                              <p><strong>发布日期:</strong> {source.metadata.pub_date || '未知'}</p>
+                                              <p><strong>标签:</strong> {source.metadata.tags || '无标签'}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              }
 
-                        {message.sources && (
-                          <div className="message-sources">
-                            <h4>相关文档：</h4>
-                            <div className="sources-list">
-                              {message.sources.map((source) => (
-                                <div key={source.id} className="source-item">
-                                  <div className="source-icon">
-                                    {getTypeIcon(source.type)}
-                                  </div>
-                                  <div className="source-info">
-                                    <h5>{source.title}</h5>
-                                    <p>{source.content.substring(0, 100)}...</p>
-                                    <div className="source-meta">
-                                      <span className="relevance">
-                                        相关度: {Math.round(source.relevance * 100)}%
-                                      </span>
-                                      {source.url && (
-                                        <a
-                                          href={source.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="source-link"
-                                        >
-                                          <ExternalLink size={12} />
-                                          查看原文
-                                        </a>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                              // 如果是字符串，尝试解析并提取output
+                              if (typeof message.rawAnswer === 'string') {
+                                try {
+                                  const parsed = JSON.parse(message.rawAnswer);
+                                  if (parsed && parsed.hasOwnProperty('output')) {
+                                    return <div className="raw-answer-text">{String(parsed.output)}</div>;
+                                  }
+                                } catch (e) {
+                                  // 如果JSON解析失败，尝试正则表达式
+                                  const outputMatch = message.rawAnswer.match(/'output':\s*'([^']*)'/);
+                                  if (outputMatch && outputMatch[1]) {
+                                    return <div className="raw-answer-text">{outputMatch[1]}</div>;
+                                  }
+                                }
+                              }
+                              // 如果是对象且有output字段
+                              if (typeof message.rawAnswer === 'object' && message.rawAnswer !== null && message.rawAnswer.hasOwnProperty('output')) {
+                                return <div className="raw-answer-text">{String(message.rawAnswer.output)}</div>;
+                              }
+                              // 其他情况显示原始内容
+                              return <div className="raw-answer-text">{String(message.rawAnswer)}</div>;
+                            })()}
+                          </div>
+                        </details>
+                      )}
+
+
+                      <div className="message-actions">
+                        <span className="message-time">
+                          {formatDate(message.timestamp)}
+                        </span>
+
+                        {message.type === 'bot' && (
+                          <div className="action-buttons">
+                            <button
+                              onClick={() => copyToClipboard(message.content)}
+                              className="action-btn"
+                              title="复制"
+                            >
+                              <Copy size={14} />
+                            </button>
+                            <button className="action-btn" title="点赞">
+                              <ThumbsUp size={14} />
+                            </button>
+                            <button className="action-btn" title="点踩">
+                              <ThumbsDown size={14} />
+                            </button>
                           </div>
                         )}
-
-                        <div className="message-actions">
-                          <span className="message-time">
-                            {formatDate(message.timestamp)}
-                          </span>
-
-                          {message.type === 'bot' && (
-                            <div className="action-buttons">
-                              <button
-                                onClick={() => copyToClipboard(message.content)}
-                                className="action-btn"
-                                title="复制"
-                              >
-                                <Copy size={14} />
-                              </button>
-                              <button className="action-btn" title="点赞">
-                                <ThumbsUp size={14} />
-                              </button>
-                              <button className="action-btn" title="点踩">
-                                <ThumbsDown size={14} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
-                  ))}
-
-                  {loading && (
-                    <div className="message assistant">
-                      <div className="message-avatar">
-                        <Bot size={20} />
-                      </div>
-                      <div className="message-content">
-                        <div className="typing-indicator">
-                          <span></span>
-                          <span></span>
-                          <span></span>
-                        </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="message assistant">
+                    <div className="message-avatar">
+                      <Bot size={20} />
+                    </div>
+                    <div className="message-content">
+                      <div className="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
                       </div>
                     </div>
-                  )}
-
-                  <div ref={messagesEndRef} />
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          // 搜索模式
-          <div className="search-results-container">
-            <div className="search-header">
-              <div className="search-filters">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`btn btn-secondary ${showFilters ? 'active' : ''}`}
-                >
-                  <Filter size={16} />
-                  筛选
-                </button>
-              </div>
-
-              {searchResults.length > 0 && (
-                <div className="search-stats">
-                  找到 {searchResults.length} 个相关文档
-                </div>
-              )}
-            </div>
-
-            {showFilters && (
-              <div className="filters-panel">
-                <div className="filters-grid">
-                  <div className="form-group">
-                    <label className="form-label">来源</label>
-                    <select
-                      value={filters.source}
-                      onChange={(e) => setFilters(prev => ({ ...prev, source: e.target.value }))}
-                      className="input"
-                    >
-                      <option value="">全部来源</option>
-                      <option value="medical_journal">医学期刊</option>
-                      <option value="finance_news">金融新闻</option>
-                      <option value="tech_blog">技术博客</option>
-                    </select>
                   </div>
-
-                  <div className="form-group">
-                    <label className="form-label">文档类型</label>
-                    <select
-                      value={filters.type}
-                      onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-                      className="input"
-                    >
-                      <option value="">全部类型</option>
-                      <option value="pdf">PDF</option>
-                      <option value="html">HTML</option>
-                      <option value="markdown">Markdown</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">时间范围</label>
-                    <select
-                      value={filters.dateRange}
-                      onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value }))}
-                      className="input"
-                    >
-                      <option value="">全部时间</option>
-                      <option value="1d">最近1天</option>
-                      <option value="1w">最近1周</option>
-                      <option value="1m">最近1月</option>
-                      <option value="3m">最近3月</option>
-                    </select>
-                  </div>
-                </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
             )}
-
-            <div className="search-results">
-              {loading ? (
-                <div className="loading">
-                  <div className="spinner" />
-                  正在搜索...
-                </div>
-              ) : searchResults.length > 0 ? (
-                <div className="results-list">
-                  {searchResults.map((result) => (
-                    <div key={result.id} className="result-item">
-                      <div className="result-header">
-                        <div className="result-title">
-                          <span className="result-icon">{getTypeIcon()}</span>
-                          <h3>{result.title}</h3>
-                          <span className="relevance-score">
-                            {Math.round(result.relevance * 100)}%
-                          </span>
-                        </div>
-
-                        <div className="result-actions">
-                          <button className="action-btn" title="收藏">
-                            <Bookmark size={16} />
-                          </button>
-                          <button className="action-btn" title="分享">
-                            <Share size={16} />
-                          </button>
-                          <button className="action-btn" title="更多">
-                            <MoreHorizontal size={16} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="result-content">
-                        <p>{result.content}</p>
-                      </div>
-
-                      <div className="result-meta">
-                        <div className="result-info">
-                          <span className="result-date">
-                            <Clock size={12} />
-                            {formatDate(result.timestamp)}
-                          </span>
-
-                          {result.url && (
-                            <a
-                              href={result.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="result-link"
-                            >
-                              <ExternalLink size={12} />
-                              查看原文
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : query && !loading ? (
-                <div className="empty-results">
-                  <Search size={48} />
-                  <h3>未找到相关文档</h3>
-                  <p>请尝试使用不同的关键词或调整筛选条件</p>
-                </div>
-              ) : (
-                <div className="search-placeholder">
-                  <Search size={48} />
-                  <h3>搜索知识库</h3>
-                  <p>输入关键词来搜索知识库中的相关文档</p>
-                </div>
-              )}
-            </div>
           </div>
-        )}
+        </div>
 
         {/* 输入框 */}
         <div className="input-container">
@@ -541,7 +422,7 @@ const AssistantPage: React.FC = () => {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={searchMode === 'chat' ? '输入您的问题...' : '搜索知识库...'}
+              placeholder={'输入您的问题...'}
               className="search-input"
               disabled={loading}
             />
@@ -651,10 +532,41 @@ const AssistantPage: React.FC = () => {
           color: var(--success);
         }
 
+        .chat-container {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
         .messages-container {
           flex: 1;
           overflow-y: auto;
           padding: 20px;
+          min-height: 0; /* 确保flex容器正确收缩 */
+          /* 确保滚动条始终可见 */
+          scrollbar-width: thin;
+          scrollbar-color: #ccc #f1f1f1;
+          max-height: calc(100vh - 280px); /* 设置最大高度 */
+          border: 1px solid #eee; /* 添加边框使容器边界更明显 */
+        }
+        
+        /* Webkit浏览器的滚动条样式 */
+        .messages-container::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        .messages-container::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 4px;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb {
+          background-color: #ccc;
+          border-radius: 4px;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb:hover {
+          background-color: #999;
         }
 
         .welcome-message {
@@ -764,6 +676,45 @@ const AssistantPage: React.FC = () => {
 
         .message-text p:last-child {
           margin-bottom: 0;
+        }
+
+        /* 机器人回答的特殊样式 */
+        .bot-answer {
+          font-size: 15px;
+          line-height: 1.6;
+        }
+
+        .bot-answer p {
+          margin: 0 0 12px;
+        }
+
+        .bot-answer p:last-child {
+          margin-bottom: 0;
+        }
+
+        .bot-answer code {
+          background: rgba(0, 0, 0, 0.05);
+          padding: 2px 4px;
+          border-radius: 3px;
+          font-family: 'Courier New', monospace;
+          font-size: 14px;
+        }
+
+        .bot-answer pre {
+          background: rgba(0, 0, 0, 0.05);
+          padding: 12px;
+          border-radius: 6px;
+          overflow-x: auto;
+          margin: 12px 0;
+        }
+
+        .bot-answer ul, .bot-answer ol {
+          margin: 12px 0;
+          padding-left: 20px;
+        }
+
+        .bot-answer li {
+          margin: 6px 0;
         }
 
         .message-sources {
@@ -1156,6 +1107,88 @@ const AssistantPage: React.FC = () => {
             grid-template-columns: 1fr;
           }
         }
+        
+        .raw-answer-details {
+          margin-top: 12px;
+        }
+        
+        .raw-answer-details summary {
+          cursor: pointer;
+          font-weight: 500;
+          color: var(--primary);
+          padding: 8px 0;
+        }
+        
+        .raw-answer-content {
+          background: rgba(0, 0, 0, 0.03);
+          border-radius: 6px;
+          padding: 12px;
+          margin-top: 8px;
+          border: 1px solid var(--border);
+        }
+
+        .raw-answer-content pre {
+          margin: 0;
+          white-space: pre-wrap;
+          word-break: break-all;
+          font-size: 12px;
+          line-height: 1.4;
+        }
+
+        .raw-answer-text {
+          white-space: pre-wrap;
+          word-break: break-word;
+          font-size: 13px;
+          line-height: 1.5;
+          color: var(--text);
+        }
+        
+        .raw-sources-list {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        
+        .raw-source-item {
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 16px;
+          background: var(--elev);
+        }
+        
+        .raw-source-item h5 {
+          margin: 0 0 12px;
+          color: var(--primary);
+          font-size: 14px;
+          font-weight: 600;
+        }
+        
+        .raw-source-content p {
+          margin: 0 0 8px;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+        
+        .raw-source-content p:last-child {
+          margin-bottom: 0;
+        }
+        
+        .raw-source-meta {
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid var(--border);
+        }
+        
+        .raw-source-meta p {
+          margin: 0 0 4px;
+          font-size: 12px;
+          color: var(--muted);
+        }
+        
+        .raw-source-meta p:last-child {
+          margin-bottom: 0;
+        }
+        
       `}</style>
     </div>
   )
