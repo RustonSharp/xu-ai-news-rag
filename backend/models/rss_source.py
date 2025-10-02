@@ -1,5 +1,4 @@
 from sqlmodel import SQLModel, Field
-from models.enums.interval import IntervalEnum
 
 
 class RssSource(SQLModel, table=True):
@@ -8,4 +7,5 @@ class RssSource(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True)
     name: str
     url: str
-    interval: IntervalEnum = Field(default=IntervalEnum.MINUTE)
+    interval: str = Field(default="ONE_DAY")
+    is_paused: bool = Field(default=False)

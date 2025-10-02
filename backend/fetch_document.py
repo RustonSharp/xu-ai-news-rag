@@ -11,6 +11,45 @@ import time
 import datetime
 import threading
 from tools import create_knowledge_base_tool
+import re
+from bs4 import BeautifulSoup
+
+def clean_text(raw: str) -> str:
+    """
+    将HTML/Markdown清洗为纯文本：
+    - 去除所有HTML标签
+    - 处理常见Markdown（图片、链接、代码、标题、列表、加粗/斜体、引用）
+    - 合并多余空白
+    """
+    if not isinstance(raw, str):
+        raw = str(raw or "")
+
+    text = raw
+    # 先用BeautifulSoup去除HTML标签
+    try:
+        text = BeautifulSoup(text, 'html.parser').get_text(separator=' ')
+    except Exception:
+        pass
+
+    # 去除Markdown图片 ![alt](url)
+    text = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", text)
+    # 将Markdown链接 [text](url) 保留text
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
+    # 去除行内代码和代码块
+    text = re.sub(r"```[\s\S]*?```", " ", text)
+    text = re.sub(r"`([^`]*)`", r"\1", text)
+    # 去除标题/列表/引用等标记
+    text = re.sub(r"^\s{0,3}#{1,6}\s+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s{0,3}[-*+]\s+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s{0,3}>\s+", "", text, flags=re.MULTILINE)
+    # 去除加粗/斜体标记
+    text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    text = re.sub(r"\*([^*]+)\*", r"\1", text)
+    text = re.sub(r"__([^_]+)__", r"\1", text)
+    text = re.sub(r"_([^_]+)_", r"\1", text)
+    # 合并空白
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
 def store_documents_in_knowledge_base(document_list):
     """
@@ -47,6 +86,11 @@ def fetch_rss_feeds(id:int, session:Session) -> bool:
                 # 检查数据库中是否已存在相同的链接
                 existing_doc = session.exec(select(Document).where(Document.link == entry.link)).first()
                 if not existing_doc:
+                    # 清洗标题与描述
+                    raw_title = entry.title if hasattr(entry, 'title') else entry.get('title', '')
+                    raw_description = entry.description if hasattr(entry, 'description') else entry.get('summary', '')
+                    clean_title = clean_text(raw_title)
+                    clean_description = clean_text(raw_description)
                     # 处理标签数据，确保将FeedParserDict对象转换为字符串
                     tags_list = entry.get("tags", [])
                     tag_strings = []
@@ -58,9 +102,9 @@ def fetch_rss_feeds(id:int, session:Session) -> bool:
                     
                     # 创建新的Document实例
                     document = Document(
-                        title=entry.title,
+                        title=clean_title,
                         link=entry.link,
-                        description=entry.description,
+                        description=clean_description,
                         tags=",".join(tag_strings),
                         pub_date=datetime.datetime(*entry.get("published_parsed", time.struct_time((1970, 1, 1, 0, 0, 0, 0, 1, 0)))[:6]) if entry.get("published_parsed") else None,
                         author=entry.get("author", None),
@@ -70,7 +114,7 @@ def fetch_rss_feeds(id:int, session:Session) -> bool:
                     session.commit()
                     # 刷新对象以确保所有属性都已正确设置
                     session.refresh(document)
-                    app_logger.info(f"Added new document: {entry.title}")
+                    app_logger.info(f"Added new document: {clean_title}")
                     document_list.append({
                         "id": document.id,
                         "title": document.title,

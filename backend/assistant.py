@@ -49,11 +49,85 @@ def create_assistant():
         verbose=True,
         handle_parsing_errors=True,
         max_iterations=5,
-        max_execution_time=60,
+        max_execution_time=180,  # 3分钟超时
         agent_kwargs=agent_kwargs
     )
     
     return assistant
+
+def query_with_sources(query):
+    """查询并基于检索到的来源生成有依据的回答"""
+    # 先检索来源
+    knowledge_base_tool = create_knowledge_base_tool()
+    raw_sources = knowledge_base_tool.invoke({"action": "retrieve", "query": query, "k": 5, "rerank": True})
+
+    origin = "knowledge_base"
+    if not isinstance(raw_sources, list) or len(raw_sources) == 0 or str(raw_sources[0].get("content", "")).strip() == "Placeholder text":
+        origin = "online_search"
+        online_search_tool = create_online_search_tool()
+        raw_sources = online_search_tool.invoke(query)
+        if not isinstance(raw_sources, list):
+            raw_sources = []
+
+    # 用检索到的来源来约束生成，避免模型跑题
+    # 简单相关性过滤：仅保留标题/内容包含查询关键词的来源
+    def filter_relevant_sources(q, sources):
+        try:
+            q_terms = [t.strip().lower() for t in q.split() if t.strip()]
+            if not q_terms:
+                q_terms = [q.lower()]
+        except Exception:
+            q_terms = [str(q).lower()]
+        filtered = []
+        for s in sources or []:
+            try:
+                title = s.get("metadata", {}).get("title", "") if isinstance(s.get("metadata", {}), dict) else s.get("title", "")
+                content = s.get("content", "")
+                hay = (title or "") + "\n" + (content or "")
+                hay_lower = hay.lower()
+                if any(term and term in hay_lower for term in q_terms):
+                    filtered.append(s)
+            except Exception:
+                continue
+        return filtered
+
+    relevant_sources = filter_relevant_sources(query, raw_sources)
+    # 若过滤后为空，则仍使用原始sources，但在提示中要求忽略无关内容
+    sources_for_prompt = relevant_sources if len(relevant_sources) > 0 else (raw_sources if isinstance(raw_sources, list) else [])
+
+    def format_sources(sources):
+        lines = []
+        for i, s in enumerate(sources[:3], 1):
+            try:
+                title = s.get("metadata", {}).get("title", "") if isinstance(s.get("metadata", {}), dict) else s.get("title", "")
+                content = s.get("content", "")
+                url = s.get("url", "")
+                lines.append(f"[来源{i}] 标题: {title}\n内容: {content}\n链接: {url}")
+            except Exception:
+                lines.append(str(s))
+        return "\n\n".join(lines) if lines else "(无)"
+
+    sources_block = format_sources(sources_for_prompt)
+
+    # 直接使用同一模型进行有依据的回答
+    llm = Ollama(model="qwen2.5:3b", temperature=0)
+    prompt = (
+        "你是一名智能助手。只依据给定的资料作答，不要编造。\n"
+        "若资料中存在与问题无关的内容，请忽略无关内容。\n"
+        "如果至少有一条相关资料，请给出与问题主题最相关的要点总结；\n"
+        "仅当完全没有相关资料时回复：‘暂无资料’。\n"
+        "请用简洁中文回答。\n\n"
+        f"用户问题：{query}\n\n"
+        f"资料如下：\n{sources_block}\n\n"
+        "基于以上资料，给出直接答案："
+    )
+    final_answer = llm.invoke(prompt)
+
+    return {
+        "answer": final_answer,
+        "raw_sources": raw_sources,
+        "origin": origin
+    }
 
 if __name__ == "__main__":
     # 创建并测试助手

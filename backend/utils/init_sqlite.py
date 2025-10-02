@@ -5,6 +5,8 @@ from sqlmodel import SQLModel, create_engine
 from utils.logging_config import app_logger
 from models.rss_source import RssSource
 from models.document import Document
+from models.user import User
+from models.analysis import Analysis
 
 # Try to load dotenv to support reading environment variables from .env file
 try:
@@ -14,16 +16,22 @@ except ImportError:
     app_logger.warning("Note: python-dotenv library is not installed, environment variables will be read from the system.")
     app_logger.info("If you need to load environment variables from .env file, please run: pip install python-dotenv")
 
+# Create engine instance
+db_path = os.getenv("DATABASE_PATH")
+if not db_path:
+    app_logger.error("DATABASE_PATH environment variable is not set.")
+    engine = None
+else:
+    app_logger.info(f"Database path: {db_path}")
+    engine = create_engine(f"sqlite:///{db_path}")
+
 def init_db():
     """
     Initializes the SQLite database and creates tables based on SQLModel metadata.
     """
-    db_path = os.getenv("DATABASE_PATH")
-    if not db_path:
-        app_logger.error("DATABASE_PATH environment variable is not set.")
+    if not engine:
+        app_logger.error("Database engine is not available. Cannot initialize database.")
         return
-    app_logger.info(f"Database path: {db_path}")
-    engine = create_engine(f"sqlite:///{db_path}")
     
     app_logger.info("Creating database and tables...")
     SQLModel.metadata.create_all(engine)

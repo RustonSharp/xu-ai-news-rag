@@ -11,6 +11,7 @@ sentence-transformers==2.7.0
 langchain-huggingface==0.0.3
 python-dotenv==1.0.0
 langchain-tavily>=0.1.5
+tavily-python>=0.3.3
 pydantic==2.7.4
 sqlmodel
 scikit-learn
@@ -18,3 +19,7 @@ beautifulsoup4
 matplotlib
 umap-learn
 hdbscan
+flask
+bcrypt
+pyjwt
+playwright>=1.40.0

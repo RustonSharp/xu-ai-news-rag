@@ -147,6 +147,123 @@ def create_online_search_tool():
             func=mock_search,
             description="用于搜索最新的网络信息，当你需要最新的、实时的或者知识库中没有的信息时使用此工具"
         )
+def create_online_search_tool_v2():
+    """创建一个可以进行在线搜索的工具"""
+    # 尝试获取TAVILY API密钥
+    tavily_api_key = os.environ.get('TAVILY_API_KEY')
+    
+    # 如果没有API密钥，提示用户输入
+    if not tavily_api_key:
+        print("提示：TAVILY_API_KEY环境变量未设置clear，将请求用户输入")
+        try:
+            # 使用getpass安全获取API密钥
+            tavily_api_key = getpass.getpass("请输入Tavily API密钥：")
+            os.environ["TAVILY_API_KEY"] = tavily_api_key
+        except Exception as e:
+            print(f"获取API密钥失败：{str(e)}")
+            print("警告：将使用模拟搜索功能")
+            
+            # 创建模拟搜索函数
+            def mock_search(query):
+                return [
+                    {"content": f"这是关于'{query}'的模拟搜索结果。", "url": "https://example.com"}
+                ]
+            
+            # 创建模拟搜索工具
+            return Tool(
+                name="OnlineSearchV2",
+                func=mock_search,
+                description="使用无头浏览器访问Bing搜索网站，用于搜索最新的网络信息，当你需要最新的、实时的或者知识库中没有的信息时使用此工具"
+            )
+    
+    try:
+        print("已成功配置Tavily在线搜索功能")
+        
+        # 定义搜索包装函数，使用requests直接调用Tavily API
+        def search_wrapper(query):
+            try:
+                # Tavily API的基础URL
+                url = "https://api.tavily.com/search"
+                
+                # 检查API密钥是否为空
+                if not tavily_api_key:
+                    return "错误：TAVILY_API_KEY未设置，请确保环境变量已正确配置或通过提示输入API密钥。"
+                
+                # 准备请求参数
+                payload = {
+                    "api_key": tavily_api_key,
+                    "query": query,
+                    "search_depth": "basic",  # 基础搜索深度
+                    "max_results": 5,  # 返回5个结果
+                    "include_answer": False,  # 不包含直接回答
+                    "include_raw_content": False,  # 不包含原始内容
+                    "include_images": False  # 不包含图片
+                }
+                
+                # 发送POST请求
+                response = requests.post(url, json=payload)
+                
+                # 检查响应状态
+                if response.status_code != 200:
+                    # 更安全地显示API密钥信息，避免泄露完整密钥
+                    if len(tavily_api_key) > 10:
+                        api_key_display = f"{tavily_api_key[:5]}...{tavily_api_key[-5:]}"
+                    else:
+                        api_key_display = "密钥长度不足，无法安全显示"
+                    return f"搜索请求失败，状态码：{response.status_code}，错误信息：{response.text}，API密钥检查：{api_key_display}"
+                
+                # 解析响应JSON
+                try:
+                    results = response.json()
+                except json.JSONDecodeError:
+                    return f"无法解析搜索结果：{response.text}"
+                
+                # 提取结果列表
+                if "results" not in results:
+                    return f"搜索结果格式不正确，缺少'results'字段"
+                
+                # 格式化结果
+                formatted_results = []
+                for i, result in enumerate(results["results"]):
+                    formatted_results.append({
+                        "content": result.get("content", ""),
+                        "url": result.get("url", ""),
+                        "title": result.get("title", ""),
+                        "published_date": "",
+                        "score": 1.0 - (i * 0.1),  # 简单评分，结果越靠前分数越高
+                        "is_direct_answer": False
+                    })
+                
+                return formatted_results
+            except requests.RequestException as e:
+                return f"搜索请求出错：{str(e)}"
+            except Exception as e:
+                return f"搜索出错：{str(e)}。请检查TAVILY_API_KEY是否正确设置。"
+        
+        # 创建在线搜索工具
+        online_search_tool = Tool(
+            name="OnlineSearchV2",
+            func=search_wrapper,
+            description="使用Tavily API进行搜索，用于搜索最新的网络信息，当你需要最新的、实时的或者知识库中没有的信息时使用此工具"
+        )
+        
+        return online_search_tool
+    except Exception as e:
+        print(f"创建Tavily搜索工具失败：{str(e)}")
+        print("警告：将使用模拟搜索功能")
+        
+        # 创建模拟搜索函数
+        def mock_search(query):
+            return [
+                {"content": f"这是关于'{query}'的模拟搜索结果。", "url": "https://example.com"}
+            ]
+        
+        # 创建模拟搜索工具
+        return Tool(
+            name="OnlineSearchV2",
+            func=mock_search,
+            description="使用无头浏览器访问Bing搜索网站，用于搜索最新的网络信息，当你需要最新的、实时的或者知识库中没有的信息时使用此工具"
+        )
 
 # 知识库工具（向量数据库）
 def create_knowledge_base_tool():
@@ -516,6 +633,18 @@ def knowledge_base_cluster_analysis():
                 
                 # 去除特殊字符和数字，保留中英文
                 text = re.sub(r'[^\u4e00-\u9fa5a-zA-Z\s]', ' ', text)
+
+                # 额外移除常见HTML属性/无意义标记及其组合（如 dir、ltr、fr 以及包含它们的短语）
+                banned_tokens = [
+                    'dir', 'ltr', 'rtl', 'align', 'center', 'left', 'right', 'nbsp', 'nbspnbsp',
+                    'figcaption', 'caption', 'blockquote', 'figure', 'video', 'pagevideo', 'poster', 'style'
+                ]
+                # 移除独立出现的禁用词
+                pattern_single = r'\b(' + '|'.join(banned_tokens) + r')\b'
+                text = re.sub(pattern_single, ' ', text, flags=re.IGNORECASE)
+                # 移除含禁用词的二元短语（例："dir ltr", "ebmt dir", "bbc fr"）
+                pattern_bigram = r'\b(?:\w+\s+)?(' + '|'.join(banned_tokens) + r')(?:\s+\w+)?\b'
+                text = re.sub(pattern_bigram, ' ', text, flags=re.IGNORECASE)
                 
                 # 处理tags字段
                 if tags and isinstance(tags, str):
@@ -799,6 +928,15 @@ def knowledge_base_cluster_analysis():
                 # 2. 过滤单字词汇（除非是特定有意义的单字）
                 if len(word) == 1 and word not in ['水', '火', '土', '金', '木', '车', '路', '桥', '药', '病', '法', '税', '政', '军', '国']:
                     return False
+
+                # 2.1 任何包含以下子串的词（包括二元短语）直接过滤
+                banned_substrings = [
+                    'dir', 'ltr', 'rtl', 'align', 'center', 'left', 'right', 'nbsp',
+                    'figcaption', 'caption', 'blockquote', 'figure', 'video', 'pagevideo', 'poster', 'style'
+                ]
+                lower_word = word.lower()
+                if any(sub in lower_word for sub in banned_substrings):
+                    return False
                 
                 # 3. 过滤过长词汇（超过15个字符的词汇通常不是好的关键词）
                 if len(word) > 15:
@@ -961,7 +1099,7 @@ def knowledge_base_cluster_analysis():
                     custom_stop_words = [
                         '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这', '作者',
                         '笔者',
-                        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'am', 'http', 'https', 'www', 'com', 'cn', 'org', 'net', 'href', 'target', 'blank', 'src', 'img', 'figure', 'figcaption', 'div', 'class', 'style', 'id', 'title', 'alt', 'author',
+                        'dir','ltr','fr','the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'am', 'http', 'https', 'www', 'com', 'cn', 'org', 'net', 'href', 'target', 'blank', 'src', 'img', 'figure', 'figcaption', 'div', 'class', 'style', 'id', 'title', 'alt', 'author',
                         'as', 'it', 'than', 'said', 'say', 'new', 'old', 'up', 'more', 'he', 'she', 'him', 'her', 'me', 'my', 'mine'
                     ]
                     
@@ -1085,6 +1223,7 @@ if __name__ == "__main__":
     try:
         knowledge_base_tool = create_knowledge_base_tool()
         online_search_tool = create_online_search_tool()
+        online_search_tool_v2 = create_online_search_tool_v2()
         
         # 从环境变量获取数据目录路径
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1101,6 +1240,18 @@ if __name__ == "__main__":
                 app_logger.error(f"搜索测试出错：{str(e)}")
                 # 打印工具的描述信息，了解如何正确使用
             app_logger.info(f"工具描述：{online_search_tool.description}")
+        
+        def test_online_search_v2():
+            # 测试在线搜索v2
+            app_logger.info("测试在线搜索v2：")
+            try:
+                # 尝试运行搜索
+                result = online_search_tool_v2.invoke("人工智能最新发展")
+                app_logger.info(f"搜索结果：{result}")
+            except Exception as e:
+                app_logger.error(f"搜索测试出错：{str(e)}")
+                # 打印工具的描述信息，了解如何正确使用
+            app_logger.info(f"工具描述：{online_search_tool_v2.description}")
         
         def test_store_into_faiss():
             from sqlmodel import Session, select,create_engine
@@ -1122,16 +1273,17 @@ if __name__ == "__main__":
         def test_retrieve_from_faiss():
             # 测试检索文档
             app_logger.info("测试检索文档：")
-            app_logger.info(knowledge_base_tool.run({"action": "retrieve", "query": "日本", "k": 3, "rerank": True}))
+            app_logger.info(knowledge_base_tool.run({"action": "retrieve", "query": "外卖", "k": 3, "rerank": True}))
 
         def test_cluster_analysis():
             # 测试聚类分析
             app_logger.info("测试聚类分析：")
             app_logger.info(knowledge_base_tool.run({"action": "cluster_analysis"}))
 
-        test_cluster_analysis()
+        # test_cluster_analysis()
         # test_store_into_faiss()
-        # test_retrieve_from_faiss()
+        test_retrieve_from_faiss()
+        # test_online_search()
     except Exception as e:
         app_logger.error(f"执行测试函数时出错：{str(e)}")
         print(f"错误：无法初始化知识库工具。错误信息：{str(e)}")
