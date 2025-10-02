@@ -38,6 +38,7 @@ def get_scheduler_status():
                     "name": rss_source.name,
                     "url": rss_source.url,
                     "interval": rss_source.interval,
+                    "is_paused": getattr(rss_source, 'is_paused', False),
                     "active": rss_source.id in active_threads
                 })
             
@@ -110,42 +111,6 @@ def stop_scheduler():
             "message": f"停止调度器失败: {str(e)}"
         }), 500
 
-@scheduler_bp.route('/restart', methods=['POST'])
-@cross_origin()
-def restart_scheduler():
-    """重启调度器"""
-    try:
-        # 检查是否允许手动重启调度器
-        allow_manual_start = os.getenv("ALLOW_MANUAL_SCHEDULER_START", "true").lower() == "true"
-        if not allow_manual_start:
-            return jsonify({
-                "success": False,
-                "message": "调度器手动启动已禁用"
-            }), 400
-            
-        was_running = rss_scheduler.running
-        
-        if was_running:
-            rss_scheduler.stop()
-        
-        # 等待一秒确保调度器完全停止
-        import time
-        time.sleep(1)
-        
-        rss_scheduler.start()
-        app_logger.info("RSS scheduler restarted via API")
-        
-        return jsonify({
-            "success": True,
-            "message": f"调度器已成功{'重' if was_running else '启'}动"
-        })
-    except Exception as e:
-        app_logger.error(f"Error restarting scheduler: {str(e)}")
-        return jsonify({
-            "success": False,
-            "message": f"重启调度器失败: {str(e)}"
-        }), 500
-
 @scheduler_bp.route('/fetch/<int:rss_id>', methods=['POST'])
 @cross_origin()
 def fetch_rss_now(rss_id):
@@ -161,6 +126,13 @@ def fetch_rss_now(rss_id):
                     "success": False,
                     "message": f"未找到ID为 {rss_id} 的RSS源"
                 }), 404
+            
+            # 检查RSS源是否暂停
+            if hasattr(rss_source, 'is_paused') and rss_source.is_paused:
+                return jsonify({
+                    "success": False,
+                    "message": f"RSS源 {rss_source.name} 已暂停，无法获取新闻"
+                }), 400
             
             # 立即获取RSS
             success = fetch_rss_feeds(rss_id, session)

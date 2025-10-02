@@ -107,7 +107,7 @@ const AnalyticsPage: React.FC = () => {
             className="btn btn-primary"
           >
             <RefreshCw size={16} className={clusterLoading ? 'spinning' : ''} />
-            聚类分析
+            生成最新聚类分析
           </button>
           <button
             onClick={loadData}

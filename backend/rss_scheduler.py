@@ -1,5 +1,6 @@
 import threading
 import time
+import datetime
 from sqlmodel import Session, select
 from models.rss_source import RssSource
 from models.document import Document
@@ -47,86 +48,94 @@ class RSSScheduler:
         """主调度循环"""
         while self.running:
             try:
+                now = datetime.datetime.now()
+                current_hour = now.hour
+                current_minute = now.minute
+                
                 with Session(engine) as session:
                     # 获取所有RSS源
                     rss_sources = session.exec(select(RssSource)).all()
                     
                     for rss_source in rss_sources:
+                        # 检查RSS源是否暂停
+                        if hasattr(rss_source, 'is_paused') and rss_source.is_paused:
+                            continue
+                            
                         # 检查是否已经有该RSS源的线程在运行
                         with self.lock:
                             if rss_source.id in self.threads and self.threads[rss_source.id].is_alive():
                                 continue
                             
-                            # 将字符串间隔转换为秒数
-                            interval_seconds = self._interval_to_seconds(rss_source.interval)
-                            
-                            # 创建新的线程来处理RSS源
-                            thread = threading.Thread(
-                                target=self._process_rss_source,
-                                args=(rss_source.id, interval_seconds)
-                            )
-                            thread.daemon = True
-                            thread.start()
-                            self.threads[rss_source.id] = thread
-                            app_logger.info(f"Started RSS fetch thread for source {rss_source.name} (ID: {rss_source.id}) with interval {rss_source.interval} ({interval_seconds}s)")
+                            # 检查是否到了执行时间
+                            if self._should_execute_now(rss_source.interval, current_hour, current_minute):
+                                # 创建新的线程来处理RSS源
+                                thread = threading.Thread(
+                                    target=self._process_rss_source,
+                                    args=(rss_source.id,)
+                                )
+                                thread.daemon = True
+                                thread.start()
+                                self.threads[rss_source.id] = thread
+                                app_logger.info(f"Started RSS fetch thread for source {rss_source.name} (ID: {rss_source.id}) with interval {rss_source.interval}")
                 
-                # 休眠一段时间，避免过于频繁的检查
-                time.sleep(10)
+                # 每小时检查一次
+                time.sleep(60 * 60)
                 
             except Exception as e:
                 app_logger.error(f"Error in scheduler loop: {str(e)}")
-                time.sleep(30)  # 发生错误时等待更长时间
+                time.sleep(60 * 60)  # 发生错误时等待一小时
     
-    def _interval_to_seconds(self, interval_str):
-        """将字符串间隔转换为秒数"""
+    def _should_execute_now(self, interval_str, current_hour, current_minute):
+        """检查当前时间是否应该执行RSS获取"""
+        # 只在整点执行（分钟为0）
+        if current_minute != 0:
+            return False
+            
         if interval_str == 'SIX_HOUR':
-            return 6 * 60 * 60  # 6小时
+            # 每6小时执行一次：0点、6点、12点、18点
+            return current_hour in [0, 6, 12, 18]
         elif interval_str == 'TWELVE_HOUR':
-            return 12 * 60 * 60  # 12小时
+            # 每12小时执行一次：0点、12点
+            return current_hour in [0, 12]
         elif interval_str == 'ONE_DAY':
-            return 24 * 60 * 60  # 24小时
+            # 每天执行一次：0点
+            return current_hour == 0
         else:
-            # 默认为24小时
-            return 24 * 60 * 60
+            # 默认为每天执行一次：0点
+            return current_hour == 0
     
-    def _process_rss_source(self, rss_id: int, interval: int):
+    def _process_rss_source(self, rss_id: int):
         """处理单个RSS源的定时任务"""
-        while self.running:
-            try:
-                with Session(engine) as session:
-                    # 检查RSS源是否仍然存在
-                    rss_source = session.exec(select(RssSource).where(RssSource.id == rss_id)).first()
-                    if not rss_source:
-                        app_logger.info(f"RSS source with ID {rss_id} no longer exists, stopping thread")
-                        break
-                    
-                    # 执行RSS获取
-                    app_logger.info(f"Fetching RSS for source {rss_source.name} (ID: {rss_id})")
-                    success = fetch_rss_feeds(rss_id, session)
-                    
-                    if success:
-                        app_logger.info(f"Successfully fetched RSS for source {rss_source.name} (ID: {rss_id})")
-                    else:
-                        app_logger.warning(f"Failed to fetch RSS for source {rss_source.name} (ID: {rss_id})")
+        try:
+            with Session(engine) as session:
+                # 检查RSS源是否仍然存在
+                rss_source = session.exec(select(RssSource).where(RssSource.id == rss_id)).first()
+                if not rss_source:
+                    app_logger.info(f"RSS source with ID {rss_id} no longer exists, stopping thread")
+                    return
                 
-                # 等待指定的间隔时间
-                # 将等待时间分成小块，以便能够及时响应停止信号
-                wait_time = interval
-                while wait_time > 0 and self.running:
-                    sleep_chunk = min(10, wait_time)  # 每次最多休眠10秒
-                    time.sleep(sleep_chunk)
-                    wait_time -= sleep_chunk
+                # 检查RSS源是否暂停
+                if hasattr(rss_source, 'is_paused') and rss_source.is_paused:
+                    app_logger.info(f"RSS source {rss_source.name} (ID: {rss_id}) is paused, skipping fetch")
+                    return
+                
+                # 执行RSS获取
+                app_logger.info(f"Fetching RSS for source {rss_source.name} (ID: {rss_id})")
+                success = fetch_rss_feeds(rss_id, session)
+                
+                if success:
+                    app_logger.info(f"Successfully fetched RSS for source {rss_source.name} (ID: {rss_id})")
+                else:
+                    app_logger.warning(f"Failed to fetch RSS for source {rss_source.name} (ID: {rss_id})")
                     
-            except Exception as e:
-                app_logger.error(f"Error processing RSS source {rss_id}: {str(e)}")
-                # 发生错误时等待一段时间再重试
-                time.sleep(60)
-        
-        # 线程结束时清理
-        with self.lock:
-            if rss_id in self.threads:
-                del self.threads[rss_id]
-        app_logger.info(f"RSS fetch thread for source ID {rss_id} stopped")
+        except Exception as e:
+            app_logger.error(f"Error processing RSS source {rss_id}: {str(e)}")
+        finally:
+            # 线程结束时清理
+            with self.lock:
+                if rss_id in self.threads:
+                    del self.threads[rss_id]
+            app_logger.info(f"RSS fetch thread for source ID {rss_id} completed")
 
 # 创建全局调度器实例
 rss_scheduler = RSSScheduler()
