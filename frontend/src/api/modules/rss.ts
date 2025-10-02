@@ -28,13 +28,13 @@ export const rssAPI = {
    * @param {Object} rssData - RSS 源数据
    * @param {string} rssData.name - RSS 源名称
    * @param {string} rssData.url - RSS 源URL
-   * @param {number} rssData.interval - 采集间隔（秒）
+   * @param {string} rssData.interval - 采集间隔（'SIX_HOUR', 'TWELVE_HOUR', 'ONE_DAY'）
    * @returns {Promise} 创建结果
    */
   createRssSource: (rssData: {
     name: string;
     url: string;
-    interval?: number;
+    interval?: string;
   }) => {
     return request.post(API_ENDPOINTS.COLLECTION.RSS_SOURCES, rssData)
   },
@@ -45,13 +45,13 @@ export const rssAPI = {
    * @param {Object} rssData - RSS 源数据
    * @param {string} rssData.name - RSS 源名称
    * @param {string} rssData.url - RSS 源URL
-   * @param {number} rssData.interval - 采集间隔（秒）
+   * @param {string} rssData.interval - 采集间隔（'SIX_HOUR', 'TWELVE_HOUR', 'ONE_DAY'）
    * @returns {Promise} 更新结果
    */
   updateRssSource: (id: string | number, rssData: {
     name?: string;
     url?: string;
-    interval?: number;
+    interval?: string;
   }) => {
     return request.put(API_ENDPOINTS.COLLECTION.RSS_SOURCE(id), rssData)
   },

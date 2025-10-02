@@ -56,7 +56,7 @@ const mockData = {
       id: 1,
       name: 'AI新闻RSS',
       url: 'https://example.com/ai-news.rss',
-      interval: 3600, // 1小时，单位秒
+      interval: 'SIX_HOUR', // 6小时
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-15T12:00:00Z'
     },
@@ -64,7 +64,7 @@ const mockData = {
       id: 2,
       name: '科技博客',
       url: 'https://example.com/tech-blog',
-      interval: 7200, // 2小时，单位秒
+      interval: 'TWELVE_HOUR', // 12小时
       created_at: '2024-01-02T00:00:00Z',
       updated_at: '2024-01-15T11:30:00Z'
     }

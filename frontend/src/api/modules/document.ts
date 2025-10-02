@@ -32,7 +32,7 @@ export const getDocuments = async (): Promise<ApiResponse<DocumentsResponse>> =>
 // 获取文档分页列表
 export const getDocumentsPage = async (params?: Record<string, any>): Promise<ApiResponse<DocumentsResponse>> => {
     return request({
-        url: "/documents/page",
+        url: "/api/documents/page",
         method: HTTP_METHODS.GET,
         params
     })
@@ -49,7 +49,7 @@ export const getDocument = async (id: number): Promise<ApiResponse<Document>> =>
 // 获取特定RSS源的所有文档
 export const getDocumentsBySourceId = async (sourceId: number): Promise<ApiResponse<Document[]>> => {
     return request({
-        url: `/documents/get_documents_by_source_id/${sourceId}`,
+        url: `/api/documents/get_documents_by_source_id/${sourceId}`,
         method: HTTP_METHODS.GET
     })
 }
@@ -57,7 +57,7 @@ export const getDocumentsBySourceId = async (sourceId: number): Promise<ApiRespo
 // 获取聚类分析
 export const getClusterAnalysis = async (): Promise<ApiResponse<ClusterAnalysis>> => {
     return request({
-        url: '/documents/cluster_analysis',
+        url: '/api/documents/cluster_analysis',
         method: HTTP_METHODS.GET
     })
 }
@@ -65,7 +65,7 @@ export const getClusterAnalysis = async (): Promise<ApiResponse<ClusterAnalysis>
 // 获取最新一次聚类分析
 export const getLatestClusterAnalysis = async (): Promise<ApiResponse<ClusterAnalysis>> => {
     return request({
-        url: '/documents/cluster_analysis/latest',
+        url: '/api/documents/cluster_analysis/latest',
         method: HTTP_METHODS.GET
     })
 }
@@ -88,7 +88,7 @@ export const uploadExcel = async (file: File): Promise<ApiResponse<{ message: st
 // 上传文档
 export const uploadDocument = async (
     formData: FormData,
-    onProgress?: (progressEvent: ProgressEvent) => void
+    onProgress?: (progressEvent: any) => void
 ): Promise<ApiResponse<{ id: string }>> => {
     return request({
         url: API_ENDPOINTS.DOCUMENTS.UPLOAD,

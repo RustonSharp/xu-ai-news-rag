@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify
 from sqlmodel import Session, create_engine, select
 from models.rss_source import RssSource
-from models.enums.interval import IntervalEnum
 import os
 from dotenv import load_dotenv
 from utils.logging_config import app_logger
+from rss_scheduler import rss_scheduler
 
 # 加载环境变量
 load_dotenv()
@@ -34,7 +34,7 @@ def get_rss_sources():
                 "id": source.id,
                 "name": source.name,
                 "url": source.url,
-                "interval": source.interval.value
+                "interval": source.interval
             } for source in rss_sources])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -52,7 +52,7 @@ def get_rss_source(source_id):
                 "id": rss_source.id,
                 "name": rss_source.name,
                 "url": rss_source.url,
-                "interval": rss_source.interval.value
+                "interval": rss_source.interval
             })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -73,26 +73,35 @@ def create_rss_source():
                 return jsonify({"error": "RSS source with this URL already exists"}), 400
             
             # 创建新的RSS源
-            interval = data.get('interval', IntervalEnum.MINUTE.value)
-            try:
-                interval_enum = IntervalEnum(interval)
-            except ValueError:
-                return jsonify({"error": f"Invalid interval value. Must be one of: {[e.value for e in IntervalEnum]}"}), 400
+            interval = data.get('interval', 'ONE_DAY')
+            # 验证interval值是否有效
+            valid_intervals = ['SIX_HOUR', 'TWELVE_HOUR', 'ONE_DAY']
+            if interval not in valid_intervals:
+                return jsonify({"error": f"Invalid interval value. Must be one of: {valid_intervals}"}), 400
             
             new_source = RssSource(
                 name=data['name'],
                 url=data['url'],
-                interval=interval_enum
+                interval=interval
             )
             session.add(new_source)
             session.commit()
             session.refresh(new_source)
             
+            # 重启调度器以包含新添加的RSS源
+            auto_start_scheduler = os.getenv("AUTO_START_SCHEDULER", "true").lower() == "true"
+            if rss_scheduler.running and auto_start_scheduler:
+                app_logger.info("Restarting RSS scheduler to include new RSS source")
+                rss_scheduler.stop()
+                import time
+                time.sleep(1)  # 等待调度器完全停止
+                rss_scheduler.start()
+            
             return jsonify({
                 "id": new_source.id,
                 "name": new_source.name,
                 "url": new_source.url,
-                "interval": new_source.interval.value
+                "interval": new_source.interval
             }), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -126,21 +135,32 @@ def update_rss_source(source_id):
                     return jsonify({"error": "RSS source with this URL already exists"}), 400
                 rss_source.url = data['url']
             if 'interval' in data:
-                try:
-                    app_logger.info(f"Updating interval to {data['interval']} for source ID {source_id}")
-                    rss_source.interval = IntervalEnum(data['interval'])
-                except ValueError:
+                # 验证interval值是否有效
+                valid_intervals = ['SIX_HOUR', 'TWELVE_HOUR', 'ONE_DAY']
+                if data['interval'] not in valid_intervals:
                     app_logger.error(f"Invalid interval value {data['interval']} for source ID {source_id}")
-                    return jsonify({"error": f"Invalid interval value. Must be one of: {[e.value for e in IntervalEnum]}"}), 400
+                    return jsonify({"error": f"Invalid interval value. Must be one of: {valid_intervals}"}), 400
+                app_logger.info(f"Updating interval to {data['interval']} for source ID {source_id}")
+                rss_source.interval = data['interval']
             
             session.commit()
             session.refresh(rss_source)
             app_logger.info(f"RSS source ID {source_id} updated successfully.")
+            
+            # 重启调度器以应用RSS源更改
+            auto_start_scheduler = os.getenv("AUTO_START_SCHEDULER", "true").lower() == "true"
+            if rss_scheduler.running and auto_start_scheduler:
+                app_logger.info("Restarting RSS scheduler to apply RSS source changes")
+                rss_scheduler.stop()
+                import time
+                time.sleep(1)  # 等待调度器完全停止
+                rss_scheduler.start()
+            
             return jsonify({
                 "id": rss_source.id,
                 "name": rss_source.name,
                 "url": rss_source.url,
-                "interval": rss_source.interval.value
+                "interval": rss_source.interval
             })
     except Exception as e:
         app_logger.error(f"Error updating RSS source ID {source_id}: {str(e)}")
@@ -161,6 +181,16 @@ def delete_rss_source(source_id):
             session.delete(rss_source)
             session.commit()
             app_logger.info(f"DELETE /api/rss/sources/{source_id} - RSS source ID {source_id} deleted successfully")
+            
+            # 重启调度器以移除已删除的RSS源
+            auto_start_scheduler = os.getenv("AUTO_START_SCHEDULER", "true").lower() == "true"
+            if rss_scheduler.running and auto_start_scheduler:
+                app_logger.info("Restarting RSS scheduler to remove deleted RSS source")
+                rss_scheduler.stop()
+                import time
+                time.sleep(1)  # 等待调度器完全停止
+                rss_scheduler.start()
+            
             return jsonify({"message": "RSS source deleted successfully"})
     except Exception as e:
         app_logger.error(f"DELETE /api/rss/sources/{source_id} - Error deleting RSS source ID {source_id}: {str(e)}")

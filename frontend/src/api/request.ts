@@ -18,7 +18,7 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 // 创建 axios 实例
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001',
   timeout: 180000, // 3分钟超时
   headers: {
     'Content-Type': 'application/json'

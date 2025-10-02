@@ -70,64 +70,64 @@ interface ApiEndpoints {
 export const API_ENDPOINTS: ApiEndpoints = {
   // 认证相关
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    REFRESH: '/auth/refresh',
-    LOGOUT: '/auth/logout',
-    PROFILE: '/auth/profile'
+    LOGIN: '/api/auth/login',
+    REGISTER: '/api/auth/register',
+    REFRESH: '/api/auth/refresh',
+    LOGOUT: '/api/auth/logout',
+    PROFILE: '/api/auth/profile'
   },
 
   // 文档相关
   DOCUMENTS: {
-    LIST: '/documents',
-    CREATE: '/documents',
-    DETAIL: (id: string | number) => `/documents/${id}`,
-    UPDATE: (id: string | number) => `/documents/${id}`,
-    DELETE: (id: string | number) => `/documents/${id}`,
-    SEARCH: '/documents/search',
-    BATCH_DELETE: '/documents/batch',
-    UPLOAD: '/documents/upload',
-    UPLOAD_EXCEL: '/documents/upload_excel'
+    LIST: '/api/documents',
+    CREATE: '/api/documents',
+    DETAIL: (id: string | number) => `/api/documents/${id}`,
+    UPDATE: (id: string | number) => `/api/documents/${id}`,
+    DELETE: (id: string | number) => `/api/documents/${id}`,
+    SEARCH: '/api/documents/search',
+    BATCH_DELETE: '/api/documents/batch',
+    UPLOAD: '/api/documents/upload',
+    UPLOAD_EXCEL: '/api/documents/upload_excel'
   },
 
   // 搜索相关
   SEARCH: {
-    QUERY: '/search/query',
-    CHAT: '/chat/completions',
-    HISTORY: '/search/history',
-    SUGGESTIONS: '/search/suggestions'
+    QUERY: '/api/search/query',
+    CHAT: '/api/chat/completions',
+    HISTORY: '/api/search/history',
+    SUGGESTIONS: '/api/search/suggestions'
   },
 
   // 采集相关
   COLLECTION: {
-    RSS_SOURCES: '/rss/sources',
-    RSS_SOURCE: (id: string | number) => `/rss/sources/${id}`,
-    RSS_FEEDS: (id: string | number) => `/rss/feeds/${id}`,
-    WEB_CRAWL: '/collection/crawl',
-    CRAWL_TASKS: '/collection/tasks',
-    CRAWL_TASK: (id: string | number) => `/collection/tasks/${id}`
+    RSS_SOURCES: '/api/rss/sources',
+    RSS_SOURCE: (id: string | number) => `/api/rss/sources/${id}`,
+    RSS_FEEDS: (id: string | number) => `/api/rss/feeds/${id}`,
+    WEB_CRAWL: '/api/collection/crawl',
+    CRAWL_TASKS: '/api/collection/tasks',
+    CRAWL_TASK: (id: string | number) => `/api/collection/tasks/${id}`
   },
 
   // 分析相关
   ANALYTICS: {
-    OVERVIEW: '/analytics/overview',
-    DOCUMENTS_STATS: '/analytics/documents',
-    SEARCH_STATS: '/analytics/search',
-    USER_ACTIVITY: '/analytics/activity',
-    TRENDS: '/analytics/trends'
+    OVERVIEW: '/api/analytics/overview',
+    DOCUMENTS_STATS: '/api/analytics/documents',
+    SEARCH_STATS: '/api/analytics/search',
+    USER_ACTIVITY: '/api/analytics/activity',
+    TRENDS: '/api/analytics/trends'
   },
 
   // 上传相关
   UPLOAD: {
-    FILE: '/upload/file',
-    BATCH: '/upload/batch',
-    PROGRESS: (taskId: string | number) => `/upload/progress/${taskId}`
+    FILE: '/api/upload/file',
+    BATCH: '/api/upload/batch',
+    PROGRESS: (taskId: string | number) => `/api/upload/progress/${taskId}`
   },
 
   // 助手相关
   ASSISTANT: {
-    QUERY: '/assistant/query',
-    HEALTH: '/assistant/health'
+    QUERY: '/api/assistant/query',
+    HEALTH: '/api/assistant/health'
   }
 }
 

@@ -4,10 +4,12 @@ from apis.rss import rss_bp
 from apis.document import document_bp
 from apis.auth import auth_bp
 from apis.assistant import assistant_bp
+from apis.scheduler import scheduler_bp
 from dotenv import load_dotenv
 import os
 from utils.logging_config import app_logger
 from utils.init_sqlite import init_db
+from rss_scheduler import rss_scheduler
 # 加载环境变量
 load_dotenv()
 
@@ -36,6 +38,21 @@ app.register_blueprint(document_bp)
 app.register_blueprint(auth_bp)
 # 注册助手API蓝图
 app.register_blueprint(assistant_bp)
+# 注册调度器API蓝图
+app.register_blueprint(scheduler_bp)
+
+# 从环境变量获取配置
+host = os.getenv("APP_HOST", "0.0.0.0")
+port = int(os.getenv("APP_PORT", 5001))
+debug = os.getenv("APP_DEBUG", "true").lower() == "true"
+auto_start_scheduler = os.getenv("AUTO_START_SCHEDULER", "true").lower() == "true"
+
+# 根据环境变量决定是否自动启动RSS定时任务调度器
+if auto_start_scheduler:
+    app_logger.info("Auto-starting RSS scheduler")
+    rss_scheduler.start()
+else:
+    app_logger.info("RSS scheduler auto-start disabled")
 
 @app.route('/')
 def hello_world():
@@ -43,10 +60,5 @@ def hello_world():
     return jsonify({"message": "Welcome to the API!"})
 
 if __name__ == '__main__':
-    # 从环境变量获取配置
-    host = os.getenv("APP_HOST", "0.0.0.0")
-    port = int(os.getenv("APP_PORT", 5001))
-    debug = os.getenv("APP_DEBUG", "true").lower() == "true"
-    
     app_logger.info(f"Starting Flask app on {host}:{port} with debug={debug}")
     app.run(host=host, port=port, debug=debug)

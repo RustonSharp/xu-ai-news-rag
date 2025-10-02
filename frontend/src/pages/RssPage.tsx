@@ -71,7 +71,7 @@ const RssPage: React.FC = () => {
     name: '',
     url: '',
     description: '',
-    schedule: 'daily',
+    schedule: '24h', // 默认值与后端interval字段'ONE_DAY'对应
     enabled: true,
     tags: [] as string[],
     filters: {
@@ -98,9 +98,9 @@ const RssPage: React.FC = () => {
         name: source.name,
         url: source.url,
         description: '', // 后端当前不提供description字段
-        schedule: source.interval === 60 ? '1h' :
-          source.interval === 3600 ? '1h' :
-            source.interval === 86400 ? '24h' : '1h',
+        schedule: source.interval === 'SIX_HOUR' ? '6h' :
+          source.interval === 'TWELVE_HOUR' ? '12h' :
+            source.interval === 'ONE_DAY' ? '24h' : '24h',
         enabled: true, // 后端当前不提供enabled字段，默认为true
         status: 'active', // 后端当前不提供status字段，默认为active
         lastRun: null, // 后端当前不提供last_run字段
@@ -132,7 +132,7 @@ const RssPage: React.FC = () => {
       name: '',
       url: '',
       description: '',
-      schedule: '1h',
+      schedule: '24h', // 默认值与后端interval字段'ONE_DAY'对应
       enabled: true,
       tags: [],
       filters: {
@@ -168,7 +168,9 @@ const RssPage: React.FC = () => {
       const sourceData = {
         name: formData.name,
         url: formData.url,
-        interval: 60 // 后端期望的interval值，使用MINUTE对应的值60
+        interval: formData.schedule === '6h' ? 'SIX_HOUR' :
+          formData.schedule === '12h' ? 'TWELVE_HOUR' :
+            formData.schedule === '24h' ? 'ONE_DAY' : 'ONE_DAY' // 默认为ONE_DAY
       }
 
       // 调用保存API
@@ -183,9 +185,9 @@ const RssPage: React.FC = () => {
         name: savedSource.name,
         url: savedSource.url,
         description: formData.description,
-        schedule: savedSource.interval === 60 ? '1h' :
-          savedSource.interval === 3600 ? '1h' :
-            savedSource.interval === 86400 ? '24h' : '1h',
+        schedule: savedSource.interval === 'SIX_HOUR' ? '6h' :
+          savedSource.interval === 'TWELVE_HOUR' ? '12h' :
+            savedSource.interval === 'ONE_DAY' ? '24h' : '24h',
         enabled: true, // 后端当前不提供enabled字段，默认为true
         status: 'active', // 后端当前不提供status字段，默认为active
         lastRun: null,
@@ -248,7 +250,7 @@ const RssPage: React.FC = () => {
       const updatedSource = {
         name: currentSource.name,
         url: currentSource.url,
-        interval: 60 // 后端期望的interval值，使用MINUTE对应的值60
+        interval: 'ONE_DAY' // 默认为ONE_DAY
       }
 
       await rssAPI.updateRssSource(sourceId, updatedSource)
@@ -275,11 +277,11 @@ const RssPage: React.FC = () => {
     try {
       // 调用RSS采集API
       const response = await rssAPI.triggerRssCollection(sourceId)
-      
+
       // 检查响应是否成功
       if (response && response.message) {
         alert('采集任务已启动')
-        
+
         const updateSource = (source: DataSource) => ({
           ...source,
           lastRun: new Date().toISOString(),
@@ -519,9 +521,6 @@ const RssPage: React.FC = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, schedule: e.target.value }))}
                     className="input"
                   >
-                    <option value="30m">30分钟</option>
-                    <option value="1h">1小时</option>
-                    <option value="2h">2小时</option>
                     <option value="6h">6小时</option>
                     <option value="12h">12小时</option>
                     <option value="24h">24小时</option>

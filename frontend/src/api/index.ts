@@ -9,6 +9,7 @@ import { documentAPI } from './modules/document'
 import { rssAPI } from './modules/rss'
 import { analyticsAPI } from './modules/analytics'
 import { assistantAPI } from './modules/assistant'
+import { schedulerAPI } from './modules/scheduler'
 
 // API 配置类型
 interface APIConfig {
@@ -24,6 +25,7 @@ interface APIInstance {
   rss: typeof rssAPI
   analytics: typeof analyticsAPI
   assistant: typeof assistantAPI
+  scheduler: typeof schedulerAPI
 }
 
 // 统一导出所有 API
@@ -41,7 +43,8 @@ export {
   documentAPI,
   rssAPI,
   analyticsAPI,
-  assistantAPI
+  assistantAPI,
+  schedulerAPI
 }
 
 // 默认导出（方便直接导入使用）
@@ -50,7 +53,8 @@ const api: APIInstance = {
   documents: documentAPI,
   rss: rssAPI,
   analytics: analyticsAPI,
-  assistant: assistantAPI
+  assistant: assistantAPI,
+  scheduler: schedulerAPI
 }
 
 export default api
@@ -62,7 +66,8 @@ export const createAPIInstance = (config: APIConfig = {}): APIInstance => {
     documents: documentAPI,
     rss: rssAPI,
     analytics: analyticsAPI,
-    assistant: assistantAPI
+    assistant: assistantAPI,
+    scheduler: schedulerAPI
   }
 }
 
