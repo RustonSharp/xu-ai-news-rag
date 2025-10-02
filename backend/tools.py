@@ -633,6 +633,18 @@ def knowledge_base_cluster_analysis():
                 
                 # 去除特殊字符和数字，保留中英文
                 text = re.sub(r'[^\u4e00-\u9fa5a-zA-Z\s]', ' ', text)
+
+                # 额外移除常见HTML属性/无意义标记及其组合（如 dir、ltr、fr 以及包含它们的短语）
+                banned_tokens = [
+                    'dir', 'ltr', 'rtl', 'align', 'center', 'left', 'right', 'nbsp', 'nbspnbsp',
+                    'figcaption', 'caption', 'blockquote', 'figure', 'video', 'pagevideo', 'poster', 'style'
+                ]
+                # 移除独立出现的禁用词
+                pattern_single = r'\b(' + '|'.join(banned_tokens) + r')\b'
+                text = re.sub(pattern_single, ' ', text, flags=re.IGNORECASE)
+                # 移除含禁用词的二元短语（例："dir ltr", "ebmt dir", "bbc fr"）
+                pattern_bigram = r'\b(?:\w+\s+)?(' + '|'.join(banned_tokens) + r')(?:\s+\w+)?\b'
+                text = re.sub(pattern_bigram, ' ', text, flags=re.IGNORECASE)
                 
                 # 处理tags字段
                 if tags and isinstance(tags, str):
@@ -915,6 +927,15 @@ def knowledge_base_cluster_analysis():
                 
                 # 2. 过滤单字词汇（除非是特定有意义的单字）
                 if len(word) == 1 and word not in ['水', '火', '土', '金', '木', '车', '路', '桥', '药', '病', '法', '税', '政', '军', '国']:
+                    return False
+
+                # 2.1 任何包含以下子串的词（包括二元短语）直接过滤
+                banned_substrings = [
+                    'dir', 'ltr', 'rtl', 'align', 'center', 'left', 'right', 'nbsp',
+                    'figcaption', 'caption', 'blockquote', 'figure', 'video', 'pagevideo', 'poster', 'style'
+                ]
+                lower_word = word.lower()
+                if any(sub in lower_word for sub in banned_substrings):
                     return False
                 
                 # 3. 过滤过长词汇（超过15个字符的词汇通常不是好的关键词）
@@ -1252,16 +1273,16 @@ if __name__ == "__main__":
         def test_retrieve_from_faiss():
             # 测试检索文档
             app_logger.info("测试检索文档：")
-            app_logger.info(knowledge_base_tool.run({"action": "retrieve", "query": "日本", "k": 3, "rerank": True}))
+            app_logger.info(knowledge_base_tool.run({"action": "retrieve", "query": "外卖", "k": 3, "rerank": True}))
 
         def test_cluster_analysis():
             # 测试聚类分析
             app_logger.info("测试聚类分析：")
             app_logger.info(knowledge_base_tool.run({"action": "cluster_analysis"}))
 
-        test_cluster_analysis()
+        # test_cluster_analysis()
         # test_store_into_faiss()
-        # test_retrieve_from_faiss()
+        test_retrieve_from_faiss()
         # test_online_search()
     except Exception as e:
         app_logger.error(f"执行测试函数时出错：{str(e)}")
