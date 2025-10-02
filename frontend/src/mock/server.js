@@ -9,104 +9,92 @@ const mockData = {
       email: 'admin@example.com',
       username: 'admin',
       role: 'admin',
-      createdAt: '2024-01-01T00:00:00Z'
+      created_at: '2024-01-01T00:00:00Z'
     }
   ],
-  
+
   // 文档数据
   documents: [
     {
       id: 1,
       title: '人工智能发展趋势报告',
-      content: '人工智能技术正在快速发展...',
-      type: 'pdf',
-      size: 1024000,
-      uploadedAt: '2024-01-15T10:30:00Z',
-      created_at: '2024-01-15T10:30:00Z',
-      status: 'processed',
-      source: 'AI研究院',
-      url: 'https://example.com/ai-report.pdf',
+      description: '人工智能技术正在快速发展...',
+      link: 'https://example.com/ai-report.pdf',
+      pub_date: '2024-01-15T10:30:00Z',
+      author: 'AI研究院',
+      tags: 'AI,人工智能',
+      rss_source_id: 1,
+      crawled_at: '2024-01-15T10:30:00Z'
     },
     {
       id: 2,
       title: '机器学习最佳实践',
-      content: '机器学习在各个领域的应用...',
-      type: 'docx',
-      size: 512000,
-      uploadedAt: '2024-01-14T15:20:00Z',
-      created_at: '2024-01-14T15:20:00Z',
-      status: 'processed',
-      source: '技术博客',
-      url: 'https://example.com/ml-practices.docx',
+      description: '机器学习在各个领域的应用...',
+      link: 'https://example.com/ml-practices.docx',
+      pub_date: '2024-01-14T15:20:00Z',
+      author: '技术博客',
+      tags: '机器学习,ML',
+      rss_source_id: 1,
+      crawled_at: '2024-01-14T15:20:00Z'
     },
     {
       id: 3,
       title: '深度学习框架对比',
-      content: 'TensorFlow、PyTorch等框架的详细对比...',
-      type: 'pdf',
-      size: 2048000,
-      uploadedAt: '2024-01-13T09:15:00Z',
-      created_at: '2024-01-13T09:15:00Z',
-      status: 'processed',
-      source: '开源社区',
-      url: 'https://example.com/framework-comparison.pdf',
+      description: 'TensorFlow、PyTorch等框架的详细对比...',
+      link: 'https://example.com/framework-comparison.pdf',
+      pub_date: '2024-01-13T09:15:00Z',
+      author: '开源社区',
+      tags: '深度学习,框架',
+      rss_source_id: 2,
+      crawled_at: '2024-01-13T09:15:00Z'
     }
   ],
-  
-  // 数据源
-  sources: [
+
+  // RSS源数据
+  rssSources: [
     {
       id: 1,
       name: 'AI新闻RSS',
-      entry: 'https://example.com/ai-news.rss',
-      description: 'AI相关新闻的RSS订阅源',
-      schedule: '1h',
-      enabled: true,
-      last_run: '2024-01-15T12:00:00Z',
-      next_run: '2024-01-15T13:00:00Z',
-      articles_count: 25,
-      filters: {
-        keywords: 'AI,人工智能',
-        excludeKeywords: '广告',
-        minLength: 100
-      },
-      template: {
-        type: 'rss'
-      }
+      url: 'https://example.com/ai-news.rss',
+      interval: 3600, // 1小时，单位秒
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-15T12:00:00Z'
     },
     {
       id: 2,
       name: '科技博客',
-      entry: 'https://example.com/tech-blog',
-      description: '科技博客网站爬取',
-      schedule: '2h',
-      enabled: true,
-      last_run: '2024-01-15T11:30:00Z',
-      next_run: '2024-01-15T13:30:00Z',
-      articles_count: 18,
-      filters: {
-        keywords: '科技,技术',
-        excludeKeywords: '',
-        minLength: 200
-      },
-      template: {
-        type: 'css'
-      }
+      url: 'https://example.com/tech-blog',
+      interval: 7200, // 2小时，单位秒
+      created_at: '2024-01-02T00:00:00Z',
+      updated_at: '2024-01-15T11:30:00Z'
     }
   ],
-  
-  // 分析数据
-  analytics: {
-    overview: {
-      totalDocuments: 156,
-      totalQueries: 1234,
-      totalUsers: 45,
-      systemHealth: 98.5
-    },
-    trends: [
-      { date: '2024-01-01', documents: 10, queries: 50 },
-      { date: '2024-01-02', documents: 15, queries: 75 },
-      { date: '2024-01-03', documents: 12, queries: 60 }
+
+  // 聚类分析数据
+  clusterAnalysis: {
+    id: 1,
+    created_at: '2024-01-15T12:00:00Z',
+    clusters: [
+      {
+        id: 1,
+        percentage: 35.5,
+        keyword: '人工智能'
+      },
+      {
+        id: 2,
+        percentage: 28.3,
+        keyword: '机器学习'
+      },
+      {
+        id: 3,
+        percentage: 20.2,
+        keyword: '深度学习'
+      },
+      {
+        id: 4,
+        percentage: 16.0,
+        keyword: '自然语言处理'
+      }
     ]
   }
 }
@@ -122,7 +110,8 @@ export const mockAPI = {
       await delay()
       if (email === 'admin@example.com' && password === 'admin123') {
         return {
-          success: true,
+          code: 200,
+          message: '登录成功',
           data: {
             token: 'mock-jwt-token-' + Date.now(),
             user: mockData.users[0]
@@ -131,59 +120,179 @@ export const mockAPI = {
       }
       throw new Error('用户名或密码错误')
     },
-    
+
     async register(userData) {
       await delay()
       const newUser = {
         id: mockData.users.length + 1,
         ...userData,
         role: 'user',
-        createdAt: new Date().toISOString()
+        created_at: new Date().toISOString()
       }
       mockData.users.push(newUser)
       return {
-        success: true,
+        code: 200,
+        message: '注册成功',
         data: {
           token: 'mock-jwt-token-' + Date.now(),
           user: newUser
         }
       }
     },
-    
+
     async logout() {
       await delay(200)
-      return { success: true }
+      return {
+        code: 200,
+        message: '登出成功',
+        data: null
+      }
+    },
+
+    async getProfile() {
+      await delay()
+      return {
+        code: 200,
+        message: '获取用户信息成功',
+        data: mockData.users[0]
+      }
+    },
+
+    async updateProfile(userData) {
+      await delay()
+      const updatedUser = { ...mockData.users[0], ...userData }
+      mockData.users[0] = updatedUser
+      return {
+        code: 200,
+        message: '更新用户信息成功',
+        data: updatedUser
+      }
+    },
+
+    async refreshToken() {
+      await delay()
+      return {
+        code: 200,
+        message: '刷新令牌成功',
+        data: {
+          token: 'mock-jwt-token-' + Date.now()
+        }
+      }
     }
   },
-  
+
   // 文档相关
   documents: {
     async getList(params = {}) {
       await delay()
       const { page = 1, size = 10, search = '' } = params
       let filtered = mockData.documents
-      
+
       if (search) {
-        filtered = filtered.filter(doc => 
-          doc.title.toLowerCase().includes(search.toLowerCase())
+        filtered = filtered.filter(doc =>
+          doc.title.toLowerCase().includes(search.toLowerCase()) ||
+          doc.description.toLowerCase().includes(search.toLowerCase())
         )
       }
-      
+
       const start = (page - 1) * size
       const end = start + size
-      
+
       return {
-        success: true,
+        code: 200,
+        message: '获取文档列表成功',
         data: {
           items: filtered.slice(start, end),
           total: filtered.length,
           page,
-          size
+          size,
+          total_pages: Math.ceil(filtered.length / size)
         }
       }
     },
-    
-    async upload(file, onProgress) {
+
+    async getPage(params = {}) {
+      await delay()
+      const { page = 1, size = 10, search = '' } = params
+      let filtered = mockData.documents
+
+      if (search) {
+        filtered = filtered.filter(doc =>
+          doc.title.toLowerCase().includes(search.toLowerCase()) ||
+          doc.description.toLowerCase().includes(search.toLowerCase())
+        )
+      }
+
+      const start = (page - 1) * size
+      const end = start + size
+
+      return {
+        code: 200,
+        message: '获取文档分页列表成功',
+        data: {
+          items: filtered.slice(start, end),
+          total: filtered.length,
+          page,
+          size,
+          total_pages: Math.ceil(filtered.length / size)
+        }
+      }
+    },
+
+    async getDetail(id) {
+      await delay()
+      const document = mockData.documents.find(doc => doc.id === id)
+      if (document) {
+        return {
+          code: 200,
+          message: '获取文档详情成功',
+          data: document
+        }
+      }
+      throw new Error('文档不存在')
+    },
+
+    async getDocumentsBySourceId(sourceId) {
+      await delay()
+      const documents = mockData.documents.filter(doc => doc.rss_source_id === sourceId)
+      return {
+        code: 200,
+        message: '获取源文档成功',
+        data: documents
+      }
+    },
+
+    async getClusterAnalysis() {
+      await delay()
+      return {
+        code: 200,
+        message: '获取聚类分析成功',
+        data: mockData.clusterAnalysis
+      }
+    },
+
+    async getLatestClusterAnalysis() {
+      await delay()
+      return {
+        code: 200,
+        message: '获取最新聚类分析成功',
+        data: mockData.clusterAnalysis
+      }
+    },
+
+    async uploadExcel(file) {
+      await delay(1000)
+
+      return {
+        code: 200,
+        message: '上传Excel成功',
+        data: {
+          message: 'Excel文件上传成功，已添加3个文档'
+        }
+      }
+    },
+
+    async upload(formData, onProgress) {
       await delay(1000)
       // 模拟上传进度
       if (onProgress) {
@@ -191,145 +300,195 @@ export const mockAPI = {
           setTimeout(() => onProgress({ loaded: i, total: 100 }), i * 10)
         }
       }
-      
+
       const newDoc = {
         id: mockData.documents.length + 1,
-        title: file.name,
-        type: file.type,
-        size: file.size,
-        uploadedAt: new Date().toISOString(),
-        status: 'processing'
+        title: formData.get('title') || '新文档',
+        description: formData.get('description') || '文档描述',
+        link: formData.get('link') || '',
+        pub_date: new Date().toISOString(),
+        author: formData.get('author') || '未知作者',
+        tags: formData.get('tags') || '',
+        rss_source_id: parseInt(formData.get('rss_source_id')) || 1,
+        crawled_at: new Date().toISOString()
       }
       mockData.documents.push(newDoc)
-      
+
       return {
-        success: true,
-        data: newDoc
+        code: 200,
+        message: '上传文档成功',
+        data: {
+          id: newDoc.id
+        }
       }
     },
-    
+
     async delete(id) {
       await delay()
       const index = mockData.documents.findIndex(doc => doc.id === id)
       if (index > -1) {
         mockData.documents.splice(index, 1)
-        return { success: true }
+        return {
+          code: 200,
+          message: '删除文档成功',
+          data: null
+        }
       }
       throw new Error('文档不存在')
     }
   },
-  
-  // 搜索相关
-  search: {
-    async semantic(query, params = {}) {
-      await delay(800)
-      return {
-        success: true,
-        data: {
-          results: [
-            {
-              id: 1,
-              title: '相关文档1',
-              content: `关于"${query}"的相关内容...`,
-              score: 0.95,
-              source: 'document_1.pdf'
-            },
-            {
-              id: 2,
-              title: '相关文档2',
-              content: `这里包含了"${query}"的详细信息...`,
-              score: 0.87,
-              source: 'document_2.docx'
-            }
-          ],
-          total: 2
-        }
-      }
-    },
-    
-    async chat(messages) {
-      await delay(1200)
-      const lastMessage = messages[messages.length - 1]
-      return {
-        success: true,
-        data: {
-          response: `基于您的问题"${lastMessage.content}"，我为您找到了以下信息：\n\n这是一个模拟的AI回答，展示了系统如何处理您的查询。在实际环境中，这里会显示基于RAG技术生成的智能回答。`,
-          sources: [
-            { title: '参考文档1', url: '/doc/1' },
-            { title: '参考文档2', url: '/doc/2' }
-          ]
-        }
-      }
-    }
-  },
-  
-  // 数据采集相关
-  collection: {
-    async getSources(params = {}) {
+
+  // RSS源相关
+  rss: {
+    async getRssSources(params = {}) {
       await delay()
       return {
-        success: true,
+        code: 200,
+        message: '获取RSS源列表成功',
         data: {
-          items: mockData.sources,
-          total: mockData.sources.length
+          items: mockData.rssSources,
+          total: mockData.rssSources.length
         }
       }
     },
-    
-    async createSource(sourceData) {
+
+    async getRssSource(id) {
+      await delay()
+      const source = mockData.rssSources.find(src => src.id === id)
+      if (source) {
+        return {
+          code: 200,
+          message: '获取RSS源成功',
+          data: source
+        }
+      }
+      throw new Error('RSS源不存在')
+    },
+
+    async createRssSource(sourceData) {
       await delay()
       const newSource = {
-        id: mockData.sources.length + 1,
+        id: mockData.rssSources.length + 1,
         ...sourceData,
-        status: 'active',
-        lastSync: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
-      mockData.sources.push(newSource)
+      mockData.rssSources.push(newSource)
       return {
-        success: true,
+        code: 200,
+        message: '创建RSS源成功',
         data: newSource
       }
     },
-    
-    async updateSource(id, sourceData) {
+
+    async updateRssSource(id, sourceData) {
       await delay()
-      const index = mockData.sources.findIndex(source => source.id === id)
+      const index = mockData.rssSources.findIndex(source => source.id === id)
       if (index > -1) {
-        mockData.sources[index] = { ...mockData.sources[index], ...sourceData }
+        mockData.rssSources[index] = {
+          ...mockData.rssSources[index],
+          ...sourceData,
+          updated_at: new Date().toISOString()
+        }
         return {
-          success: true,
-          data: mockData.sources[index]
+          code: 200,
+          message: '更新RSS源成功',
+          data: mockData.rssSources[index]
         }
       }
-      throw new Error('数据源不存在')
+      throw new Error('RSS源不存在')
     },
-    
-    async deleteSource(id) {
+
+    async deleteRssSource(id) {
       await delay()
-      const index = mockData.sources.findIndex(source => source.id === id)
+      const index = mockData.rssSources.findIndex(source => source.id === id)
       if (index > -1) {
-        mockData.sources.splice(index, 1)
-        return { success: true }
+        mockData.rssSources.splice(index, 1)
+        return {
+          code: 200,
+          message: '删除RSS源成功',
+          data: null
+        }
       }
-      throw new Error('数据源不存在')
+      throw new Error('RSS源不存在')
+    },
+
+    async getRssFeeds(id) {
+      await delay()
+      // 模拟RSS订阅内容
+      const feeds = [
+        {
+          id: 1,
+          title: 'AI新闻1',
+          description: '人工智能最新动态',
+          link: 'https://example.com/ai-news-1',
+          pub_date: new Date().toISOString(),
+          author: 'AI新闻编辑部'
+        },
+        {
+          id: 2,
+          title: 'AI新闻2',
+          description: '机器学习新突破',
+          link: 'https://example.com/ai-news-2',
+          pub_date: new Date(Date.now() - 3600000).toISOString(),
+          author: 'AI新闻编辑部'
+        }
+      ]
+      return {
+        code: 200,
+        message: '获取RSS订阅内容成功',
+        data: feeds
+      }
+    },
+
+    async triggerRssCollection(id) {
+      await delay(1500)
+      return {
+        code: 200,
+        message: 'RSS采集任务已触发',
+        data: {
+          message: 'RSS采集任务已成功触发，预计需要2分钟完成'
+        }
+      }
     }
   },
-  
-  // 分析相关
-  analytics: {
-    async getOverview() {
-      await delay()
+
+  // 助手相关
+  assistant: {
+    async query(params) {
+      await delay(1200)
+      const { query, options = {} } = params
+
       return {
-        success: true,
-        data: mockData.analytics.overview
+        code: 200,
+        message: '查询成功',
+        data: {
+          response: `基于您的问题"${query}"，我为您找到了以下信息：\n\n这是一个模拟的AI回答，展示了系统如何处理您的查询。在实际环境中，这里会显示基于RAG技术生成的智能回答，结合知识库和在线搜索的结果。`,
+          sources: [
+            {
+              title: '人工智能发展趋势报告',
+              content: '人工智能技术正在快速发展...',
+              link: 'https://example.com/ai-report.pdf'
+            },
+            {
+              title: '机器学习最佳实践',
+              content: '机器学习在各个领域的应用...',
+              link: 'https://example.com/ml-practices.docx'
+            }
+          ]
+        }
       }
     },
-    
-    async getTrends(params = {}) {
-      await delay()
+
+    async health() {
+      await delay(300)
       return {
-        success: true,
-        data: mockData.analytics.trends
+        code: 200,
+        message: '服务正常',
+        data: {
+          status: 'healthy',
+          message: 'AI助手服务运行正常'
+        }
       }
     }
   }

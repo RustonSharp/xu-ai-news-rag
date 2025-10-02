@@ -41,7 +41,7 @@ const DocsPage: React.FC = () => {
   useEffect(() => {
     fetchDocuments()
     fetchRssSources()
-  }, [filters, pagination.page])
+  }, [filters, pagination.page, pagination.size])
 
   const fetchRssSources = async () => {
     try {

@@ -34,49 +34,80 @@ const mockRequest = async (config: InternalAxiosRequestConfig): Promise<any> => 
     let result
 
     // 根据路径和方法路由到对应的 mock 函数
+    // 认证相关
     if (path === '/auth/login' && method === 'post') {
       result = await mockAPI.auth.login(data.email, data.password)
     } else if (path === '/auth/register' && method === 'post') {
       result = await mockAPI.auth.register(data)
     } else if (path === '/auth/logout' && method === 'post') {
       result = await mockAPI.auth.logout()
-    } else if (path === '/documents' && method === 'get') {
+    } else if (path === '/auth/profile' && method === 'get') {
+      result = await mockAPI.auth.getProfile()
+    } else if (path === '/auth/profile' && method === 'put') {
+      result = await mockAPI.auth.updateProfile(data)
+    } else if (path === '/auth/refresh' && method === 'post') {
+      result = await mockAPI.auth.refreshToken()
+    }
+    // 文档相关
+    else if (path === '/documents' && method === 'get') {
       const params = new URLSearchParams(url?.split('?')[1] || '')
       result = await mockAPI.documents.getList(Object.fromEntries(params))
+    } else if (path === '/documents/page' && method === 'get') {
+      const params = new URLSearchParams(url?.split('?')[1] || '')
+      result = await mockAPI.documents.getPage(Object.fromEntries(params))
+    } else if (path.startsWith('/documents/') && method === 'get' && !path.includes('cluster_analysis') && !path.includes('get_documents_by_source_id')) {
+      const id = parseInt(path.split('/')[2])
+      result = await mockAPI.documents.getDetail(id)
+    } else if (path.startsWith('/documents/get_documents_by_source_id/') && method === 'get') {
+      const sourceId = parseInt(path.split('/')[3])
+      result = await mockAPI.documents.getDocumentsBySourceId(sourceId)
+    } else if (path === '/documents/cluster_analysis' && method === 'get') {
+      result = await mockAPI.documents.getClusterAnalysis()
+    } else if (path === '/documents/cluster_analysis/latest' && method === 'get') {
+      result = await mockAPI.documents.getLatestClusterAnalysis()
+    } else if (path === '/documents/upload_excel' && method === 'post') {
+      result = await mockAPI.documents.uploadExcel(data.file)
     } else if (path === '/documents/upload' && method === 'post') {
-      result = await mockAPI.documents.upload(data.file, data.onProgress)
+      result = await mockAPI.documents.upload(data, data.onProgress)
     } else if (path.startsWith('/documents/') && method === 'delete') {
       const id = parseInt(path.split('/')[2])
       result = await mockAPI.documents.delete(id)
-    } else if (path === '/search' && method === 'post') {
-      result = await mockAPI.search.semantic(data.query, data)
-    } else if (path === '/chat/completions' && method === 'post') {
-      result = await mockAPI.search.chat(data.messages)
-    } else if (path === '/agent/sources' && method === 'get') {
-      result = await mockAPI.collection.getSources()
-    } else if (path === '/agent/sources' && method === 'post') {
-      result = await mockAPI.collection.createSource(data)
-    } else if (path.startsWith('/agent/sources/') && method === 'put') {
+    }
+    // RSS源相关
+    else if (path === '/rss/sources' && method === 'get') {
+      const params = new URLSearchParams(url?.split('?')[1] || '')
+      result = await mockAPI.rss.getRssSources(Object.fromEntries(params))
+    } else if (path.startsWith('/rss/sources/') && method === 'get') {
       const id = parseInt(path.split('/')[3])
-      result = await mockAPI.collection.updateSource(id, data)
-    } else if (path.startsWith('/agent/sources/') && method === 'delete') {
+      result = await mockAPI.rss.getRssSource(id)
+    } else if (path === '/rss/sources' && method === 'post') {
+      result = await mockAPI.rss.createRssSource(data)
+    } else if (path.startsWith('/rss/sources/') && method === 'put') {
       const id = parseInt(path.split('/')[3])
-      result = await mockAPI.collection.deleteSource(id)
-    } else if (path === '/collection/rss' && method === 'get') {
-      result = await mockAPI.collection.getSources()
-    } else if (path === '/collection/rss' && method === 'post') {
-      result = await mockAPI.collection.createSource(data)
-    } else if (path.startsWith('/collection/rss/') && method === 'put') {
+      result = await mockAPI.rss.updateRssSource(id, data)
+    } else if (path.startsWith('/rss/sources/') && method === 'delete') {
       const id = parseInt(path.split('/')[3])
-      result = await mockAPI.collection.updateSource(id, data)
-    } else if (path.startsWith('/collection/rss/') && method === 'delete') {
+      result = await mockAPI.rss.deleteRssSource(id)
+    } else if (path.startsWith('/rss/feeds/') && method === 'get') {
       const id = parseInt(path.split('/')[3])
-      result = await mockAPI.collection.deleteSource(id)
-    } else if (path === '/analytics' && method === 'get') {
-      result = await mockAPI.analytics.getOverview()
-    } else {
-      // 默认成功响应
-      result = { success: true, data: null }
+      result = await mockAPI.rss.getRssFeeds(id)
+    } else if (path.startsWith('/rss/feeds/') && method === 'post') {
+      const id = parseInt(path.split('/')[3])
+      result = await mockAPI.rss.triggerRssCollection(id)
+    }
+    // 助手相关
+    else if (path === '/assistant/query' && method === 'post') {
+      result = await mockAPI.assistant.query(data)
+    } else if (path === '/assistant/health' && method === 'get') {
+      result = await mockAPI.assistant.health()
+    }
+    // 默认成功响应
+    else {
+      result = { 
+        code: 200, 
+        message: '请求成功', 
+        data: null 
+      }
     }
 
     return result
