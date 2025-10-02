@@ -62,6 +62,14 @@ export const getClusterAnalysis = async (): Promise<ApiResponse<ClusterAnalysis>
     })
 }
 
+// 获取最新一次聚类分析
+export const getLatestClusterAnalysis = async (): Promise<ApiResponse<ClusterAnalysis>> => {
+    return request({
+        url: '/documents/cluster_analysis/latest',
+        method: HTTP_METHODS.GET
+    })
+}
+
 // 上传Excel文件
 export const uploadExcel = async (file: File): Promise<ApiResponse<{ message: string }>> => {
     const formData = new FormData()
@@ -79,7 +87,7 @@ export const uploadExcel = async (file: File): Promise<ApiResponse<{ message: st
 
 // 上传文档
 export const uploadDocument = async (
-    formData: FormData, 
+    formData: FormData,
     onProgress?: (progressEvent: ProgressEvent) => void
 ): Promise<ApiResponse<{ id: string }>> => {
     return request({
@@ -100,6 +108,7 @@ export const documentAPI = {
     getDocument,
     getDocumentsBySourceId,
     getClusterAnalysis,
+    getLatestClusterAnalysis,
     uploadExcel,
     uploadDocument
 }

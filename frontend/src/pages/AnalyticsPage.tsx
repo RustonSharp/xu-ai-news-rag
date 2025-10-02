@@ -1,150 +1,68 @@
 import React, { useState, useEffect } from 'react'
-import { analyticsAPI } from '../api'
+import { documentAPI } from '../api'
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from 'recharts'
-import {
-  TrendingUp,
-  TrendingDown,
   FileText,
-  Users,
-  Search,
-  Download,
-  RefreshCw,
-  Eye,
-  MessageSquare,
-  Clock,
-  Activity
+  RefreshCw
 } from 'lucide-react'
-
-interface OverviewData {
-  totalDocuments: number;
-  documentGrowth: number;
-  totalQueries: number;
-  queryGrowth: number;
-  activeUsers: number;
-  userGrowth: number;
-  avgResponseTime: number;
-  responseTimeChange: number;
-}
-
-interface DocumentStat {
-  date: string;
-  documents: number;
-  processed: number;
-  uploads: number;
-}
-
-interface QueryStat {
-  date: string;
-  successful: number;
-  failed: number;
-}
-
-interface UserActivity {
-  hour: string;
-  users: number;
-}
-
-interface DocumentType {
-  name: string;
-  value: number;
-  color: string;
-}
-
-interface TopQuery {
-  query: string;
-  count: number;
-  avgTime: number;
-}
-
-interface ResponseTimeDistribution {
-  range: string;
-  count: number;
-}
-
-interface AnalyticsApiResponse {
-  overview: OverviewData;
-  documentStats: DocumentStat[];
-  queryStats: QueryStat[];
-  userActivity: UserActivity[];
-  documentTypes: DocumentType[];
-  topQueries: TopQuery[];
-  responseTimeDistribution: ResponseTimeDistribution[];
-}
 
 interface StatCardProps {
   title: string;
   value: number | string;
-  change: number;
   icon: any;
-  trend: 'up' | 'down';
+}
+
+interface ClusterItem {
+  id: number;
+  percentage: number;
+  keyword: string;
 }
 
 const AnalyticsPage: React.FC = () => {
-  const [timeRange, setTimeRange] = useState('7d')
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('overview')
-
-  const [analyticsData, setAnalyticsData] = useState({
-    overview: {
-      totalDocuments: 0,
-      documentGrowth: 0,
-      totalQueries: 0,
-      queryGrowth: 0,
-      activeUsers: 0,
-      userGrowth: 0,
-      avgResponseTime: 0,
-      responseTimeChange: 0
-    } as OverviewData,
-    documentStats: [] as DocumentStat[],
-    queryStats: [] as QueryStat[],
-    userActivity: [] as UserActivity[],
-    documentTypes: [] as DocumentType[],
-    topQueries: [] as TopQuery[],
-    responseTimeDistribution: [] as ResponseTimeDistribution[]
-  })
+  const [totalDocuments, setTotalDocuments] = useState(0)
+  const [clusters, setClusters] = useState<ClusterItem[]>([])
+  const [clusterLoading, setClusterLoading] = useState(false)
 
   useEffect(() => {
-    loadAnalyticsData()
-  }, [timeRange])
+    loadData()
+    // 默认获取最新一次聚类分析结果
+    loadLatestClusters()
+  }, [])
 
-  const loadAnalyticsData = async () => {
+  const loadData = async () => {
     setLoading(true)
     try {
-      // 调用分析数据API
-      const response = await analyticsAPI.getOverview({
-        period: timeRange as 'day' | 'week' | 'month' | 'year'
-      })
-      
-      const data = response.data as unknown as AnalyticsApiResponse
-      if (data) {
-        setAnalyticsData({
-          overview: data.overview || analyticsData.overview,
-          documentStats: data.documentStats || analyticsData.documentStats,
-          queryStats: data.queryStats || analyticsData.queryStats,
-          userActivity: data.userActivity || analyticsData.userActivity,
-          documentTypes: data.documentTypes || analyticsData.documentTypes,
-          topQueries: data.topQueries || analyticsData.topQueries,
-          responseTimeDistribution: data.responseTimeDistribution || analyticsData.responseTimeDistribution
-        })
-      }
+      // 获取文档总数（使用分页接口仅获取总数）
+      const docResp = await documentAPI.getDocumentsPage({ page: 1, size: 1 })
+      const total = (docResp.data as any)?.total ?? 0
+      setTotalDocuments(total)
     } catch (error) {
-      console.error('获取分析数据失败:', error)
-      // 如果API调用失败，保持使用现有的模拟数据
+      console.error('加载数据失败:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadClusters = async () => {
+    setClusterLoading(true)
+    try {
+      const clusterResp = await documentAPI.getClusterAnalysis()
+      const clusterData = (clusterResp.data as any)?.clusters ?? []
+      setClusters(clusterData)
+    } catch (error) {
+      console.error('加载聚类数据失败:', error)
+    } finally {
+      setClusterLoading(false)
+    }
+  }
+
+  const loadLatestClusters = async () => {
+    try {
+      const resp = await documentAPI.getLatestClusterAnalysis()
+      const data = (resp.data as any)?.clusters ?? []
+      setClusters(data)
+    } catch (error) {
+      console.error('加载最新聚类数据失败:', error)
     }
   }
 
@@ -157,36 +75,16 @@ const AnalyticsPage: React.FC = () => {
     return num.toString()
   }
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('zh-CN', {
-      month: 'short',
-      day: 'numeric'
-    })
-  }
+  // 已移除未使用的辅助函数，保持文件整洁
 
-  const exportData = () => {
-    // 模拟导出功能
-    alert('数据导出功能开发中...')
-  }
-
-  const StatCard: React.FC<StatCardProps> = ({ title, value, change, icon: Icon, trend }) => (
+  const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon }) => (
     <div className="stat-card">
       <div className="stat-header">
         <div className="stat-icon">
           <Icon size={20} />
         </div>
-        <div className="stat-trend">
-          {trend === 'up' ? (
-            <TrendingUp size={16} className="trend-up" />
-          ) : (
-            <TrendingDown size={16} className="trend-down" />
-          )}
-          <span className={`trend-value ${trend === 'up' ? 'positive' : 'negative'}`}>
-            {Math.abs(change)}%
-          </span>
-        </div>
       </div>
-      
+
       <div className="stat-content">
         <h3 className="stat-value">{typeof value === 'number' ? formatNumber(value) : value}</h3>
         <p className="stat-title">{title}</p>
@@ -199,408 +97,74 @@ const AnalyticsPage: React.FC = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">数据分析</h1>
-          <p className="page-subtitle">系统使用情况和性能分析</p>
+          <p className="page-subtitle">文档统计与聚类分析</p>
         </div>
-        
+
         <div className="header-actions">
-          <div className="time-range-selector">
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="input"
-            >
-              <option value="1d">最近1天</option>
-              <option value="7d">最近7天</option>
-              <option value="30d">最近30天</option>
-              <option value="90d">最近90天</option>
-            </select>
-          </div>
-          
           <button
-            onClick={loadAnalyticsData}
+            onClick={loadClusters}
+            disabled={clusterLoading}
+            className="btn btn-primary"
+          >
+            <RefreshCw size={16} className={clusterLoading ? 'spinning' : ''} />
+            聚类分析
+          </button>
+          <button
+            onClick={loadData}
             disabled={loading}
             className="btn btn-secondary"
           >
             <RefreshCw size={16} className={loading ? 'spinning' : ''} />
             刷新
           </button>
-          
-          <button
-            onClick={exportData}
-            className="btn btn-primary"
-          >
-            <Download size={16} />
-            导出报表
-          </button>
         </div>
       </div>
 
-      <div className="analytics-tabs">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-        >
-          <Activity size={16} />
-          概览
-        </button>
-        <button
-          onClick={() => setActiveTab('documents')}
-          className={`tab-btn ${activeTab === 'documents' ? 'active' : ''}`}
-        >
-          <FileText size={16} />
-          文档分析
-        </button>
-        <button
-          onClick={() => setActiveTab('queries')}
-          className={`tab-btn ${activeTab === 'queries' ? 'active' : ''}`}
-        >
-          <Search size={16} />
-          查询分析
-        </button>
-        <button
-          onClick={() => setActiveTab('users')}
-          className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
-        >
-          <Users size={16} />
-          用户分析
-        </button>
-      </div>
+      {/* 移除多余的标签，仅展示必需信息 */}
 
       <div className="analytics-content">
-        {activeTab === 'overview' && (
-          <div className="overview-tab">
-            {/* 关键指标卡片 */}
-            <div className="stats-grid">
-              <StatCard
-                title="总文档数"
-                value={formatNumber(analyticsData.overview.totalDocuments)}
-                change={analyticsData.overview.documentGrowth}
-                icon={FileText}
-                trend="up"
-              />
-              <StatCard
-                title="总查询数"
-                value={formatNumber(analyticsData.overview.totalQueries)}
-                change={analyticsData.overview.queryGrowth}
-                icon={Search}
-                trend="up"
-              />
-              <StatCard
-                title="活跃用户"
-                value={formatNumber(analyticsData.overview.activeUsers)}
-                change={analyticsData.overview.userGrowth}
-                icon={Users}
-                trend="up"
-              />
-              <StatCard
-                title="平均响应时间"
-                value={`${analyticsData.overview.avgResponseTime}s`}
-                change={analyticsData.overview.responseTimeChange}
-                icon={Clock}
-                trend="down"
-              />
-            </div>
-
-            {/* 图表区域 */}
-            <div className="charts-grid">
-              <div className="chart-card">
-                <div className="chart-header">
-                  <h3>文档处理趋势</h3>
-                  <div className="chart-legend">
-                    <span className="legend-item">
-                      <span className="legend-color" style={{ backgroundColor: '#8884d8' }}></span>
-                      新增文档
-                    </span>
-                    <span className="legend-item">
-                      <span className="legend-color" style={{ backgroundColor: '#82ca9d' }}></span>
-                      处理完成
-                    </span>
-                  </div>
-                </div>
-                <div className="chart-container">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={analyticsData.documentStats}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis 
-                        dataKey="date" 
-                        tickFormatter={formatDate}
-                        stroke="var(--muted)"
-                      />
-                      <YAxis stroke="var(--muted)" />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'var(--panel)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)'
-                        }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="documents" 
-                        stroke="#8884d8" 
-                        strokeWidth={2}
-                        name="新增文档"
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="processed" 
-                        stroke="#82ca9d" 
-                        strokeWidth={2}
-                        name="处理完成"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="chart-card">
-                <div className="chart-header">
-                  <h3>查询成功率</h3>
-                </div>
-                <div className="chart-container">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={analyticsData.queryStats}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis 
-                        dataKey="date" 
-                        tickFormatter={formatDate}
-                        stroke="var(--muted)"
-                      />
-                      <YAxis stroke="var(--muted)" />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'var(--panel)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)'
-                        }}
-                      />
-                      <Bar dataKey="successful" fill="#82ca9d" name="成功" />
-                      <Bar dataKey="failed" fill="#ff7300" name="失败" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
+        <div className="overview-tab">
+          <div className="stats-grid">
+            <StatCard
+              title="总文档数"
+              value={formatNumber(totalDocuments)}
+              icon={FileText}
+            />
           </div>
-        )}
 
-        {activeTab === 'documents' && (
-          <div className="documents-tab">
-            <div className="charts-grid">
-              <div className="chart-card">
-                <div className="chart-header">
-                  <h3>文档类型分布</h3>
-                </div>
-                <div className="chart-container">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={analyticsData.documentTypes}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {analyticsData.documentTypes.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'var(--panel)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)'
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+          <div className="charts-grid">
+            <div className="chart-card full-width">
+              <div className="chart-header">
+                <h3>聚类分析（Top 10）</h3>
               </div>
-
-              <div className="chart-card">
-                <div className="chart-header">
-                  <h3>文档上传趋势</h3>
-                </div>
-                <div className="chart-container">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={analyticsData.documentStats}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis 
-                        dataKey="date" 
-                        tickFormatter={formatDate}
-                        stroke="var(--muted)"
-                      />
-                      <YAxis stroke="var(--muted)" />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'var(--panel)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)'
-                        }}
-                      />
-                      <Bar dataKey="uploads" fill="#8884d8" name="上传数量" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'queries' && (
-          <div className="queries-tab">
-            <div className="charts-grid">
-              <div className="chart-card full-width">
-                <div className="chart-header">
-                  <h3>热门查询</h3>
-                </div>
-                <div className="table-container">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>查询内容</th>
-                        <th>查询次数</th>
-                        <th>平均响应时间</th>
-                        <th>操作</th>
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>聚类ID</th>
+                      <th>代表关键词</th>
+                      <th>占比</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clusters.map((c) => (
+                      <tr key={c.id}>
+                        <td>{c.id}</td>
+                        <td className="query-text">{c.keyword || '-'}</td>
+                        <td><span className="count-badge">{(c.percentage || 0).toFixed(2)}%</span></td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {analyticsData.topQueries.map((query, index) => (
-                        <tr key={index}>
-                          <td className="query-text">{query.query}</td>
-                          <td>
-                            <span className="count-badge">{query.count}</span>
-                          </td>
-                          <td>
-                            <span className={`time-badge ${
-                              query.avgTime < 1 ? 'fast' : 
-                              query.avgTime < 2 ? 'medium' : 'slow'
-                            }`}>
-                              {query.avgTime}s
-                            </span>
-                          </td>
-                          <td>
-                            <button className="action-btn" title="查看详情">
-                              <Eye size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="chart-card">
-                <div className="chart-header">
-                  <h3>响应时间分布</h3>
-                </div>
-                <div className="chart-container">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={analyticsData.responseTimeDistribution}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="range" stroke="var(--muted)" />
-                      <YAxis stroke="var(--muted)" />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'var(--panel)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)'
-                        }}
-                      />
-                      <Bar dataKey="count" fill="#8884d8" name="查询数量" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                    ))}
+                    {clusters.length === 0 && (
+                      <tr>
+                        <td colSpan={3} style={{ color: 'var(--muted)' }}>暂无聚类数据</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
-        )}
-
-        {activeTab === 'users' && (
-          <div className="users-tab">
-            <div className="charts-grid">
-              <div className="chart-card">
-                <div className="chart-header">
-                  <h3>用户活跃度（24小时）</h3>
-                </div>
-                <div className="chart-container">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={analyticsData.userActivity}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="hour" stroke="var(--muted)" />
-                      <YAxis stroke="var(--muted)" />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'var(--panel)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)'
-                        }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="users" 
-                        stroke="#8884d8" 
-                        strokeWidth={2}
-                        name="活跃用户数"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="chart-card">
-                <div className="chart-header">
-                  <h3>用户行为统计</h3>
-                </div>
-                <div className="user-stats">
-                  <div className="user-stat-item">
-                    <div className="stat-icon">
-                      <Search size={24} />
-                    </div>
-                    <div className="stat-info">
-                      <h4>平均查询次数</h4>
-                      <p>24.8 次/用户</p>
-                    </div>
-                  </div>
-                  
-                  <div className="user-stat-item">
-                    <div className="stat-icon">
-                      <Clock size={24} />
-                    </div>
-                    <div className="stat-info">
-                      <h4>平均会话时长</h4>
-                      <p>12.5 分钟</p>
-                    </div>
-                  </div>
-                  
-                  <div className="user-stat-item">
-                    <div className="stat-icon">
-                      <MessageSquare size={24} />
-                    </div>
-                    <div className="stat-info">
-                      <h4>满意度评分</h4>
-                      <p>4.6 / 5.0</p>
-                    </div>
-                  </div>
-                  
-                  <div className="user-stat-item">
-                    <div className="stat-icon">
-                      <TrendingUp size={24} />
-                    </div>
-                    <div className="stat-info">
-                      <h4>用户留存率</h4>
-                      <p>78.3%</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
       <style>{`

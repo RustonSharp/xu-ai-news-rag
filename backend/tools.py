@@ -1078,7 +1078,7 @@ def knowledge_base_cluster_analysis():
                     custom_stop_words = [
                         '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这', '作者',
                         '笔者',
-                        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'am', 'http', 'https', 'www', 'com', 'cn', 'org', 'net', 'href', 'target', 'blank', 'src', 'img', 'figure', 'figcaption', 'div', 'class', 'style', 'id', 'title', 'alt', 'author',
+                        'dir','ltr','fr','the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'am', 'http', 'https', 'www', 'com', 'cn', 'org', 'net', 'href', 'target', 'blank', 'src', 'img', 'figure', 'figcaption', 'div', 'class', 'style', 'id', 'title', 'alt', 'author',
                         'as', 'it', 'than', 'said', 'say', 'new', 'old', 'up', 'more', 'he', 'she', 'him', 'her', 'me', 'my', 'mine'
                     ]
                     
@@ -1259,10 +1259,10 @@ if __name__ == "__main__":
             app_logger.info("测试聚类分析：")
             app_logger.info(knowledge_base_tool.run({"action": "cluster_analysis"}))
 
-        # test_cluster_analysis()
+        test_cluster_analysis()
         # test_store_into_faiss()
         # test_retrieve_from_faiss()
-        test_online_search()
+        # test_online_search()
     except Exception as e:
         app_logger.error(f"执行测试函数时出错：{str(e)}")
         print(f"错误：无法初始化知识库工具。错误信息：{str(e)}")

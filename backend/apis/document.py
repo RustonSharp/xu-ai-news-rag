@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from sqlmodel import Session, create_engine, select, func
 from models.document import Document
 from models.rss_source import RssSource
+from models.analysis import Analysis
 import os
 import pandas as pd
 import threading
@@ -10,6 +11,7 @@ from utils.logging_config import app_logger
 from tools import knowledge_base_cluster_analysis
 from werkzeug.utils import secure_filename
 from fetch_document import store_documents_in_knowledge_base
+import json
 
 # 加载环境变量
 load_dotenv()
@@ -91,12 +93,52 @@ def get_cluster_analysis():
                 "keyword": keyword
             })
         
-        # 返回聚类结果
+        # 将完整分析结果保存到数据库
+        engine = get_db_engine()
+        with Session(engine) as session:
+            analysis = Analysis(
+                method=cluster_analysis.get("clustering_method", "unknown"),
+                silhouette_score=cluster_analysis.get("silhouette_score"),
+                total_documents=cluster_analysis.get("total_documents"),
+                total_clusters=cluster_analysis.get("total_clusters"),
+                report_json=json.dumps({
+                    "clusters": cluster_results,
+                    "raw": cluster_analysis
+                }, ensure_ascii=False)
+            )
+            session.add(analysis)
+            session.commit()
+
+        # 返回聚类结果（精简版供前端使用）
         return jsonify({
             "clusters": cluster_results
         })
     except Exception as e:
         app_logger.error(f"Error in cluster analysis: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+# 返回最新的一次聚类分析结果
+@document_bp.route('cluster_analysis/latest', methods=['GET'])
+def get_latest_cluster_analysis():
+    try:
+        app_logger.info("GET /api/documents/cluster_analysis/latest - Request received")
+        engine = get_db_engine()
+        with Session(engine) as session:
+            latest = session.exec(
+                select(Analysis).order_by(Analysis.created_at.desc())
+            ).first()
+            if not latest:
+                return jsonify({"clusters": [], "message": "no analysis found"})
+
+            data = json.loads(latest.report_json)
+            # 尽量返回与现有前端一致的结构
+            clusters = data.get("clusters")
+            return jsonify({
+                "clusters": clusters if clusters is not None else []
+            })
+    except Exception as e:
+        app_logger.error(f"Error getting latest cluster analysis: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # 获取所有文档
