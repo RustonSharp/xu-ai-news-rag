@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 from utils.logging_config import app_logger
 from rss_scheduler import rss_scheduler
+from models.document import Document
 
 # 加载环境变量
 load_dotenv()
@@ -29,12 +30,16 @@ def get_rss_sources():
             # 从数据库查询所有RSS源
             app_logger.info("Querying all RSS sources from database...")
             rss_sources = session.exec(select(RssSource)).all()
+            document_count = session.exec(select(Document).where(Document.rss_source_id.in_(rss_sources))).all()
             app_logger.info(f"Found {len(rss_sources)} RSS sources in database.")
             return jsonify([{
                 "id": source.id,
                 "name": source.name,
                 "url": source.url,
-                "interval": source.interval
+                "interval": source.interval,
+                "last_sync": source.last_sync.isoformat() if source.last_sync else None,
+                "next_sync": source.next_sync.isoformat() if source.next_sync else None,
+                "document_count": document_count
             } for source in rss_sources])
     except Exception as e:
         return jsonify({"error": str(e)}), 500

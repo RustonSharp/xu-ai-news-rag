@@ -18,7 +18,7 @@ The system consists of two main components:
 - **Authentication**: JWT-based user authentication system
 
 ### Frontend (React)
-- **Modern UI**: React-based interface with TypeScript and Tailwind CSS
+- **Modern UI**: React-based interface with TypeScript
 - **Responsive Design**: Works seamlessly across desktop and mobile devices
 - **Mock Data System**: Complete mock API for frontend development without backend dependency
 - **Interactive Dashboards**: Data visualization with Recharts
