@@ -30,7 +30,15 @@ def get_rss_sources():
             # 从数据库查询所有RSS源
             app_logger.info("Querying all RSS sources from database...")
             rss_sources = session.exec(select(RssSource)).all()
-            document_count = session.exec(select(Document).where(Document.rss_source_id.in_(rss_sources))).all()
+            # 修复: 正确计算每个RSS源的文档数量
+            source_ids = [source.id for source in rss_sources]
+            if source_ids:
+                document_counts = {}
+                docs = session.exec(select(Document).where(Document.rss_source_id.in_(source_ids))).all()
+                for doc in docs:
+                    document_counts[doc.rss_source_id] = document_counts.get(doc.rss_source_id, 0) + 1
+            else:
+                document_counts = {}
             app_logger.info(f"Found {len(rss_sources)} RSS sources in database.")
             return jsonify([{
                 "id": source.id,
@@ -39,7 +47,7 @@ def get_rss_sources():
                 "interval": source.interval,
                 "last_sync": source.last_sync.isoformat() if source.last_sync else None,
                 "next_sync": source.next_sync.isoformat() if source.next_sync else None,
-                "document_count": document_count
+                "document_count": document_counts.get(source.id, 0)
             } for source in rss_sources])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -84,10 +92,30 @@ def create_rss_source():
             if interval not in valid_intervals:
                 return jsonify({"error": f"Invalid interval value. Must be one of: {valid_intervals}"}), 400
             
+            # 根据interval设置下次运行时间
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            if interval == 'SIX_HOUR':
+                # 每天早上6点运行
+                next_sync = now.replace(hour=6, minute=0, second=0, microsecond=0)
+                if next_sync < now:
+                    next_sync += timedelta(days=1)
+            elif interval == 'TWELVE_HOUR':
+                # 每天中午12点运行
+                next_sync = now.replace(hour=12, minute=0, second=0, microsecond=0)
+                if next_sync < now:
+                    next_sync += timedelta(days=1)
+            else:  # ONE_DAY
+                # 每天凌晨运行
+                next_sync = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                next_sync += timedelta(days=1)
+            
             new_source = RssSource(
                 name=data['name'],
                 url=data['url'],
-                interval=interval
+                interval=interval,
+                last_sync=None,
+                next_sync=next_sync
             )
             session.add(new_source)
             session.commit()
@@ -147,6 +175,26 @@ def update_rss_source(source_id):
                     return jsonify({"error": f"Invalid interval value. Must be one of: {valid_intervals}"}), 400
                 app_logger.info(f"Updating interval to {data['interval']} for source ID {source_id}")
                 rss_source.interval = data['interval']
+                
+                # 根据新的interval设置下次运行时间
+                from datetime import datetime, timedelta
+                now = datetime.now()
+                if data['interval'] == 'SIX_HOUR':
+                    # 每天早上6点运行
+                    next_sync = now.replace(hour=6, minute=0, second=0, microsecond=0)
+                    if next_sync < now:
+                        next_sync += timedelta(days=1)
+                elif data['interval'] == 'TWELVE_HOUR':
+                    # 每天中午12点运行
+                    next_sync = now.replace(hour=12, minute=0, second=0, microsecond=0)
+                    if next_sync < now:
+                        next_sync += timedelta(days=1)
+                else:  # ONE_DAY
+                    # 每天凌晨运行
+                    next_sync = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                    next_sync += timedelta(days=1)
+                
+                rss_source.next_sync = next_sync
             
             session.commit()
             session.refresh(rss_source)
@@ -241,6 +289,11 @@ def trigger_rss_collection(source_id):
             
             # 触发RSS采集
             fetch_rss_feeds(source_id, session)
+            
+            # 更新上次执行时间
+            from datetime import datetime
+            rss_source.last_sync = datetime.now()
+            session.commit()
             
             return jsonify({"message": "RSS collection triggered successfully"})
     except Exception as e:

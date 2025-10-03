@@ -141,15 +141,15 @@ const AnalyticsPage: React.FC = () => {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>聚类ID</th>
+                      <th>排名</th>
                       <th>代表关键词</th>
                       <th>占比</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {clusters.map((c) => (
+                    {clusters.map((c, index) => (
                       <tr key={c.id}>
-                        <td>{c.id}</td>
+                        <td>{index + 1}</td>
                         <td className="query-text">{c.keyword || '-'}</td>
                         <td><span className="count-badge">{(c.percentage || 0).toFixed(2)}%</span></td>
                       </tr>

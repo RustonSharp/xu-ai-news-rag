@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { rssAPI } from '../api'
-import axios from 'axios'
 import {
   Plus,
   Rss,
@@ -29,7 +28,7 @@ interface DataSource {
   enabled: boolean
   lastRun?: string | null
   nextRun?: string | null
-  articlesCount?: number
+  document_count?: number
   tags: string[]
   filters: {
     keywords: string
@@ -103,9 +102,9 @@ const RssPage: React.FC = () => {
             source.interval === 'ONE_DAY' ? '24h' : '24h',
         enabled: true, // 后端当前不提供enabled字段，默认为true
         status: 'active', // 后端当前不提供status字段，默认为active
-        lastRun: null, // 后端当前不提供last_run字段
-        nextRun: null, // 后端当前不提供next_run字段
-        articlesCount: 0, // 后端当前不提供articles_count字段
+        lastRun: source.last_sync, // 映射后端的last_sync字段
+        nextRun: source.next_sync, // 映射后端的next_sync字段
+        document_count: source.document_count || 0, // 映射后端的document_count字段
         tags: [], // 后端当前不提供tags字段
         filters: { // 后端当前不提供filters字段，使用默认值
           keywords: '',
@@ -192,7 +191,7 @@ const RssPage: React.FC = () => {
         status: 'active', // 后端当前不提供status字段，默认为active
         lastRun: null,
         nextRun: null,
-        articlesCount: 0,
+        document_count: 0,
         tags: formData.tags,
         filters: formData.filters,
         lastSync: new Date().toISOString()
@@ -286,7 +285,7 @@ const RssPage: React.FC = () => {
           ...source,
           lastRun: new Date().toISOString(),
           nextRun: new Date(Date.now() + 3600000).toISOString(), // 默认1小时后再次运行
-          articlesCount: (source.articlesCount || 0) + Math.floor(Math.random() * 10) + 1
+          articlesCount: (source.document_count || 0) + Math.floor(Math.random() * 10) + 1
         })
 
         if (activeTab === 'rss') {
@@ -440,7 +439,7 @@ const RssPage: React.FC = () => {
                   </div>
                   <div className="stat">
                     <span className="stat-label">文章数量</span>
-                    <span className="stat-value">{source.articlesCount || 0}</span>
+                    <span className="stat-value">{source.document_count || 0}</span>
                   </div>
                   <div className="stat">
                     <span className="stat-label">上次运行</span>

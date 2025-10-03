@@ -10,5 +10,5 @@ class RssSource(SQLModel, table=True):
     url: str
     interval: str = Field(default="ONE_DAY")
     is_paused: bool = Field(default=False)
-    last_sync: datetime.datetime = Field(default=None)
-    next_sync: datetime.datetime = Field(default=None)
+    last_sync: datetime.datetime = Field(default=None, nullable=True)
+    next_sync: datetime.datetime = Field(default=None, nullable=True)
