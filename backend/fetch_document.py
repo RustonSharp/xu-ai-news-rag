@@ -135,7 +135,7 @@ def fetch_rss_feeds(id:int, session:Session) -> bool:
         if document_list:  # 只有当有文档需要存储时才创建线程
             # 发送邮件通知
             try:
-                to_emails = ["qyq799660872@163.com"]
+                to_emails = os.getenv("NOTIFICATION_EMAILS", "").split(",")
                 subject = f"New Documents from RSS Source ID {rss_source.id}"
                 message = f"Fetched and stored {len(document_list)} new documents from RSS source: {rss_source.url}\n\n"
                 for doc in document_list:
