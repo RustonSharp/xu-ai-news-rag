@@ -1,0 +1,104 @@
+name: 测试
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: 设置Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: 缓存pip依赖
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-xdist pytest-mock
+    
+    - name: 运行单元测试
+      run: |
+        python tests/run_tests.py --type unit --coverage --verbose
+      env:
+        TESTING: true
+        EMBEDDING_MODEL_NAME: sentence-transformers/all-MiniLM-L6-v2
+        RERANK_MODEL_NAME: cross-encoder/ms-marco-MiniLM-L-6-v2
+        TAVILY_API_KEY: test_key
+    
+    - name: 运行集成测试
+      run: |
+        python tests/run_tests.py --type integration --verbose
+      env:
+        TESTING: true
+        EMBEDDING_MODEL_NAME: sentence-transformers/all-MiniLM-L6-v2
+        RERANK_MODEL_NAME: cross-encoder/ms-marco-MiniLM-L-6-v2
+        TAVILY_API_KEY: test_key
+    
+    - name: 运行API测试
+      run: |
+        python tests/run_tests.py --type api --verbose
+      env:
+        TESTING: true
+        EMBEDDING_MODEL_NAME: sentence-transformers/all-MiniLM-L6-v2
+        RERANK_MODEL_NAME: cross-encoder/ms-marco-MiniLM-L-6-v2
+        TAVILY_API_KEY: test_key
+    
+    - name: 上传覆盖率报告
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: 设置Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    
+    - name: 安装linting工具
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort mypy
+    
+    - name: 运行flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: 运行black检查
+      run: |
+        black --check --diff .
+    
+    - name: 运行isort检查
+      run: |
+        isort --check-only --diff .
+    
+    - name: 运行mypy
+      run: |
+        mypy . --ignore-missing-imports
+

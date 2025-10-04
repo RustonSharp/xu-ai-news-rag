@@ -319,8 +319,8 @@ def create_knowledge_base_tool():
     # 初始化向量数据库
     # 如果向量数据库文件不存在，则创建新的
     # 从环境变量获取路径，数据存储在backend/data目录下
-    faiss_index_path = os.getenv("FAISS_INDEX_PATH")
-    
+    faiss_index_path = os.getenv("FAISS_INDEX_PATH", "./data/index.faiss")
+    # faiss_index_path = os.getenv("FAISS_INDEX_PATH")
     # 从FAISS_INDEX_PATH提取目录路径
     vectorstore_path = os.path.dirname(faiss_index_path)
     index_faiss_path = faiss_index_path
@@ -445,6 +445,30 @@ def create_knowledge_base_tool():
                 results = [result for result, _ in results_with_scores[:k]]
             except Exception as e:
                 print(f"警告：重排过程出错，将使用原始检索结果。错误：{str(e)}")
+                # 确保results仍然是可迭代的，并且保持原始结果
+                if not isinstance(results, list):
+                    # 如果results不是列表，尝试从vectorstore重新获取
+                    try:
+                        results = vectorstore.similarity_search(query, k=k)
+                    except:
+                        results = []
+                # 如果results仍然不是列表，设置为空列表
+                if not isinstance(results, list):
+                    results = []
+        else:
+            # 如果没有重排或重排模型不可用，确保results是列表
+            if not isinstance(results, list):
+                results = []
+        
+        # 确保results是列表并且有内容
+        if not isinstance(results, list):
+            results = []
+        elif len(results) == 0:
+            # 如果results为空，尝试重新获取
+            try:
+                results = vectorstore.similarity_search(query, k=k)
+            except:
+                results = []
         
         # 格式化结果
         formatted_results = []
