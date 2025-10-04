@@ -13,6 +13,7 @@ import threading
 from tools import create_knowledge_base_tool
 import re
 from bs4 import BeautifulSoup
+from utils.email_sender import send_notification_email
 
 def clean_text(raw: str) -> str:
     """
@@ -132,6 +133,18 @@ def fetch_rss_feeds(id:int, session:Session) -> bool:
         
         # 在新线程中执行知识库存储操作
         if document_list:  # 只有当有文档需要存储时才创建线程
+            # 发送邮件通知
+            try:
+                to_emails = ["qyq799660872@163.com"]
+                subject = f"New Documents from RSS Source ID {rss_source.id}"
+                message = f"Fetched and stored {len(document_list)} new documents from RSS source: {rss_source.url}\n\n"
+                for doc in document_list:
+                    message += f"- {doc['title']} ({doc['link']})\n"
+                send_notification_email(to_emails, subject, message)
+            except Exception as e:
+                app_logger.error(f"Failed to send notification email: {str(e)}")
+                # 即使邮件发送失败，也继续执行知识库存储
+                pass
             kb_thread = threading.Thread(target=store_documents_in_knowledge_base, args=(document_list,))
             kb_thread.daemon = True  # 设置为守护线程，主线程退出时自动结束
             kb_thread.start()

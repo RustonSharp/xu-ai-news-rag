@@ -62,13 +62,37 @@ const UploadPage: React.FC = () => {
     setDragActive(false)
 
     const droppedFiles = Array.from(e.dataTransfer.files)
-    addFiles(droppedFiles)
+    // 过滤只支持Excel文件
+    const excelFiles = droppedFiles.filter(file => 
+      file.type === 'application/vnd.ms-excel' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    
+    if (excelFiles.length !== droppedFiles.length) {
+      alert('当前仅支持上传Excel文件(.xls, .xlsx)')
+    }
+    
+    if (excelFiles.length > 0) {
+      addFiles(excelFiles)
+    }
   }
 
   // 处理文件选择
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || [])
-    addFiles(selectedFiles)
+    // 过滤只支持Excel文件
+    const excelFiles = selectedFiles.filter(file => 
+      file.type === 'application/vnd.ms-excel' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    
+    if (excelFiles.length !== selectedFiles.length) {
+      alert('当前仅支持上传Excel文件(.xls, .xlsx)')
+    }
+    
+    if (excelFiles.length > 0) {
+      addFiles(excelFiles)
+    }
   }
 
   // 添加文件到列表

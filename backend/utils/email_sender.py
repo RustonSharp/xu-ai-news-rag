@@ -1,11 +1,15 @@
 import smtplib
 import ssl
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
-import os
 from typing import List, Optional
-from utils.logging_config import app_logger
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 修改: 使用相对导入代替绝对导入
+from .logging_config import app_logger
 
 
 class EmailSender:
@@ -113,7 +117,7 @@ def get_email_sender() -> EmailSender:
     password = os.getenv("EMAIL_PASSWORD")
     
     if not username or not password:
-        raise ValueError("EMAIL_USERNAME and EMAIL_PASSWORD must be set in environment variables")
+        raise ValueError("EMAIL_USERNAME and EMAIL_PASSWORD must be set in environment variables. 注意：EMAIL_PASSWORD 应该是邮箱的SMTP授权码，而不是登录密码")
     
     return EmailSender(smtp_server, smtp_port, username, password)
 
@@ -181,3 +185,12 @@ def send_report_email(
     except Exception as e:
         app_logger.error(f"Failed to send report email: {str(e)}")
         return False
+    
+if __name__ == "__main__":
+    # 测试邮件发送功能
+    to_emails = ["qyq799660872@163.com"]
+    subject = "Test Email"
+    message = "This is a test email sent from Python."
+    
+    sent = send_notification_email(to_emails, subject, message)
+    print(f"Email sent: {sent}")
