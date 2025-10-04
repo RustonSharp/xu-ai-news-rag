@@ -272,34 +272,40 @@ def create_knowledge_base_tool():
     embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME")
     rerank_model_name = os.getenv("RERANK_MODEL_NAME")
     
-    # 初始化嵌入模型
+    # 初始化嵌入模型 - 添加更多备用选项和本地模型支持
     # 注意：当前版本的langchain_huggingface可能会显示FutureWarning: `resume_download` is deprecated
     # 这是一个警告，不影响功能正常运行
+    embedding_models = [
+        "sentence-transformers/all-MiniLM-L6-v2",
+        "paraphrase-multilingual-MiniLM-L12-v2", 
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        "sentence-transformers/distiluse-base-multilingual-cased"
+    ]
+    
     embeddings = None
-    try:
-        embeddings = HuggingFaceEmbeddings(
-            model_name=embedding_model_name,
-            model_kwargs={'device': 'cpu'}
-        )
-        print(f"成功加载嵌入模型: {embedding_model_name}")
-    except Exception as e:
-        app_logger.error(f"加载嵌入模型失败: {str(e)}")
-        print(f"警告：无法加载嵌入模型 {embedding_model_name}。错误信息：{str(e)}")
-        print("尝试使用备用模型...")
-        
-        # 尝试使用备用模型
-        fallback_model = "paraphrase-multilingual-MiniLM-L12-v2"
+    for model_name in embedding_models:
         try:
+            print(f"尝试加载嵌入模型: {model_name}")
             embeddings = HuggingFaceEmbeddings(
-                model_name=fallback_model,
-                model_kwargs={'device': 'cpu'}
+                model_name=model_name,
+                model_kwargs={'device': 'cpu'},
+                cache_folder="./models_cache"  # 使用cache目录存放模型
             )
-            print(f"成功加载备用嵌入模型: {fallback_model}")
-        except Exception as fallback_error:
-            app_logger.error(f"加载备用嵌入模型也失败: {str(fallback_error)}")
-            print(f"错误：无法加载备用嵌入模型 {fallback_model}。错误信息：{str(fallback_error)}")
-            print("请检查网络连接或尝试使用本地模型。")
-            raise fallback_error
+            print(f"成功加载嵌入模型: {model_name}")
+            break
+        except Exception as e:
+            app_logger.warning(f"无法加载嵌入模型 {model_name}: {str(e)}")
+            print(f"警告：无法加载嵌入模型 {model_name}。错误信息：{str(e)}")
+            continue
+    
+    if embeddings is None:
+        app_logger.error("所有嵌入模型都无法加载")
+        print("错误：所有嵌入模型都无法加载。请检查网络连接或尝试使用本地模型。")
+        print("建议：")
+        print("1. 检查网络连接")
+        print("2. 尝试使用VPN")
+        print("3. 手动下载模型到本地")
+        raise Exception("无法加载任何嵌入模型")
     
     # 初始化重排模型 - 使用公开可用的模型
     try:
