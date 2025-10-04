@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { Navigate } from 'react-router-dom'
 import { LogIn, Mail, Lock, UserPlus } from 'lucide-react'
 
-// 登录表单数据类型
+// Login form data type
 interface LoginFormData {
   email: string
   password: string
@@ -20,7 +20,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // 如果已登录，重定向到首页
+  // If already logged in, redirect to home page
   if (isAuthenticated) {
     return <Navigate to="/" replace />
   }
@@ -41,7 +41,7 @@ const Login: React.FC = () => {
     setSuccess('')
 
     if (!loginFormData.email || !loginFormData.password) {
-      setError('请填写所有字段')
+      setError('Please fill in all fields')
       setLoading(false)
       return
     }
@@ -50,20 +50,20 @@ const Login: React.FC = () => {
       if (isLogin) {
         const result = await login(loginFormData.email, loginFormData.password)
         if (!result.success) {
-          setError(result.message || '登录失败')
+          setError(result.message || 'Login failed')
         }
       } else {
         const result = await register(loginFormData.email, loginFormData.password)
         if (result.success) {
-          setSuccess(result.message || '注册成功')
+          setSuccess(result.message || 'Registration successful')
           setIsLogin(true)
           setLoginFormData({ email: '', password: '' })
         } else {
-          setError(result.message || '注册失败')
+          setError(result.message || 'Registration failed')
         }
       }
     } catch {
-      setError('操作失败，请稍后重试')
+      setError('Operation failed, please try again later')
     } finally {
       setLoading(false)
     }
@@ -77,7 +77,7 @@ const Login: React.FC = () => {
             XU AI News RAG
           </h1>
           <p className="login-subtitle">
-            智能新闻知识库系统
+            Intelligent News Knowledge Base System
           </p>
         </div>
 
@@ -91,7 +91,7 @@ const Login: React.FC = () => {
             }}
           >
             <LogIn size={16} />
-            登录
+            Login
           </button>
           <button
             className={`tab ${!isLogin ? 'active' : ''}`}
@@ -102,7 +102,7 @@ const Login: React.FC = () => {
             }}
           >
             <UserPlus size={16} />
-            注册
+            Register
           </button>
         </div>
 
@@ -110,7 +110,7 @@ const Login: React.FC = () => {
           <div className="form-group">
             <label className="form-label">
               <Mail size={16} />
-              邮箱地址
+              Email Address
             </label>
             <input
               type="email"
@@ -118,7 +118,7 @@ const Login: React.FC = () => {
               value={loginFormData.email}
               onChange={handleChange}
               className="input"
-              placeholder="请输入邮箱地址"
+              placeholder="Please enter your email address"
               required
             />
           </div>
@@ -126,7 +126,7 @@ const Login: React.FC = () => {
           <div className="form-group">
             <label className="form-label">
               <Lock size={16} />
-              密码
+              Password
             </label>
             <input
               type="password"
@@ -134,7 +134,7 @@ const Login: React.FC = () => {
               value={loginFormData.password}
               onChange={handleChange}
               className="input"
-              placeholder="请输入密码"
+              placeholder="Please enter your password"
               required
             />
           </div>
@@ -159,12 +159,12 @@ const Login: React.FC = () => {
             {loading ? (
               <>
                 <div className="spinner" />
-                {isLogin ? '登录中...' : '注册中...'}
+                {isLogin ? 'Logging in...' : 'Registering...'}
               </>
             ) : (
               <>
                 {isLogin ? <LogIn size={16} /> : <UserPlus size={16} />}
-                {isLogin ? '登录' : '注册'}
+                {isLogin ? 'Login' : 'Register'}
               </>
             )}
           </button>
@@ -172,7 +172,7 @@ const Login: React.FC = () => {
 
         <div className="login-footer">
           <p className="login-demo-note">
-            💡 演示模式：后端服务未启动时，可以使用任意邮箱和密码进行演示
+            💡 Demo Mode: When backend service is not running, you can use any email and password for demonstration
           </p>
         </div>
       </div>

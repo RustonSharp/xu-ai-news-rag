@@ -17,7 +17,7 @@ export interface ButtonProps extends BaseComponentProps {
   type?: 'button' | 'submit' | 'reset'
 }
 
-// 输入框组件 Props
+// Input component Props
 export interface InputProps {
   type?: 'text' | 'email' | 'password' | 'search' | 'number'
   placeholder?: string
@@ -31,7 +31,7 @@ export interface InputProps {
   onFocus?: () => void
 }
 
-// 模态框组件 Props
+// Modal component Props
 export interface ModalProps extends BaseComponentProps {
   isOpen: boolean
   onClose: () => void

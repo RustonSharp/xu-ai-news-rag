@@ -25,19 +25,19 @@ const AnalyticsPage: React.FC = () => {
 
   useEffect(() => {
     loadData()
-    // 默认获取最新一次聚类分析结果
+    // Default to get latest cluster analysis result
     loadLatestClusters()
   }, [])
 
   const loadData = async () => {
     setLoading(true)
     try {
-      // 获取文档总数（使用分页接口仅获取总数）
+      // Get total document count (using pagination interface to get only total)
       const docResp = await documentAPI.getDocumentsPage({ page: 1, size: 1 })
       const total = (docResp.data as any)?.total ?? 0
       setTotalDocuments(total)
     } catch (error) {
-      console.error('加载数据失败:', error)
+      console.error('Failed to load data:', error)
     } finally {
       setLoading(false)
     }
@@ -50,7 +50,7 @@ const AnalyticsPage: React.FC = () => {
       const clusterData = (clusterResp.data as any)?.clusters ?? []
       setClusters(clusterData)
     } catch (error) {
-      console.error('加载聚类数据失败:', error)
+      console.error('Failed to load cluster data:', error)
     } finally {
       setClusterLoading(false)
     }
@@ -62,7 +62,7 @@ const AnalyticsPage: React.FC = () => {
       const data = (resp.data as any)?.clusters ?? []
       setClusters(data)
     } catch (error) {
-      console.error('加载最新聚类数据失败:', error)
+      console.error('Failed to load latest cluster data:', error)
     }
   }
 
@@ -75,7 +75,7 @@ const AnalyticsPage: React.FC = () => {
     return num.toString()
   }
 
-  // 已移除未使用的辅助函数，保持文件整洁
+  // Removed unused helper functions to keep file clean
 
   const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon }) => (
     <div className="stat-card">
@@ -96,8 +96,8 @@ const AnalyticsPage: React.FC = () => {
     <div className="analytics-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">数据分析</h1>
-          <p className="page-subtitle">文档统计与聚类分析</p>
+          <h1 className="page-title">Data Analysis</h1>
+          <p className="page-subtitle">Document statistics and cluster analysis</p>
         </div>
 
         <div className="header-actions">
@@ -107,7 +107,7 @@ const AnalyticsPage: React.FC = () => {
             className="btn btn-primary"
           >
             <RefreshCw size={16} className={clusterLoading ? 'spinning' : ''} />
-            生成最新聚类分析
+            Generate Latest Cluster Analysis
           </button>
           <button
             onClick={loadData}
@@ -115,18 +115,18 @@ const AnalyticsPage: React.FC = () => {
             className="btn btn-secondary"
           >
             <RefreshCw size={16} className={loading ? 'spinning' : ''} />
-            刷新
+            Refresh
           </button>
         </div>
       </div>
 
-      {/* 移除多余的标签，仅展示必需信息 */}
+      {/* Removed redundant tabs, only display essential information */}
 
       <div className="analytics-content">
         <div className="overview-tab">
           <div className="stats-grid">
             <StatCard
-              title="总文档数"
+              title="Total Documents"
               value={formatNumber(totalDocuments)}
               icon={FileText}
             />
@@ -135,15 +135,15 @@ const AnalyticsPage: React.FC = () => {
           <div className="charts-grid">
             <div className="chart-card full-width">
               <div className="chart-header">
-                <h3>聚类分析（Top 10）</h3>
+                <h3>Cluster Analysis (Top 10)</h3>
               </div>
               <div className="table-container">
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>排名</th>
-                      <th>代表关键词</th>
-                      <th>占比</th>
+                      <th>Rank</th>
+                      <th>Representative Keywords</th>
+                      <th>Percentage</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -156,7 +156,7 @@ const AnalyticsPage: React.FC = () => {
                     ))}
                     {clusters.length === 0 && (
                       <tr>
-                        <td colSpan={3} style={{ color: 'var(--muted)' }}>暂无聚类数据</td>
+                        <td colSpan={3} style={{ color: 'var(--muted)' }}>No cluster data available</td>
                       </tr>
                     )}
                   </tbody>

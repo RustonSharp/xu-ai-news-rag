@@ -1,30 +1,34 @@
 # AI News RAG Backend
 
-This is the backend component of the AI News RAG (Retrieval-Augmented Generation) system, which provides intelligent news search and question-answering capabilities.
+This is the backend component of the AI News RAG (Retrieval-Augmented Generation) system, which provides intelligent news search and question-answering capabilities with comprehensive testing and logging.
 
 ## Overview
 
-The backend is built with Flask and provides a RESTful API for managing news sources, documents, and AI-powered search functionality. It integrates with large language models (LLMs) to provide intelligent responses based on retrieved news articles.
+The backend is built with Flask and provides a RESTful API for managing news sources, documents, and AI-powered search functionality. It integrates with local language models (via Ollama) and online search APIs to provide intelligent responses based on retrieved news articles.
 
 ## Features
 
-- **RSS Source Management**: Add, update, delete, and monitor RSS news sources
-- **Document Management**: Store, retrieve, and analyze news documents
-- **AI Assistant**: Intelligent question-answering with source citations
-- **Knowledge Base**: Vector database for efficient document retrieval
-- **Online Search**: Fallback to web search when information is not available in the knowledge base
-- **Cluster Analysis**: Automatic categorization and analysis of document collections
+- **RSS Source Management**: Add, update, delete, and monitor RSS news sources with automatic scheduling
+- **Document Management**: Store, retrieve, and analyze news documents with Excel import support
+- **AI Assistant**: Intelligent question-answering with source citations and detailed logging
+- **Knowledge Base**: FAISS vector database for efficient document retrieval with reranking
+- **Online Search**: Fallback to Tavily API when information is not available in the knowledge base
+- **Cluster Analysis**: Automatic categorization and analysis of document collections using advanced ML algorithms
 - **User Authentication**: JWT-based authentication system
+- **Comprehensive Testing**: Unit tests, integration tests, and API tests with 34% code coverage
+- **Detailed Logging**: Transparent search process logging with emoji indicators
 
 ## Architecture
 
 The backend follows a modular architecture with the following main components:
 
-- **API Layer**: Flask Blueprints for different functionalities (auth, rss, document, assistant)
+- **API Layer**: Flask Blueprints for different functionalities (auth, rss, document, assistant, scheduler)
 - **Data Models**: SQLModel for database entities (User, Document, RSS Source, Analysis)
-- **AI Components**: LangChain integration for LLM orchestration and tool usage
-- **Vector Database**: FAISS for efficient similarity search
-- **Document Processing**: Text splitting, embedding, and clustering capabilities
+- **AI Components**: LangChain integration for LLM orchestration and tool use with Ollama
+- **Vector Database**: FAISS for efficient similarity search with reranking support
+- **Document Processing**: Text splitting, embedding, and clustering capabilities with UMAP and HDBSCAN
+- **Scheduler**: Background RSS collection with configurable intervals
+- **Testing Framework**: Comprehensive test suite with pytest, coverage reporting, and CI/CD support
 
 ## API Endpoints
 
@@ -45,6 +49,12 @@ The backend follows a modular architecture with the following main components:
 - `GET /feeds/<id>` - Get RSS feeds
 - `POST /feeds/<id>` - Trigger RSS collection
 
+### Scheduler (`/api/scheduler`)
+- `GET /status` - Get scheduler status
+- `POST /start` - Start RSS scheduler
+- `POST /stop` - Stop RSS scheduler
+- `POST /fetch` - Trigger immediate RSS collection
+
 ### Documents (`/api/documents`)
 - `GET /` - Get all documents
 - `GET /page` - Get paginated documents with filtering
@@ -62,9 +72,10 @@ The backend follows a modular architecture with the following main components:
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.11+
 - Ollama (for running local LLM models)
 - SQLite database (automatically created)
+- Conda environment (recommended: `news-rag11`)
 
 ### Environment Variables
 
@@ -72,45 +83,57 @@ Create a `.env` file in the backend directory with the following variables:
 
 ```env
 # Database
-DATABASE_PATH=./data/app.db
+DATABASE_PATH=./data/ai_news_rag.db
 
 # AI Models
-EMBEDDING_MODEL_NAME=paraphrase-multilingual-MiniLM-L12-v2
+EMBEDDING_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
 RERANK_MODEL_NAME=cross-encoder/ms-marco-MiniLM-L-6-v2
 
 # Vector Database
-FAISS_INDEX_PATH=./data/vectorstore_faiss/index.faiss
+FAISS_INDEX_PATH=./data/index.faiss
 
 # Online Search
 TAVILY_API_KEY=your_tavily_api_key_here
 
 # JWT Secret
 JWT_SECRET_KEY=your_jwt_secret_key_here
+
+# Application Settings
+APP_HOST=0.0.0.0
+APP_PORT=5001
+APP_DEBUG=true
+AUTO_START_SCHEDULER=true
 ```
 
 ### Installation
 
-1. Install dependencies:
+1. Create and activate conda environment:
+```bash
+conda create -n news-rag11 python=3.11
+conda activate news-rag11
+```
+
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Start Ollama and pull the required model:
+3. Start Ollama and pull the required model:
 ```bash
 ollama pull qwen2.5:3b
 ```
 
-3. Initialize the database:
-```bash
-python -c "from sqlmodel import SQLModel, create_engine; from models.user import User; from models.rss_source import RssSource; from models.document import Document; from models.analysis import Analysis; engine = create_engine('sqlite:///./data/app.db'); SQLModel.metadata.create_all(engine)"
-```
-
-4. Run the application:
+4. Initialize the database (automatically created on first run):
 ```bash
 python app.py
 ```
 
-The API will be available at `http://localhost:5000`.
+5. Run the application:
+```bash
+python app.py
+```
+
+The API will be available at `http://localhost:5001`.
 
 ## Usage
 
@@ -119,12 +142,12 @@ The API will be available at `http://localhost:5000`.
 To add a new RSS source:
 
 ```bash
-curl -X POST http://localhost:5000/api/rss/sources \
+curl -X POST http://localhost:5001/api/rss/sources \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Example News",
     "url": "https://example.com/rss",
-    "interval": "HOUR"
+    "interval": "ONE_DAY"
   }'
 ```
 
@@ -133,7 +156,7 @@ curl -X POST http://localhost:5000/api/rss/sources \
 To submit a query to the AI assistant:
 
 ```bash
-curl -X POST http://localhost:5000/api/assistant/query \
+curl -X POST http://localhost:5001/api/assistant/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -d '{
@@ -146,7 +169,7 @@ curl -X POST http://localhost:5000/api/assistant/query \
 To analyze document clusters:
 
 ```bash
-curl -X GET http://localhost:5000/api/documents/cluster_analysis \
+curl -X GET http://localhost:5001/api/documents/cluster_analysis \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -166,8 +189,87 @@ The AI assistant is built using LangChain and integrates with local LLM models (
 
 ## Testing
 
-Run the test suite:
+The project includes a comprehensive test suite with unit tests, integration tests, and API tests.
 
+### Running Tests
+
+Run all tests:
 ```bash
-python -m pytest tests/
+python tests/run_tests.py
 ```
+
+Run specific test types:
+```bash
+# Unit tests only
+python tests/run_tests.py --type unit
+
+# Integration tests only
+python tests/run_tests.py --type integration
+
+# API tests only
+python tests/run_tests.py --type api
+```
+
+Run with coverage:
+```bash
+python tests/run_tests.py --coverage
+```
+
+### Test Structure
+
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test component interactions
+- **API Tests**: Test REST API endpoints
+- **Coverage**: 34% code coverage with detailed reporting
+
+### Test Features
+
+- Comprehensive mocking for external dependencies
+- Database isolation for each test
+- Detailed logging and error reporting
+- CI/CD ready with GitHub Actions
+
+## Logging and Monitoring
+
+The system includes comprehensive logging with emoji indicators for easy debugging:
+
+- 🔍 **Search Process**: Detailed logging of knowledge base and online search
+- 📊 **Performance Metrics**: Search timing and result counts
+- 🤖 **AI Decisions**: LLM reasoning and tool selection
+- ⚠️ **Error Handling**: Clear error messages and stack traces
+- 📋 **API Requests**: Request/response logging for debugging
+
+## Development
+
+### Project Structure
+
+```
+backend/
+├── apis/                    # API blueprints
+│   ├── assistant.py        # AI assistant endpoints
+│   ├── auth.py            # Authentication endpoints
+│   ├── document.py        # Document management
+│   ├── rss.py             # RSS source management
+│   └── scheduler.py       # Scheduler control
+├── models/                 # Data models
+├── tests/                  # Test suite
+│   ├── unit/              # Unit tests
+│   ├── integration/       # Integration tests
+│   └── api/               # API tests
+├── utils/                  # Utility functions
+├── data/                   # Database and vector store
+├── tools.py               # AI tools and knowledge base
+├── assistant.py           # Main assistant logic
+└── app.py                 # Flask application
+```
+
+### Key Technologies
+
+- **Flask**: Web framework
+- **SQLModel**: ORM and data validation
+- **LangChain**: LLM orchestration
+- **FAISS**: Vector similarity search
+- **Ollama**: Local LLM hosting
+- **Tavily**: Online search API
+- **pytest**: Testing framework
+- **UMAP/HDBSCAN**: Advanced clustering

@@ -16,7 +16,7 @@ import {
   LucideIcon
 } from 'lucide-react'
 
-// 导航项类型定义
+// Navigation item type definition
 interface NavItem {
   path: string
   label: string
@@ -24,7 +24,7 @@ interface NavItem {
   description: string
 }
 
-// Layout Props 类型
+// Layout Props type
 interface LayoutProps {
   children: ReactNode
 }
@@ -43,33 +43,33 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navItems: NavItem[] = [
     {
       path: '/knowledge',
-      label: '知识库',
+      label: 'Knowledge Base',
       icon: Database,
-      description: '管理文档和知识库内容'
+      description: 'Manage documents and knowledge base content'
     },
     {
       path: '/upload',
-      label: '数据导入',
+      label: 'Data Import',
       icon: Upload,
-      description: '上传文档到知识库'
+      description: 'Upload documents to knowledge base'
     },
     {
       path: '/collection',
-      label: '采集',
+      label: 'Collection',
       icon: Rss,
-      description: '配置RSS和网页采集'
+      description: 'Configure RSS and web collection'
     },
     {
       path: '/search',
-      label: '检索',
+      label: 'Search',
       icon: Search,
-      description: '智能搜索和问答'
+      description: 'Intelligent search and Q&A'
     },
     {
       path: '/analytics',
-      label: '分析',
+      label: 'Analysis',
       icon: BarChart3,
-      description: '数据分析和报表'
+      description: 'Data analysis and reports'
     }
   ]
 
@@ -86,7 +86,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.path
-            
+
             return (
               <Link
                 key={item.path}
@@ -106,24 +106,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <User size={16} />
             <span className="user-email">{user?.email}</span>
           </div>
-          
+
           <button
             onClick={toggleTheme}
             className="btn btn-secondary btn-sm theme-toggle"
-            title={`当前: ${theme === 'light' ? '浅色' : theme === 'dark' ? '深色' : '跟随系统'} - 点击切换`}
+            title={`Current: ${theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'System'} - Click to switch`}
           >
             {theme === 'light' && <Sun size={14} />}
             {theme === 'dark' && <Moon size={14} />}
             {theme === 'system' && <Monitor size={14} />}
           </button>
-          
+
           <button
             onClick={handleLogout}
             className="btn btn-secondary btn-sm"
-            title="退出登录"
+            title="Logout"
           >
             <LogOut size={14} />
-            退出
+            Logout
           </button>
         </div>
       </nav>
