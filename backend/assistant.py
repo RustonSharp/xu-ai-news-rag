@@ -135,14 +135,27 @@ def query_with_sources(query):
         {str(sources[:2])}  # 只检查前2个结果
         
         请回答：相关/不相关
-        如果搜索结果与用户问题主题不匹配，回答"不相关"
+        判断标准：
+        1. 如果搜索结果包含用户问题中的关键词，回答"相关"
+        2. 如果搜索结果与用户问题主题相关（即使不是完全匹配），回答"相关"
+        3. 只有当搜索结果与用户问题完全无关时，才回答"不相关"
+        
+        注意：对于简单的查询（如"美国"、"中国"等），只要搜索结果涉及该国家/地区，就应该回答"相关"
         """
         
         try:
+            print(f"🔍 正在判断搜索结果相关性...")
+            print(f"📝 用户问题: {user_query}")
+            print(f"📄 搜索结果: {sources[:2]}")
             relevance_check = llm.invoke(relevance_prompt)
+            print(f"🤖 LLM相关性判断: {relevance_check}")
             if "不相关" in relevance_check:
+                print("❌ LLM判断结果不相关，将使用在线搜索")
                 return True
-        except Exception:
+            else:
+                print("✅ LLM判断结果相关，使用本地知识库结果")
+        except Exception as e:
+            print(f"⚠️ LLM相关性判断失败: {str(e)}，继续使用原始结果")
             pass  # 如果判断失败，继续使用原始结果
         
         return False
