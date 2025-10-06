@@ -20,24 +20,45 @@ def create_assistant():
         Tool(
             name="KnowledgeBase",
             func=lambda query: knowledge_base_tool.invoke({"action": "retrieve", "query": query, "k": 3, "rerank": True}),
-            description="首选工具：包含完整文学作品和专业文档的本地知识库。当查询涉及特定文学作品、历史文档或已存储的详细信息时，此工具能提供最准确、最完整且最相关的答案。对于所有查询，首先使用此工具。"
+            description="本地新闻知识库工具：包含完整的新闻数据、历史事件、实时信息等。这是主要的信息来源，应该优先使用。适用于所有类型的查询，包括最新新闻、历史事件、人物信息等。如果返回的结果与问题不相关、为空或包含'Placeholder text'，则必须使用OnlineSearch工具。"
         ),
         Tool(
             name="OnlineSearch",
             func=online_search_tool.invoke,
-            description="备选工具：用于搜索最新的网络信息。仅当你需要最新的、实时的信息或者确定知识库中没有相关内容时才使用此工具。"
+            description="在线搜索工具：当本地知识库无法提供相关信息时必须使用此工具。使用条件：1)本地知识库返回空结果 2)返回内容与问题不相关 3)返回内容包含'Placeholder text' 4)返回内容无法回答用户问题。"
         )
     ]
     
-    # 设置agent参数，引导智能体优先使用知识库
+    # 设置agent参数，强调本地知识库优先策略
     agent_kwargs = {
         "system_message": """
-        你是一个智能助手，你必须首先使用知识库工具来回答问题。只有在知识库工具明确表示无法提供相关信息时，才使用在线搜索工具。
-        知识库工具包含专业的文档和历史资料，能提供准确和完整的答案。
-        使用工具的步骤：
-        1. 首先调用知识库工具，查询相关信息
-        2. 如果知识库工具返回了相关且有用的信息，则基于这些信息生成回答
-        3. 只有当知识库工具返回的结果明确表示没有相关信息时，才使用在线搜索工具
+        你是一个智能助手，专门为新闻知识库系统服务。请严格按以下步骤工作：
+
+        1. **默认策略**：始终优先使用本地新闻知识库工具
+           - 本地知识库包含完整的新闻数据、历史事件、实时信息等
+           - 对于所有查询，首先尝试从本地知识库获取信息
+
+        2. **搜索策略**：
+           - 分析用户问题，提取关键搜索词
+           - 使用提取的关键词查询本地知识库
+           - 如果本地知识库返回的结果与问题不相关、为空或内容为"Placeholder text"，则必须使用在线搜索
+
+        3. **工具使用顺序**：
+           - 第一步：使用KnowledgeBase工具查询本地知识库
+           - 第二步：评估本地知识库结果是否相关和有用
+           - 第三步：如果本地结果不相关或无用，立即使用OnlineSearch工具
+           - 第四步：基于搜索结果提供准确、有依据的回答
+
+        4. **结果评估标准**：
+           - 如果本地知识库返回的内容与用户问题不匹配
+           - 如果返回的内容为空或包含"Placeholder text"
+           - 如果返回的内容无法回答用户的问题
+           - 满足以上任一条件，都必须使用在线搜索
+
+        5. **回答质量**：
+           - 优先基于本地知识库的信息回答问题
+           - 如果本地知识库信息不足，必须使用在线搜索补充
+           - 明确标注信息来源（本地知识库 vs 在线搜索）
         """
     }
     
@@ -57,17 +78,99 @@ def create_assistant():
 
 def query_with_sources(query):
     """查询并基于检索到的来源生成有依据的回答"""
-    # 先检索来源
+    # 使用LLM提取关键词，优化本地知识库搜索
+    llm = Ollama(model="qwen2.5:3b", temperature=0)
+    
+    # 提取搜索关键词
+    keyword_prompt = f"""
+    分析以下用户问题，提取最适合在新闻知识库中搜索的关键词：
+    
+    用户问题：{query}
+    
+    请提取2-4个关键词，用于在本地新闻知识库中搜索相关信息。
+    关键词应该简洁、准确，能够匹配新闻内容。
+    
+    请回答格式：
+    搜索关键词：[关键词1, 关键词2, 关键词3]
+    """
+    
+    keyword_analysis = llm.invoke(keyword_prompt)
+    print(f"关键词分析：{keyword_analysis}")
+    
+    # 创建工具
     knowledge_base_tool = create_knowledge_base_tool()
+    online_search_tool = create_online_search_tool()
+    
+    raw_sources = []
+    origin = "none"
+    
+    # 第一步：始终优先查询本地知识库
+    print("正在查询本地新闻知识库...")
     raw_sources = knowledge_base_tool.invoke({"action": "retrieve", "query": query, "k": 5, "rerank": True})
-
     origin = "knowledge_base"
-    if not isinstance(raw_sources, list) or len(raw_sources) == 0 or str(raw_sources[0].get("content", "")).strip() == "Placeholder text":
+    
+    # 检查知识库结果是否有效和相关
+    def is_knowledge_base_result_invalid(sources, user_query):
+        if not isinstance(sources, list) or len(sources) == 0:
+            return True
+        
+        # 检查是否所有结果都是占位符文本
+        all_placeholder = True
+        for source in sources:
+            content = str(source.get("content", "")).strip()
+            if content and content != "Placeholder text":
+                all_placeholder = False
+                break
+        
+        if all_placeholder:
+            return True
+        
+        # 使用LLM判断结果是否与用户问题相关
+        relevance_prompt = f"""
+        判断以下搜索结果是否与用户问题相关：
+        
+        用户问题：{user_query}
+        
+        搜索结果：
+        {str(sources[:2])}  # 只检查前2个结果
+        
+        请回答：相关/不相关
+        判断标准：
+        1. 如果搜索结果包含用户问题中的关键词，回答"相关"
+        2. 如果搜索结果与用户问题主题相关（即使不是完全匹配），回答"相关"
+        3. 只有当搜索结果与用户问题完全无关时，才回答"不相关"
+        
+        注意：对于简单的查询（如"美国"、"中国"等），只要搜索结果涉及该国家/地区，就应该回答"相关"
+        """
+        
+        try:
+            print(f"🔍 正在判断搜索结果相关性...")
+            print(f"📝 用户问题: {user_query}")
+            print(f"📄 搜索结果: {sources[:2]}")
+            relevance_check = llm.invoke(relevance_prompt)
+            print(f"🤖 LLM相关性判断: {relevance_check}")
+            if "不相关" in relevance_check:
+                print("❌ LLM判断结果不相关，将使用在线搜索")
+                return True
+            else:
+                print("✅ LLM判断结果相关，使用本地知识库结果")
+        except Exception as e:
+            print(f"⚠️ LLM相关性判断失败: {str(e)}，继续使用原始结果")
+            pass  # 如果判断失败，继续使用原始结果
+        
+        return False
+    
+    is_knowledge_base_empty = is_knowledge_base_result_invalid(raw_sources, query)
+    
+    # 第二步：如果本地知识库没有有效结果，才使用在线搜索
+    if is_knowledge_base_empty:
+        print("本地知识库无相关数据，正在使用在线搜索...")
         origin = "online_search"
-        online_search_tool = create_online_search_tool()
         raw_sources = online_search_tool.invoke(query)
         if not isinstance(raw_sources, list):
             raw_sources = []
+    else:
+        print("本地知识库找到相关数据，使用本地结果")
 
     # 用检索到的来源来约束生成，避免模型跑题
     # 简单相关性过滤：仅保留标题/内容包含查询关键词的来源
@@ -133,15 +236,34 @@ if __name__ == "__main__":
     # 创建并测试助手
     assistant = create_assistant()
     
-    # 测试查询
+    # 测试查询 - 所有问题都应该优先查询本地新闻知识库
     test_queries = [
-        "最近有什么灾害吗",
+        "国民党主席选举",  # 应该能在本地知识库找到
+        "最近有什么灾害吗",  # 本地可能没有，应该fallback到在线搜索
+        "今天股市行情如何",  # 本地可能没有，应该fallback到在线搜索
+        "人工智能最新发展",  # 本地可能没有，应该fallback到在线搜索
     ]
     
+    print("=== 智能助手测试 ===")
     for query in test_queries:
-        print(f"\n问题: {query}")
+        print(f"\n{'='*50}")
+        print(f"问题: {query}")
+        print("-" * 50)
         try:
             result = assistant.invoke(query)
             print(f"回答: {result}")
+        except Exception as e:
+            print(f"查询出错: {str(e)}")
+    
+    print(f"\n{'='*50}")
+    print("=== 带来源的查询测试 ===")
+    for query in test_queries[:2]:  # 只测试前两个问题
+        print(f"\n{'='*50}")
+        print(f"问题: {query}")
+        print("-" * 50)
+        try:
+            result = query_with_sources(query)
+            print(f"回答: {result['answer']}")
+            print(f"来源: {result['origin']}")
         except Exception as e:
             print(f"查询出错: {str(e)}")

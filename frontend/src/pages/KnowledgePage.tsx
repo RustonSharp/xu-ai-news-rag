@@ -48,7 +48,7 @@ const DocsPage: React.FC = () => {
       const response = await rssAPI.getRssSources()
       setRssSources(response.data || [])
     } catch (error) {
-      console.error('获取RSS源失败:', error)
+      console.error('Failed to fetch RSS sources:', error)
       setRssSources([])
     }
   }
@@ -56,7 +56,7 @@ const DocsPage: React.FC = () => {
   const fetchDocuments = async () => {
     setLoading(true)
     try {
-      // 构建查询参数
+      // Build query parameters
       const params = {
         page: pagination.page,
         size: pagination.size
@@ -68,14 +68,14 @@ const DocsPage: React.FC = () => {
       if (filters.startDate) (params as any).start = filters.startDate
       if (filters.endDate) (params as any).end = filters.endDate
 
-      // 调用文档列表API
+      // Call document list API
       const response = await documentAPI.getDocumentsPage(params)
       const { items, total } = response.data
 
       setDocuments(items || [])
       setPagination(prev => ({ ...prev, total: total || 0 }))
     } catch (error) {
-      console.error('获取文档失败:', error)
+      console.error('Failed to fetch documents:', error)
       setDocuments([])
       setPagination(prev => ({ ...prev, total: 0 }))
     } finally {
@@ -104,42 +104,42 @@ const DocsPage: React.FC = () => {
   const handleBatchDelete = async () => {
     if (selectedDocs.size === 0) return
 
-    if (confirm(`确定要删除选中的 ${selectedDocs.size} 个文档吗？`)) {
+    if (confirm(`Are you sure you want to delete ${selectedDocs.size} selected documents?`)) {
       try {
-        // 调用批量删除API
+        // Call batch delete API
         await axios.delete('/docs/batch', {
           data: { ids: Array.from(selectedDocs) }
         })
 
         setDocuments(prev => prev.filter(doc => !selectedDocs.has(doc.id)))
         setSelectedDocs(new Set())
-        alert('删除成功')
+        alert('Delete successful')
       } catch (error) {
-        console.error('删除失败:', error)
-        alert('删除失败，请稍后重试')
+        console.error('Delete failed:', error)
+        alert('Delete failed, please try again later')
       }
     }
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('zh-CN')
+    return new Date(dateString).toLocaleString('en-US')
   }
 
-  // 计算总页数
+  // Calculate total pages
   const totalPages = Math.ceil(pagination.total / pagination.size)
 
-  // 处理页码变化
+  // Handle page change
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages) return
     setPagination(prev => ({ ...prev, page }))
   }
 
-  // 处理每页大小变化
+  // Handle page size change
   const handleSizeChange = (size: number) => {
     setPagination(prev => ({
       ...prev,
       size,
-      page: 1 // 重置到第一页
+      page: 1 // Reset to first page
     }))
   }
 
@@ -147,8 +147,8 @@ const DocsPage: React.FC = () => {
     <div className="docs-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">知识库管理</h1>
-          <p className="page-subtitle">管理和组织您的文档知识库</p>
+          <h1 className="page-title">Knowledge Base Management</h1>
+          <p className="page-subtitle">Manage and organize your document knowledge base</p>
         </div>
         <button
           onClick={fetchDocuments}
@@ -156,18 +156,18 @@ const DocsPage: React.FC = () => {
           disabled={loading}
         >
           <RefreshCw size={16} className={loading ? 'spinning' : ''} />
-          刷新
+          Refresh
         </button>
       </div>
 
-      {/* 工具栏 */}
+      {/* Toolbar */}
       <div className="toolbar">
         <div className="toolbar-left">
           <div className="search-box">
             <Search size={16} />
             <input
               type="text"
-              placeholder="搜索文档标题..."
+              placeholder="Search document titles..."
               value={filters.search}
               onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
               className="input"
@@ -179,7 +179,7 @@ const DocsPage: React.FC = () => {
             className={`btn btn-secondary ${showFilters ? 'active' : ''}`}
           >
             <Filter size={16} />
-            筛选
+            Filter
           </button>
         </div>
 
@@ -187,57 +187,57 @@ const DocsPage: React.FC = () => {
           {selectedDocs.size > 0 && (
             <>
               <span className="selected-count">
-                已选择 {selectedDocs.size} 个文档
+                {selectedDocs.size} documents selected
               </span>
               <button
                 onClick={handleBatchDelete}
                 className="btn btn-danger btn-sm"
               >
                 <Trash2 size={14} />
-                批量删除
+                Batch Delete
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* 筛选面板 */}
+      {/* Filter panel */}
       {showFilters && (
         <div className="filters-panel">
           <div className="filters-grid">
             <div className="form-group">
-              <label className="form-label">文档类型</label>
+              <label className="form-label">Document Type</label>
               <select
                 value={filters.type}
                 onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
                 className="input"
               >
-                <option value="">全部类型</option>
-                <option value="web">网页</option>
+                <option value="">All Types</option>
+                <option value="web">Web Page</option>
                 <option value="pdf">PDF</option>
-                <option value="article">文章</option>
-                <option value="news">新闻</option>
+                <option value="article">Article</option>
+                <option value="news">News</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label className="form-label">来源</label>
+              <label className="form-label">Source</label>
               <select
                 value={filters.source}
                 onChange={(e) => setFilters(prev => ({ ...prev, source: e.target.value }))}
                 className="input"
               >
-                <option value="">全部来源</option>
-                <option value="tech_news">科技新闻</option>
-                <option value="finance_blog">金融博客</option>
-                <option value="research_paper">研究论文</option>
-                <option value="academic_journal">学术期刊</option>
-                <option value="medical_news">医疗新闻</option>
+                <option value="">All Sources</option>
+                <option value="tech_news">Tech News</option>
+                <option value="finance_blog">Finance Blog</option>
+                <option value="research_paper">Research Paper</option>
+                <option value="academic_journal">Academic Journal</option>
+                <option value="medical_news">Medical News</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label className="form-label">开始日期</label>
+              <label className="form-label">Start Date</label>
               <input
                 type="date"
                 value={filters.startDate}
@@ -247,7 +247,7 @@ const DocsPage: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">结束日期</label>
+              <label className="form-label">End Date</label>
               <input
                 type="date"
                 value={filters.endDate}
@@ -259,12 +259,12 @@ const DocsPage: React.FC = () => {
         </div>
       )}
 
-      {/* 文档列表 */}
+      {/* Document list */}
       <div className="card">
         {loading ? (
           <div className="loading">
             <div className="spinner" />
-            正在加载文档...
+            Loading documents...
           </div>
         ) : (
           <>
@@ -280,7 +280,7 @@ const DocsPage: React.FC = () => {
                     <Square size={16} />
                   )}
                 </button>
-                <span className="table-title">文档列表 ({documents.length})</span>
+                <span className="table-title">Document List ({documents.length})</span>
               </div>
             </div>
 
@@ -289,10 +289,10 @@ const DocsPage: React.FC = () => {
                 <thead>
                   <tr>
                     <th style={{ width: '40px' }}></th>
-                    <th>标题</th>
-                    <th style={{ width: '120px' }}>来源</th>
-                    <th style={{ width: '200px' }}>标签</th>
-                    <th style={{ width: '160px' }}>获取时间</th>
+                    <th>Title</th>
+                    <th style={{ width: '120px' }}>Source</th>
+                    <th style={{ width: '200px' }}>Tags</th>
+                    <th style={{ width: '160px' }}>Crawled At</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -322,7 +322,7 @@ const DocsPage: React.FC = () => {
                                 className="doc-url"
                               >
                                 <ExternalLink size={12} />
-                                查看原文
+                                View Original
                               </a>
                             )}
                           </div>
@@ -330,7 +330,7 @@ const DocsPage: React.FC = () => {
                       </td>
 
                       <td>
-                        <span className="source">{rssSources.find(source => source.id === doc.rss_source_id)?.name || '未知'}</span>
+                        <span className="source">{rssSources.find(source => source.id === doc.rss_source_id)?.name || 'Unknown'}</span>
                       </td>
                       <td>
                         <div className="tags">
@@ -356,24 +356,24 @@ const DocsPage: React.FC = () => {
               {documents.length === 0 && (
                 <div className="empty-state">
                   <FileText size={48} />
-                  <h3>暂无文档</h3>
-                  <p>还没有上传任何文档，去上传页面添加一些内容吧</p>
+                  <h3>No Documents</h3>
+                  <p>No documents have been uploaded yet. Go to the upload page to add some content</p>
                   <a href="/upload" className="btn btn-primary">
-                    上传文档
+                    Upload Documents
                   </a>
                 </div>
               )}
             </div>
 
-            {/* 分页组件 */}
+            {/* Pagination component */}
             {documents.length > 0 && (
               <div className="pagination-container">
                 <div className="pagination-info">
-                  显示 {(pagination.page - 1) * pagination.size + 1} - {Math.min(pagination.page * pagination.size, pagination.total)} 条，共 {pagination.total} 条
+                  Showing {(pagination.page - 1) * pagination.size + 1} - {Math.min(pagination.page * pagination.size, pagination.total)} of {pagination.total} items
                 </div>
                 <div className="pagination-controls">
                   <div className="page-size-selector">
-                    <span>每页显示</span>
+                    <span>Items per page</span>
                     <select
                       value={pagination.size}
                       onChange={(e) => handleSizeChange(Number(e.target.value))}
@@ -384,7 +384,7 @@ const DocsPage: React.FC = () => {
                       <option value={50}>50</option>
                       <option value={100}>100</option>
                     </select>
-                    <span>条</span>
+                    <span>items</span>
                   </div>
                   <div className="page-numbers">
                     <button
@@ -395,7 +395,7 @@ const DocsPage: React.FC = () => {
                       <ChevronLeft size={16} />
                     </button>
 
-                    {/* 显示页码按钮 */}
+                    {/* Display page number buttons */}
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNum
                       if (totalPages <= 5) {
@@ -668,7 +668,7 @@ const DocsPage: React.FC = () => {
           }
         }
 
-        /* 分页组件样式 */
+        /* Pagination component styles */
         .pagination-container {
           display: flex;
           justify-content: space-between;

@@ -16,7 +16,7 @@ import {
   X
 } from 'lucide-react'
 
-// 类型定义
+// Type definitions
 interface DataSource {
   id: string
   name: string
@@ -37,7 +37,7 @@ interface DataSource {
   }
 }
 
-// API响应数据类型
+// API response data type
 interface ApiSourceItem {
   id: string
   name: string
@@ -70,7 +70,7 @@ const RssPage: React.FC = () => {
     name: '',
     url: '',
     description: '',
-    schedule: '24h', // 默认值与后端interval字段'ONE_DAY'对应
+    schedule: '24h', // Default value corresponds to backend interval field 'ONE_DAY'
     enabled: true,
     tags: [] as string[],
     filters: {
@@ -87,39 +87,39 @@ const RssPage: React.FC = () => {
   const fetchSources = async () => {
     setLoading(true)
     try {
-      // 获取RSS数据源
+      // Get RSS data sources
       const response = await rssAPI.getRssSources()
       const sources = response.data || []
 
-      // 转换API数据为前端格式，确保所有必要属性存在
+      // Convert API data to frontend format, ensuring all necessary properties exist
       const transformedSources = sources.map((source: any) => ({
         id: source.id,
         name: source.name,
         url: source.url,
-        description: '', // 后端当前不提供description字段
+        description: '', // Backend currently doesn't provide description field
         schedule: source.interval === 'SIX_HOUR' ? '6h' :
           source.interval === 'TWELVE_HOUR' ? '12h' :
             source.interval === 'ONE_DAY' ? '24h' : '24h',
-        enabled: true, // 后端当前不提供enabled字段，默认为true
-        status: 'active', // 后端当前不提供status字段，默认为active
-        lastRun: source.last_sync, // 映射后端的last_sync字段
-        nextRun: source.next_sync, // 映射后端的next_sync字段
-        document_count: source.document_count || 0, // 映射后端的document_count字段
-        tags: [], // 后端当前不提供tags字段
-        filters: { // 后端当前不提供filters字段，使用默认值
+        enabled: true, // Backend currently doesn't provide enabled field, default to true
+        status: 'active', // Backend currently doesn't provide status field, default to active
+        lastRun: source.last_sync, // Map backend last_sync field
+        nextRun: source.next_sync, // Map backend next_sync field
+        document_count: source.document_count || 0, // Map backend document_count field
+        tags: [], // Backend currently doesn't provide tags field
+        filters: { // Backend currently doesn't provide filters field, use default values
           keywords: '',
           excludeKeywords: '',
           minLength: 100
         },
         lastSync: new Date().toISOString(),
-        type: 'rss' // 后端当前只有RSS源，没有web源
+        type: 'rss' // Backend currently only has RSS sources, no web sources
       }))
 
-      // 由于后端当前只有RSS源，没有web源，所以所有源都归类为RSS
+      // Since backend currently only has RSS sources, no web sources, all sources are categorized as RSS
       setRssSources(transformedSources)
-      setWebSources([]) // 清空web源列表
+      setWebSources([]) // Clear web source list
     } catch (error) {
-      console.error('获取数据源失败:', error)
+      console.error('Failed to fetch data sources:', error)
     } finally {
       setLoading(false)
     }
@@ -131,7 +131,7 @@ const RssPage: React.FC = () => {
       name: '',
       url: '',
       description: '',
-      schedule: '24h', // 默认值与后端interval字段'ONE_DAY'对应
+      schedule: '24h', // Default value corresponds to backend interval field 'ONE_DAY'
       enabled: true,
       tags: [],
       filters: {
@@ -163,22 +163,22 @@ const RssPage: React.FC = () => {
 
   const handleSaveSource = async () => {
     try {
-      // 构建符合后端期望的数据格式
+      // Build data format that matches backend expectations
       const sourceData = {
         name: formData.name,
         url: formData.url,
         interval: formData.schedule === '6h' ? 'SIX_HOUR' :
           formData.schedule === '12h' ? 'TWELVE_HOUR' :
-            formData.schedule === '24h' ? 'ONE_DAY' : 'ONE_DAY' // 默认为ONE_DAY
+            formData.schedule === '24h' ? 'ONE_DAY' : 'ONE_DAY' // Default to ONE_DAY
       }
 
-      // 调用保存API
+      // Call save API
       const response = editingSource
         ? await rssAPI.updateRssSource(editingSource.id, sourceData)
         : await rssAPI.createRssSource(sourceData)
       const savedSource = response.data
 
-      // 转换为前端显示格式
+      // Convert to frontend display format
       const newSource: DataSource = {
         id: savedSource.id,
         name: savedSource.name,
@@ -187,8 +187,8 @@ const RssPage: React.FC = () => {
         schedule: savedSource.interval === 'SIX_HOUR' ? '6h' :
           savedSource.interval === 'TWELVE_HOUR' ? '12h' :
             savedSource.interval === 'ONE_DAY' ? '24h' : '24h',
-        enabled: true, // 后端当前不提供enabled字段，默认为true
-        status: 'active', // 后端当前不提供status字段，默认为active
+        enabled: true, // Backend currently doesn't provide enabled field, default to true
+        status: 'active', // Backend currently doesn't provide status field, default to active
         lastRun: null,
         nextRun: null,
         document_count: 0,
@@ -212,17 +212,17 @@ const RssPage: React.FC = () => {
       }
 
       setShowAddModal(false)
-      alert('保存成功')
+      alert('Save successful')
     } catch (error) {
-      console.error('保存失败:', error)
-      alert('保存失败，请稍后重试')
+      console.error('Save failed:', error)
+      alert('Save failed, please try again later')
     }
   }
 
   const handleDeleteSource = async (sourceId: string | number) => {
-    if (window.confirm('确定要删除这个数据源吗？')) {
+    if (window.confirm('Are you sure you want to delete this data source?')) {
       try {
-        // 调用删除API
+        // Call delete API
         await rssAPI.deleteRssSource(sourceId)
 
         if (activeTab === 'rss') {
@@ -231,25 +231,25 @@ const RssPage: React.FC = () => {
           setWebSources(prev => prev.filter(s => s.id !== sourceId))
         }
 
-        alert('删除成功')
+        alert('Delete successful')
       } catch (error) {
-        console.error('删除失败:', error)
-        alert('删除失败，请稍后重试')
+        console.error('Delete failed:', error)
+        alert('Delete failed, please try again later')
       }
     }
   }
 
   const handleToggleSource = async (sourceId: string | number, enabled: boolean) => {
     try {
-      // 获取当前数据源信息
+      // Get current data source information
       const currentSource = [...rssSources, ...webSources].find(s => s.id === sourceId)
       if (!currentSource) return
 
-      // 更新数据源配置 - 使用后端期望的格式
+      // Update data source configuration - use backend expected format
       const updatedSource = {
         name: currentSource.name,
         url: currentSource.url,
-        interval: 'ONE_DAY' // 默认为ONE_DAY
+        interval: 'ONE_DAY' // Default to ONE_DAY
       }
 
       await rssAPI.updateRssSource(sourceId, updatedSource)
@@ -267,24 +267,24 @@ const RssPage: React.FC = () => {
         setWebSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
       }
     } catch (error) {
-      console.error('更新失败:', error)
-      alert('更新失败，请稍后重试')
+      console.error('Update failed:', error)
+      alert('Update failed, please try again later')
     }
   }
 
   const handleRunNow = async (sourceId: string | number) => {
     try {
-      // 调用RSS采集API
+      // Call RSS collection API
       const response = await rssAPI.triggerRssCollection(sourceId)
 
-      // 检查响应是否成功
+      // Check if response is successful
       if (response && response.message) {
-        alert('采集任务已启动')
+        alert('Collection task started')
 
         const updateSource = (source: DataSource) => ({
           ...source,
           lastRun: new Date().toISOString(),
-          nextRun: new Date(Date.now() + 3600000).toISOString(), // 默认1小时后再次运行
+          nextRun: new Date(Date.now() + 3600000).toISOString(), // Default to run again after 1 hour
           articlesCount: (source.document_count || 0) + Math.floor(Math.random() * 10) + 1
         })
 
@@ -294,17 +294,17 @@ const RssPage: React.FC = () => {
           setWebSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
         }
       } else {
-        throw new Error('采集响应无效')
+        throw new Error('Collection response invalid')
       }
     } catch (error) {
-      console.error('采集失败:', error)
-      alert('采集失败，请稍后重试')
+      console.error('Collection failed:', error)
+      alert('Collection failed, please try again later')
     }
   }
 
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '-'
-    return new Date(dateString).toLocaleString('zh-CN')
+    return new Date(dateString).toLocaleString('en-US')
   }
 
   const getStatusIcon = (status: string) => {
@@ -326,42 +326,42 @@ const RssPage: React.FC = () => {
     <div className="collection-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">数据采集配置</h1>
-          <p className="page-subtitle">配置RSS订阅和网页抓取任务</p>
+          <h1 className="page-title">Data Collection Configuration</h1>
+          <p className="page-subtitle">Configure RSS subscriptions and web scraping tasks</p>
         </div>
         <button
           onClick={handleAddSource}
           className="btn btn-primary"
         >
           <Plus size={16} />
-          添加数据源
+          Add Data Source
         </button>
       </div>
 
-      {/* 标签页 */}
+      {/* Tabs */}
       <div className="tabs">
         <button
           onClick={() => setActiveTab('rss')}
           className={`tab ${activeTab === 'rss' ? 'active' : ''}`}
         >
           <Rss size={16} />
-          RSS订阅 ({rssSources.length})
+          RSS Subscription ({rssSources.length})
         </button>
         <button
           onClick={() => setActiveTab('web')}
           className={`tab ${activeTab === 'web' ? 'active' : ''}`}
         >
           <Globe size={16} />
-          网页抓取 ({webSources.length})
+          Web Scraping ({webSources.length})
         </button>
       </div>
 
-      {/* 数据源列表 */}
+      {/* Data source list */}
       <div className="card">
         {loading ? (
           <div className="loading">
             <div className="spinner" />
-            正在加载数据源...
+            Loading data sources...
           </div>
         ) : (
           <div className="sources-list">
@@ -374,8 +374,8 @@ const RssPage: React.FC = () => {
                       <div className="source-status">
                         {getStatusIcon(source.status)}
                         <span className={`status-text ${source.status}`}>
-                          {source.status === 'active' ? '运行中' :
-                            source.status === 'paused' ? '已暂停' : '错误'}
+                          {source.status === 'active' ? 'Running' :
+                            source.status === 'paused' ? 'Paused' : 'Error'}
                         </span>
                       </div>
                     </div>
@@ -404,7 +404,7 @@ const RssPage: React.FC = () => {
                       className={`btn btn-sm ${source.enabled ? 'btn-secondary' : 'btn-primary'}`}
                     >
                       {source.enabled ? <Pause size={14} /> : <Play size={14} />}
-                      {source.enabled ? '暂停' : '启用'}
+                      {source.enabled ? 'Pause' : 'Enable'}
                     </button>
 
                     <button
@@ -413,7 +413,7 @@ const RssPage: React.FC = () => {
                       disabled={!source.enabled}
                     >
                       <RefreshCw size={14} />
-                      立即运行
+                      Run Now
                     </button>
 
                     <button
@@ -434,19 +434,19 @@ const RssPage: React.FC = () => {
 
                 <div className="source-stats">
                   <div className="stat">
-                    <span className="stat-label">采集频率</span>
+                    <span className="stat-label">Collection Frequency</span>
                     <span className="stat-value">{source.schedule}</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-label">文章数量</span>
+                    <span className="stat-label">Article Count</span>
                     <span className="stat-value">{source.document_count || 0}</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-label">上次运行</span>
+                    <span className="stat-label">Last Run</span>
                     <span className="stat-value">{formatDate(source.lastRun)}</span>
                   </div>
                   <div className="stat">
-                    <span className="stat-label">下次运行</span>
+                    <span className="stat-label">Next Run</span>
                     <span className="stat-value">{formatDate(source.nextRun)}</span>
                   </div>
                 </div>
@@ -456,20 +456,20 @@ const RssPage: React.FC = () => {
             {currentSources.length === 0 && (
               <div className="empty-state">
                 {activeTab === 'rss' ? <Rss size={48} /> : <Globe size={48} />}
-                <h3>暂无{activeTab === 'rss' ? 'RSS' : '网页抓取'}数据源</h3>
-                <p>点击上方按钮添加第一个数据源</p>
+                <h3>No {activeTab === 'rss' ? 'RSS' : 'Web Scraping'} Data Sources</h3>
+                <p>Click the button above to add the first data source</p>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* 添加/编辑模态框 */}
+      {/* Add/Edit Modal */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingSource ? '编辑' : '添加'}{activeTab === 'rss' ? 'RSS' : '网页抓取'}数据源</h2>
+              <h2>{editingSource ? 'Edit' : 'Add'} {activeTab === 'rss' ? 'RSS' : 'Web Scraping'} Data Source</h2>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="btn-icon"
@@ -480,13 +480,13 @@ const RssPage: React.FC = () => {
 
             <div className="modal-body">
               <div className="form-group">
-                <label className="form-label">名称 *</label>
+                <label className="form-label">Name *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="input"
-                  placeholder="输入数据源名称"
+                  placeholder="Enter data source name"
                 />
               </div>
 
@@ -497,37 +497,37 @@ const RssPage: React.FC = () => {
                   value={formData.url}
                   onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
                   className="input"
-                  placeholder={activeTab === 'rss' ? '输入RSS订阅地址' : '输入网页URL'}
+                  placeholder={activeTab === 'rss' ? 'Enter RSS subscription URL' : 'Enter web page URL'}
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">描述</label>
+                <label className="form-label">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="input"
                   rows={3}
-                  placeholder="输入数据源描述"
+                  placeholder="Enter data source description"
                 />
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">采集频率</label>
+                  <label className="form-label">Collection Frequency</label>
                   <select
                     value={formData.schedule}
                     onChange={(e) => setFormData(prev => ({ ...prev, schedule: e.target.value }))}
                     className="input"
                   >
-                    <option value="6h">6小时</option>
-                    <option value="12h">12小时</option>
-                    <option value="24h">24小时</option>
+                    <option value="6h">6 Hours</option>
+                    <option value="12h">12 Hours</option>
+                    <option value="24h">24 Hours</option>
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">状态</label>
+                  <label className="form-label">Status</label>
                   <div className="checkbox-group">
                     <input
                       type="checkbox"
@@ -535,13 +535,13 @@ const RssPage: React.FC = () => {
                       checked={formData.enabled}
                       onChange={(e) => setFormData(prev => ({ ...prev, enabled: e.target.checked }))}
                     />
-                    <label htmlFor="enabled">启用数据源</label>
+                    <label htmlFor="enabled">Enable Data Source</label>
                   </div>
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">标签</label>
+                <label className="form-label">Tags</label>
                 <input
                   type="text"
                   value={formData.tags.join(', ')}
@@ -550,15 +550,15 @@ const RssPage: React.FC = () => {
                     tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
                   }))}
                   className="input"
-                  placeholder="输入标签，用逗号分隔"
+                  placeholder="Enter tags, separated by commas"
                 />
               </div>
 
               <div className="filters-section">
-                <h3>内容筛选</h3>
+                <h3>Content Filtering</h3>
 
                 <div className="form-group">
-                  <label className="form-label">包含关键词</label>
+                  <label className="form-label">Include Keywords</label>
                   <input
                     type="text"
                     value={formData.filters.keywords}
@@ -567,12 +567,12 @@ const RssPage: React.FC = () => {
                       filters: { ...prev.filters, keywords: e.target.value }
                     }))}
                     className="input"
-                    placeholder="用逗号分隔多个关键词"
+                    placeholder="Separate multiple keywords with commas"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">排除关键词</label>
+                  <label className="form-label">Exclude Keywords</label>
                   <input
                     type="text"
                     value={formData.filters.excludeKeywords}
@@ -581,12 +581,12 @@ const RssPage: React.FC = () => {
                       filters: { ...prev.filters, excludeKeywords: e.target.value }
                     }))}
                     className="input"
-                    placeholder="用逗号分隔多个关键词"
+                    placeholder="Separate multiple keywords with commas"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">最小内容长度</label>
+                  <label className="form-label">Minimum Content Length</label>
                   <input
                     type="number"
                     value={formData.filters.minLength}
@@ -596,7 +596,7 @@ const RssPage: React.FC = () => {
                     }))}
                     className="input"
                     min="0"
-                    placeholder="字符数"
+                    placeholder="Characters"
                   />
                 </div>
               </div>
@@ -607,14 +607,14 @@ const RssPage: React.FC = () => {
                 onClick={() => setShowAddModal(false)}
                 className="btn btn-secondary"
               >
-                取消
+                Cancel
               </button>
               <button
                 onClick={handleSaveSource}
                 className="btn btn-primary"
                 disabled={!formData.name || !formData.url}
               >
-                保存
+                Save
               </button>
             </div>
           </div>

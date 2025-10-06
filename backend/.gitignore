@@ -189,3 +189,6 @@ public
 # Temporary folders
 tmp/
 temp/
+
+# Models cache
+models_cache/

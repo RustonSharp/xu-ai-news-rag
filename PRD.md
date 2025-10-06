@@ -2,16 +2,16 @@
 
 1. 引言（背景、目标用户、产品愿景）
 
-- 背景：信息过载时代，个人与团队需要高效获取、沉淀与复用行业新闻与洞察。现有资讯工具缺少"个性化知识库 + 语义检索 + 本地化可控"的能力。xu-ai-news-rag 旨在以本地可控的 LLM 与向量检索能力，构建从"采集-入库-检索-分析-通知"的一体化闭环。
+- 背景：信息过载时代，个人与团队需要高效获取、沉淀与复用行业新闻与洞察。现有资讯工具缺少“个性化知识库 + 语义检索 + 本地化可控”的能力。xu-ai-news-rag 旨在以本地可控的 LLM 与向量检索能力，构建从“采集-入库-检索-分析-通知”的一体化闭环。
 - 目标用户：
   - 职场知识工作者（产品/运营/投研/媒体）
   - 中小团队/创业团队（需要低成本、可控、安全的内部知识系统）
   - 技术从业者（本地私有化部署爱好者）
-- 产品愿景：打造"本地化、可控、可扩展"的新闻知识库系统，让用户以最低门槛进行新闻采集、语义检索与洞察分析，并通过自动化流程提升效率。
+- 产品愿景：打造“本地化、可控、可扩展”的新闻知识库系统，让用户以最低门槛进行新闻采集、语义检索与洞察分析，并通过自动化流程提升效率。
 
 2. 用户故事与场景描述
 
-- 采集者：我希望系统按设定时间间隔（6小时、12小时、24小时）定时抓取我订阅的 RSS 源，并自动入库，失败能告警，且可以暂停特定RSS源的采集。
+- 采集者：我希望系统每天定时抓取我订阅的 RSS 与网页源，并自动入库，失败能告警。
 - 知识库管理员：我需要在登录后查看数据列表，按类型/时间筛选，支持批量删除、编辑标签与来源元数据，并能通过页面上传 PDF/Markdown/Excel 等。
 - 分析使用者：我希望在搜索框中用自然语言提问，系统优先基于本地知识库检索并按相似度排序返回；若本地无匹配，可自动联网检索（如百度搜索），并对 Top3 结果进行归纳。
 - 订阅者：当有新数据入库或定时报表生成时，我希望收到自定义标题与内容的邮件提示。
@@ -26,9 +26,9 @@
 - 入库通知：入库成功后自动发邮件（模板可配置）。
 - 智能代理工具抓取（Agent）：
   - 能力：支持需要 JavaScript 渲染、滚动/分页、点击展开的页面抓取；可注入自定义 Headers/UA/Cookies；支持代理池与节流；严格遵守 robots 与站点条款。
-  - 策略：基于规则/提示链完成"源发现 → 链接抽取 → 内容抽取 → 去重 → 归一化"；失败重试（指数退避）、最大重试次数、超时与并发可配置。
+  - 策略：基于规则/提示链完成“源发现 → 链接抽取 → 内容抽取 → 去重 → 归一化”；失败重试（指数退避）、最大重试次数、超时与并发可配置。
   - 配置：每个站点可配置抓取模板（CSS/XPath/正则/自定义脚本）、最大并发、速率限制、运行窗口；黑/白名单域名控制。
-  - 输出：统一标准结构 {title, url, published_at, source, content, meta} 入库。
+  - 输出：统一标准结构 {title, url, published_at, source, content, tags, meta} 入库。
   - 审计与合规：提供详细抓取日志、任务 ID 关联、错误分类与告警，便于排障与合规审查。
 
 B. 知识库管理（登录后）
@@ -40,7 +40,7 @@ B. 知识库管理（登录后）
 C. 语义检索与问答（登录后）
 
 - 本地优先：基于向量检索与重排序，返回 Top-K 并由 LLM 组织答案，附带来源引用。
-- 联网兜底：本地未命中时，自动触发联网（如百度搜索），取 Top3 经 LLM 归纳后输出，清晰标注"联网结果"。
+- 联网兜底：本地未命中时，自动触发联网（如百度搜索），取 Top3 经 LLM 归纳后输出，清晰标注“联网结果”。
 
 D. 分析与报表（登录后）
 
@@ -111,11 +111,11 @@ E. 账户与安全
 6. 发布标准与衡量指标
 
 - 功能验收
-  - 采集：能按计划抓取至少 3 个 RSS 源并入库成功；支持暂停/启用特定RSS源；定时任务在特定时间点执行。
-  - 入库与通知：结构化与非结构化数据入库成功后触发邮件通知。
-  - 管理：列表筛选、批量删除、编辑元数据、上传多类型文件可用。
-  - 检索：本地优先，返回 Top5 并含来源引用。
-  - 兜底：本地未命中自动联网（百度），取 Top3 并由 LLM 归纳。
+  - 采集：能按计划抓取至少 3 个 RSS 源并入库成功；
+  - 入库与通知：结构化与非结构化数据入库成功后触发邮件通知；
+  - 管理：列表筛选、批量删除、编辑元数据、上传多类型文件可用；
+  - 检索：本地优先，返回 Top5 并含来源引用；
+  - 兜底：本地未命中自动联网，取 Top3 并由 LLM 归纳；
   - 分析：展示关键词 Top10 图表。
   - 智能代理抓取：至少完成 1 个需要 JS 渲染/滚动加载站点的稳定抓取并入库；任务日志完整、失败自动重试生效。
 - 质量与性能
@@ -136,48 +136,13 @@ E. 账户与安全
 - 框架：LangChain（RAG 构建、检索与重排、Agent 编排）。
 - 模型：Ollama（qwen2.5:3b）、all-MiniLM-L6-v2（Embed）、ms-marco-MiniLM-L-6-v2（Rerank）。
 
-8. API（MVP 草案）
-
-- 认证
-  - POST /api/auth/login（返回 JWT）
-- 数据管理
-  - GET /api/docs?type=&source=&start=&end=&page=&size=
-  - PATCH /api/docs/{id}（编辑标签、来源等元数据）
-  - DELETE /api/docs/{id}，DELETE /api/docs（批量）
-  - POST /api/docs/upload（表单多文件上传）
-- 采集与入库
-  - GET /api/rss/sources（获取RSS源列表）
-  - POST /api/rss/sources（新增RSS源）
-  - PUT /api/rss/sources/{id}（更新RSS源）
-  - DELETE /api/rss/sources/{id}（删除RSS源）
-  - POST /api/rss/feeds/{id}（手动触发RSS采集）
-  - GET /api/scheduler/status（获取调度器状态）
-  - POST /api/scheduler/start（启动调度器）
-  - POST /api/scheduler/stop（停止调度器）
-  - POST /api/scheduler/fetch/{rss_id}（立即获取指定RSS源的新闻）
-- 检索
-  - POST /api/query {query, top_k}
-- 分析
-  - GET /api/analysis/keywords_top10
-  - GET /api/documents/cluster_analysis（获取聚类分析）
-  - GET /api/documents/cluster_analysis/latest（获取最新聚类分析）
-
-9. 数据模型（MVP 草案）
-
-- tables: users(id, email, password_hash, role, created_at)
-- tables: documents(id, title, type, source, url, tags, created_at, updated_at)
-- tables: doc_chunks(id, doc_id, chunk_index, text, created_at)
-- tables: jobs(id, type, status, payload, created_at, finished_at)
-- tables: rss_sources(id, name, url, interval, is_paused)
-- 向量库：faiss 索引（key=chunk_id），metadata 存储 doc_id、chunk_index、source、timestamp。
-
-10. 里程碑与范围控制
+8. 里程碑与范围控制
 
 - 里程碑 M1（2 周）：登录/JWT、上传入库、向量检索（本地优先）与回答、列表管理、邮件通知。
-- 里程碑 M2（2 周）：RSS定时采集与合规、联网兜底（百度 Top3）、关键词 Top10 报表、RSS源暂停/启用功能。
+- 里程碑 M2（2 周）：RSS/网页定时采集与合规、联网兜底（百度 Top3）、关键词 Top10 报表。
 - 里程碑 M3（迭代）：批量操作优化、审计日志、更多可视化与导出、可插拔搜索引擎与模型切换。
 
-11. 待定项与风险
+9. 待定项与风险
 
 - 第三方搜索：百度搜索 API 配额与费用、替代方案（后续可插拔）。
 - 向量规模扩张：FAISS 索引类型与资源消耗评估；磁盘索引策略。

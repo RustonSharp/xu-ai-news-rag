@@ -68,11 +68,15 @@ def create_online_search_tool():
         # 定义搜索包装函数，使用requests直接调用Tavily API
         def search_wrapper(query):
             try:
+                app_logger.info(f"🌐 开始在线搜索: '{query}'")
+                
                 # Tavily API的基础URL
                 url = "https://api.tavily.com/search"
+                app_logger.info(f"🔗 目标API: {url}")
                 
                 # 检查API密钥是否为空
                 if not tavily_api_key:
+                    app_logger.error("❌ TAVILY_API_KEY未设置")
                     return "错误：TAVILY_API_KEY未设置，请确保环境变量已正确配置或通过提示输入API密钥。"
                 
                 # 准备请求参数
@@ -85,42 +89,59 @@ def create_online_search_tool():
                     "include_raw_content": False,  # 不包含原始内容
                     "include_images": False  # 不包含图片
                 }
+                app_logger.info(f"📋 搜索参数: {payload}")
                 
                 # 发送POST请求
+                app_logger.info("🚀 正在发送搜索请求...")
                 response = requests.post(url, json=payload)
+                app_logger.info(f"📡 收到响应，状态码: {response.status_code}")
                 
                 # 检查响应状态
                 if response.status_code != 200:
+                    app_logger.error(f"❌ 搜索请求失败，状态码: {response.status_code}")
                     # 更安全地显示API密钥信息，避免泄露完整密钥
                     if len(tavily_api_key) > 10:
                         api_key_display = f"{tavily_api_key[:5]}...{tavily_api_key[-5:]}"
                     else:
                         api_key_display = "密钥长度不足，无法安全显示"
+                    app_logger.error(f"🔑 API密钥检查: {api_key_display}")
                     return f"搜索请求失败，状态码：{response.status_code}，错误信息：{response.text}，API密钥检查：{api_key_display}"
                 
                 # 解析响应JSON
                 try:
+                    app_logger.info("📄 正在解析搜索结果...")
                     results = response.json()
-                except json.JSONDecodeError:
+                    app_logger.info("✅ JSON解析成功")
+                except json.JSONDecodeError as e:
+                    app_logger.error(f"❌ JSON解析失败: {str(e)}")
                     return f"无法解析搜索结果：{response.text}"
                 
                 # 提取结果列表
                 if "results" not in results:
+                    app_logger.error("❌ 搜索结果格式不正确，缺少'results'字段")
                     return f"搜索结果格式不正确，缺少'results'字段"
                 
+                app_logger.info(f"📊 找到 {len(results['results'])} 个搜索结果")
+                
                 # 格式化结果
+                app_logger.info("📋 开始格式化搜索结果...")
                 formatted_results = []
-                for result in results["results"]:
-                    formatted_results.append({
+                for i, result in enumerate(results["results"], 1):
+                    formatted_result = {
                         "content": result.get("content", ""),
                         "url": result.get("url", ""),
                         "title": result.get("title", "")
-                    })
+                    }
+                    formatted_results.append(formatted_result)
+                    app_logger.info(f"📄 结果 {i}: {formatted_result['title'][:50]}...")
                 
+                app_logger.info(f"🎯 在线搜索完成，返回 {len(formatted_results)} 个格式化结果")
                 return formatted_results
             except requests.RequestException as e:
+                app_logger.error(f"❌ 搜索请求出错: {str(e)}")
                 return f"搜索请求出错：{str(e)}"
             except Exception as e:
+                app_logger.error(f"❌ 搜索出错: {str(e)}")
                 return f"搜索出错：{str(e)}。请检查TAVILY_API_KEY是否正确设置。"
         
         # 创建在线搜索工具
@@ -272,34 +293,40 @@ def create_knowledge_base_tool():
     embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME")
     rerank_model_name = os.getenv("RERANK_MODEL_NAME")
     
-    # 初始化嵌入模型
+    # 初始化嵌入模型 - 添加更多备用选项和本地模型支持
     # 注意：当前版本的langchain_huggingface可能会显示FutureWarning: `resume_download` is deprecated
     # 这是一个警告，不影响功能正常运行
+    embedding_models = [
+        "sentence-transformers/all-MiniLM-L6-v2",
+        "paraphrase-multilingual-MiniLM-L12-v2", 
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        "sentence-transformers/distiluse-base-multilingual-cased"
+    ]
+    
     embeddings = None
-    try:
-        embeddings = HuggingFaceEmbeddings(
-            model_name=embedding_model_name,
-            model_kwargs={'device': 'cpu'}
-        )
-        print(f"成功加载嵌入模型: {embedding_model_name}")
-    except Exception as e:
-        app_logger.error(f"加载嵌入模型失败: {str(e)}")
-        print(f"警告：无法加载嵌入模型 {embedding_model_name}。错误信息：{str(e)}")
-        print("尝试使用备用模型...")
-        
-        # 尝试使用备用模型
-        fallback_model = "paraphrase-multilingual-MiniLM-L12-v2"
+    for model_name in embedding_models:
         try:
+            print(f"尝试加载嵌入模型: {model_name}")
             embeddings = HuggingFaceEmbeddings(
-                model_name=fallback_model,
-                model_kwargs={'device': 'cpu'}
+                model_name=model_name,
+                model_kwargs={'device': 'cpu'},
+                cache_folder="./models_cache"  # 使用cache目录存放模型
             )
-            print(f"成功加载备用嵌入模型: {fallback_model}")
-        except Exception as fallback_error:
-            app_logger.error(f"加载备用嵌入模型也失败: {str(fallback_error)}")
-            print(f"错误：无法加载备用嵌入模型 {fallback_model}。错误信息：{str(fallback_error)}")
-            print("请检查网络连接或尝试使用本地模型。")
-            raise fallback_error
+            print(f"成功加载嵌入模型: {model_name}")
+            break
+        except Exception as e:
+            app_logger.warning(f"无法加载嵌入模型 {model_name}: {str(e)}")
+            print(f"警告：无法加载嵌入模型 {model_name}。错误信息：{str(e)}")
+            continue
+    
+    if embeddings is None:
+        app_logger.error("所有嵌入模型都无法加载")
+        print("错误：所有嵌入模型都无法加载。请检查网络连接或尝试使用本地模型。")
+        print("建议：")
+        print("1. 检查网络连接")
+        print("2. 尝试使用VPN")
+        print("3. 手动下载模型到本地")
+        raise Exception("无法加载任何嵌入模型")
     
     # 初始化重排模型 - 使用公开可用的模型
     try:
@@ -313,8 +340,8 @@ def create_knowledge_base_tool():
     # 初始化向量数据库
     # 如果向量数据库文件不存在，则创建新的
     # 从环境变量获取路径，数据存储在backend/data目录下
-    faiss_index_path = os.getenv("FAISS_INDEX_PATH")
-    
+    faiss_index_path = os.getenv("FAISS_INDEX_PATH", "./data/index.faiss")
+    # faiss_index_path = os.getenv("FAISS_INDEX_PATH")
     # 从FAISS_INDEX_PATH提取目录路径
     vectorstore_path = os.path.dirname(faiss_index_path)
     index_faiss_path = faiss_index_path
@@ -340,17 +367,24 @@ def create_knowledge_base_tool():
     # 文档处理函数
     def process_and_store_documents(documents: list):
         """处理文档并存储到向量数据库"""
+        app_logger.info(f"📚 开始处理文档存储: 共 {len(documents)} 个文档")
+        
         # 分割文档
+        app_logger.info("✂️ 初始化文档分割器")
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=200,
             length_function=len
         )
+        app_logger.info("✅ 文档分割器初始化完成")
         
         # 分割所有文档并添加元数据
+        app_logger.info("📝 开始分割文档并提取元数据")
         all_chunks = []
         all_metadatas = []
         for i, doc in enumerate(documents):
+            app_logger.info(f"📄 处理文档 {i+1}/{len(documents)}")
+            
             # 检查文档类型并提取内容
             if isinstance(doc, dict):
                 # 如果是字典格式，提取相关字段
@@ -359,6 +393,7 @@ def create_knowledge_base_tool():
                 tags = doc.get("tags", "")
                 pub_date = doc.get("pub_date", "")
                 author = doc.get("author", "")
+                app_logger.info(f"📋 字典格式文档: {title[:50]}...")
             else:
                 # 如果是Document对象，提取属性
                 content = doc.description if hasattr(doc, 'description') else str(doc)
@@ -366,9 +401,12 @@ def create_knowledge_base_tool():
                 tags = doc.tags if hasattr(doc, 'tags') else ""
                 pub_date = doc.pub_date.isoformat() if hasattr(doc, 'pub_date') and doc.pub_date is not None else ""
                 author = doc.author if hasattr(doc, 'author') else ""
+                app_logger.info(f"📋 Document对象: {title[:50]}...")
             
             # 分割文档内容
+            app_logger.info(f"✂️ 分割文档内容，长度: {len(content)} 字符")
             chunks = text_splitter.split_text(content)
+            app_logger.info(f"📊 分割完成，生成 {len(chunks)} 个片段")
             
             # 为每个文档片段添加元数据
             metadatas = [{
@@ -381,66 +419,123 @@ def create_knowledge_base_tool():
             } for j in range(len(chunks))]
             all_chunks.extend(chunks)
             all_metadatas.extend(metadatas)
+            app_logger.info(f"✅ 文档 {i+1} 处理完成")
         
         # 如果向量数据库中只有占位符文本，则创建新的向量数据库
+        app_logger.info("🔍 检查向量数据库状态...")
         try:
             # 获取第一个文档ID
             first_doc_id = list(vectorstore.index_to_docstore_id.values())[0]
             first_doc = vectorstore.docstore.search(first_doc_id)
             is_placeholder = len(vectorstore.index_to_docstore_id) == 1 and "Placeholder text" in str(first_doc)
+            app_logger.info(f"📊 向量数据库状态: 占位符={is_placeholder}, 文档数={len(vectorstore.index_to_docstore_id)}")
         except (IndexError, KeyError, AttributeError) as e:
             # 如果获取第一个文档时出错，假设不是占位符
-            app_logger.warning(f"检查占位符文本时出错: {str(e)}")
+            app_logger.warning(f"⚠️ 检查占位符文本时出错: {str(e)}")
             is_placeholder = False
             
         if is_placeholder:
+            app_logger.info("🔄 检测到占位符文本，创建新的向量数据库")
             # 创建新的向量数据库，不包含占位符文本
             new_vectorstore = FAISS.from_texts(all_chunks, embeddings, metadatas=all_metadatas)
             # 替换原来的向量数据库
             vectorstore.index_to_docstore_id = new_vectorstore.index_to_docstore_id
             vectorstore.docstore = new_vectorstore.docstore
             vectorstore.index = new_vectorstore.index
+            app_logger.info("✅ 新向量数据库创建完成")
         else:
+            app_logger.info("➕ 向现有向量数据库添加文档")
             # 添加到向量数据库（包含元数据）
             vectorstore.add_texts(all_chunks, all_metadatas)
+            app_logger.info("✅ 文档添加完成")
         
         # 保存向量数据库到环境变量指定的路径
+        app_logger.info(f"💾 保存向量数据库到: {vectorstore_path}")
         vectorstore.save_local(vectorstore_path)
+        app_logger.info("✅ 向量数据库保存完成")
         
-        return f"成功处理并存储了{len(all_chunks)}个文档片段到向量数据库"
+        result_message = f"成功处理并存储了{len(all_chunks)}个文档片段到向量数据库"
+        app_logger.info(f"🎯 文档存储完成: {result_message}")
+        return result_message
     
     # 检索函数
     def retrieve_from_knowledge_base(query, k=3, rerank=True):
         """从向量数据库中检索最相关的文档"""
+        app_logger.info(f"🔍 开始从向量数据库检索: '{query}'")
+        app_logger.info(f"📊 检索参数: k={k}, rerank={rerank}")
+        
         # 获取初始检索结果
         if rerank and reranker is not None:
             # 为了重排需要获取更多结果
             initial_k = k * 3
+            app_logger.info(f"🔄 启用重排模式，初始检索数量: {initial_k}")
         else:
             initial_k = k
             # 如果没有重排模型或不进行重排，则不进行额外处理
             rerank = False
+            app_logger.info(f"⚡ 直接检索模式，检索数量: {initial_k}")
             
+        app_logger.info("📚 正在执行向量相似度搜索...")
         results = vectorstore.similarity_search(query, k=initial_k)
+        app_logger.info(f"✅ 向量搜索完成，获得 {len(results)} 个初始结果")
         
         # 使用重排模型对结果进行排序（仅在模型可用时）
         if rerank and results and reranker is not None:
             try:
+                app_logger.info("🔄 开始重排模型处理...")
                 # 准备用于重排的文本对
                 sentence_pairs = [[query, result.page_content] for result in results]
+                app_logger.info(f"📝 准备重排文本对，共 {len(sentence_pairs)} 对")
+                
                 # 获取重排分数
+                app_logger.info("🧠 正在计算重排分数...")
                 scores = reranker.predict(sentence_pairs)
+                app_logger.info(f"📊 重排分数计算完成: {scores}")
                 
                 # 按分数降序排序
                 results_with_scores = list(zip(results, scores))
                 results_with_scores.sort(key=lambda x: x[1], reverse=True)
+                app_logger.info("🔢 按重排分数排序完成")
                 
                 # 只保留前k个结果
                 results = [result for result, _ in results_with_scores[:k]]
+                app_logger.info(f"✅ 重排完成，保留前 {k} 个最相关结果")
             except Exception as e:
-                print(f"警告：重排过程出错，将使用原始检索结果。错误：{str(e)}")
+                app_logger.warning(f"⚠️ 重排过程出错，将使用原始检索结果。错误：{str(e)}")
+                # 确保results仍然是可迭代的，并且保持原始结果
+                if not isinstance(results, list):
+                    # 如果results不是列表，尝试从vectorstore重新获取
+                    try:
+                        app_logger.info("🔄 尝试重新获取检索结果...")
+                        results = vectorstore.similarity_search(query, k=k)
+                        app_logger.info(f"✅ 重新获取成功，获得 {len(results)} 个结果")
+                    except Exception as e2:
+                        app_logger.error(f"❌ 重新获取失败: {str(e2)}")
+                        results = []
+                # 如果results仍然不是列表，设置为空列表
+                if not isinstance(results, list):
+                    results = []
+        else:
+            # 如果没有重排或重排模型不可用，确保results是列表
+            if not isinstance(results, list):
+                results = []
+            app_logger.info("⚡ 跳过重排，使用原始检索结果")
+        
+        # 确保results是列表并且有内容
+        if not isinstance(results, list):
+            results = []
+        elif len(results) == 0:
+            # 如果results为空，尝试重新获取
+            try:
+                app_logger.warning("⚠️ 检索结果为空，尝试重新获取...")
+                results = vectorstore.similarity_search(query, k=k)
+                app_logger.info(f"✅ 重新获取成功，获得 {len(results)} 个结果")
+            except Exception as e:
+                app_logger.error(f"❌ 重新获取失败: {str(e)}")
+                results = []
         
         # 格式化结果
+        app_logger.info("📋 开始格式化检索结果...")
         formatted_results = []
         for i, result in enumerate(results, 1):
             formatted_results.append({
@@ -449,6 +544,7 @@ def create_knowledge_base_tool():
                 "metadata": result.metadata
             })
         
+        app_logger.info(f"🎯 向量数据库检索完成，返回 {len(formatted_results)} 个格式化结果")
         return formatted_results
     
     # 创建工具 - 进一步调整函数实现以处理不同的数据类型
@@ -462,9 +558,13 @@ def create_knowledge_base_tool():
             k: 对于'retrieve'操作，返回结果数量，默认为3
             rerank: 对于'retrieve'操作，是否启用结果重排，默认为True
         """
+        app_logger.info(f"🔧 知识库工具调用: action={action}")
+        
         if action == "store":
+            app_logger.info(f"📚 存储操作: 处理 {len(documents) if documents else 0} 个文档")
             # 检查documents参数是否为Document对象列表
             if documents and len(documents) > 0 and hasattr(documents[0], 'title'):
+                app_logger.info("🔄 检测到Document对象列表，转换为字典格式")
                 # 如果是Document对象列表，转换为字典格式
                 from models.document import Document
                 document_dicts = []
@@ -481,15 +581,20 @@ def create_knowledge_base_tool():
                     else:
                         # 如果已经是字典格式，直接添加
                         document_dicts.append(doc)
+                app_logger.info(f"✅ 转换完成，共 {len(document_dicts)} 个文档")
                 return process_and_store_documents(document_dicts)
             else:
+                app_logger.info("📄 直接处理字典格式文档")
                 # 如果是字典列表，直接处理
                 return process_and_store_documents(documents)
         elif action == "retrieve":
+            app_logger.info(f"🔍 检索操作: query='{query}', k={k}, rerank={rerank}")
             return retrieve_from_knowledge_base(query, k, rerank)
         elif action == "cluster_analysis":
+            app_logger.info("📊 聚类分析操作")
             return knowledge_base_cluster_analysis()
         else:
+            app_logger.error(f"❌ 不支持的操作: {action}")
             return f"不支持的操作：{action}"
     
     knowledge_base_tool = StructuredTool.from_function(

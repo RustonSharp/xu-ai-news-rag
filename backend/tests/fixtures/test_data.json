@@ -1,0 +1,136 @@
+{
+    "sample_documents": [
+        {
+            "id": 1,
+            "title": "人工智能在医疗领域的应用",
+            "content": "人工智能技术在医疗领域有广泛的应用，包括医学影像诊断、药物发现、个性化治疗等。这些技术正在改变传统的医疗模式，提高诊断准确性和治疗效果。",
+            "source": "medical_news",
+            "pub_date": "2025-01-01T00:00:00",
+            "tags": "AI,医疗,技术",
+            "author": "医疗科技记者"
+        },
+        {
+            "id": 2,
+            "title": "最新股市行情分析",
+            "content": "今日股市表现强劲，科技股领涨。投资者对人工智能和新能源板块保持乐观态度，市场成交量较昨日增长15%。",
+            "source": "finance_news",
+            "pub_date": "2025-01-02T00:00:00",
+            "tags": "股市,科技,投资",
+            "author": "财经分析师"
+        },
+        {
+            "id": 3,
+            "title": "政治新闻：重要政策发布",
+            "content": "政府今日发布了新的经济政策，旨在促进科技创新和产业升级。该政策将为企业提供更多支持，推动经济高质量发展。",
+            "source": "politics_news",
+            "pub_date": "2025-01-03T00:00:00",
+            "tags": "政治,政策,经济",
+            "author": "政治记者"
+        }
+    ],
+    "sample_queries": [
+        {
+            "query": "人工智能在医疗领域的应用有哪些？",
+            "expected_type": "knowledge_base",
+            "expected_keywords": [
+                "人工智能",
+                "医疗",
+                "应用"
+            ]
+        },
+        {
+            "query": "今天股市行情如何？",
+            "expected_type": "online_search",
+            "expected_keywords": [
+                "股市",
+                "行情",
+                "今天"
+            ]
+        },
+        {
+            "query": "最新的政治新闻",
+            "expected_type": "knowledge_base",
+            "expected_keywords": [
+                "政治",
+                "新闻",
+                "最新"
+            ]
+        }
+    ],
+    "sample_rss_sources": [
+        {
+            "id": 1,
+            "name": "科技新闻RSS",
+            "url": "https://example.com/tech.rss",
+            "interval": 3600,
+            "is_active": true,
+            "last_fetch": "2025-01-01T12:00:00"
+        },
+        {
+            "id": 2,
+            "name": "财经新闻RSS",
+            "url": "https://example.com/finance.rss",
+            "interval": 1800,
+            "is_active": true,
+            "last_fetch": "2025-01-01T11:30:00"
+        }
+    ],
+    "sample_analytics": {
+        "total_documents": 150,
+        "total_sources": 5,
+        "documents_by_source": [
+            {
+                "source": "tech_news",
+                "count": 60
+            },
+            {
+                "source": "finance_news",
+                "count": 40
+            },
+            {
+                "source": "politics_news",
+                "count": 30
+            },
+            {
+                "source": "sports_news",
+                "count": 20
+            }
+        ],
+        "documents_by_date": [
+            {
+                "date": "2025-01-01",
+                "count": 25
+            },
+            {
+                "date": "2025-01-02",
+                "count": 30
+            },
+            {
+                "date": "2025-01-03",
+                "count": 35
+            }
+        ],
+        "top_keywords": [
+            {
+                "keyword": "人工智能",
+                "count": 45
+            },
+            {
+                "keyword": "股市",
+                "count": 30
+            },
+            {
+                "keyword": "政策",
+                "count": 25
+            }
+        ]
+    },
+    "test_config": {
+        "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "rerank_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        "ollama_model": "qwen2.5:3b",
+        "tavily_api_key": "test_key",
+        "max_retries": 3,
+        "timeout": 30
+    }
+}

@@ -10,14 +10,14 @@ import {
   RefreshCw
 } from 'lucide-react'
 
-// 类型定义
+// Type definitions
 interface Message {
   id: string
   type: 'user' | 'bot'
   content: string
   timestamp: string
   sources?: SearchResult[]
-  rawAnswer?: any // 添加rawAnswer字段到Message接口
+  rawAnswer?: any // Add rawAnswer field to Message interface
   origin?: 'knowledge_base' | 'online_search'
 }
 
@@ -33,7 +33,7 @@ interface SearchResult {
   timestamp: string
 }
 
-// 后端返回的响应数据结构
+// Backend response data structure
 interface AssistantResponse {
   query: string
   response: string
@@ -65,8 +65,8 @@ const AssistantPage: React.FC = () => {
     setLoading(true)
 
     try {
-      // 聊天模式
-      // 添加用户消息
+      // Chat mode
+      // Add user message
       const userMessage: Message = {
         id: Date.now().toString(),
         type: 'user' as const,
@@ -75,7 +75,7 @@ const AssistantPage: React.FC = () => {
       }
       setMessages(prev => [...prev, userMessage])
 
-      // 调用助手API
+      // Call assistant API
       const response = await assistantAPI.query({
         query: query,
         options: {
@@ -83,49 +83,49 @@ const AssistantPage: React.FC = () => {
           use_online_search: false
         }
       })
-      console.log('助手查询响应:', response)
+      console.log('Assistant query response:', response)
 
-      // 使用AssistantResponse类型处理后端返回的数据结构
-      // 检查响应是否包含必要字段
+      // Use AssistantResponse type to process backend response data structure
+      // Check if response contains necessary fields
       if (!response) {
-        throw new Error('后端返回数据为空')
+        throw new Error('Backend returned empty data')
       }
 
-      // 根据实际响应结构，数据可能直接在response中，也可能在response.data中
+      // Based on actual response structure, data may be directly in response or in response.data
       const responseData: AssistantResponse = (response.data || response) as AssistantResponse
-      const rawAnswer = responseData.answer || `基于您的问题"${query}"，我为您找到了相关信息。`
-      let rawSources = (responseData as any).raw_answer || [] // 获取原始来源信息
+      const rawAnswer = responseData.answer || `Based on your question "${query}", I found relevant information for you.`
+      let rawSources = (responseData as any).raw_answer || [] // Get original source information
       if (rawSources.length == 0 || rawSources[0]['title'] == "" || rawSources[0]['content'] == "Placeholder text") {
         rawSources = []
       }
-      console.log('原始答案数据:', rawAnswer)
-      console.log('原始来源数据:', rawSources)
-      console.log('答案类型:', typeof rawAnswer)
-      // 使用formatAnswer函数格式化答案
+      console.log('Raw answer data:', rawAnswer)
+      console.log('Raw source data:', rawSources)
+      console.log('Answer type:', typeof rawAnswer)
+      // Use formatAnswer function to format answer
       const answer = formatAnswer(rawAnswer)
-      console.log('格式化后的答案:', answer)
-      // 从响应中提取sources
+      console.log('Formatted answer:', answer)
+      // Extract sources from response
       const sources = responseData.sources || []
       const origin = responseData.origin || (sources.length > 0 ? 'knowledge_base' : 'online_search')
 
-      // 生成AI回复
+      // Generate AI response
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: 'bot' as const,
         content: answer,
         timestamp: new Date().toISOString(),
         sources: sources,
-        rawAnswer: rawSources, // 保存原始来源信息
+        rawAnswer: rawSources, // Save original source information
         origin: origin
       }
 
       setMessages(prev => [...prev, aiResponse])
     } catch (error) {
-      console.error('助手查询失败:', error)
+      console.error('Assistant query failed:', error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'bot' as const,
-        content: '抱歉，助手查询过程中出现了错误，请稍后重试。',
+        content: 'Sorry, an error occurred during the assistant query. Please try again later.',
         timestamp: new Date().toISOString()
       }
       setMessages(prev => [...prev, errorMessage])
@@ -144,71 +144,71 @@ const AssistantPage: React.FC = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    alert('已复制到剪贴板')
+    alert('Copied to clipboard')
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('zh-CN')
+    return new Date(dateString).toLocaleString('en-US')
   }
 
-  // 已移除知识搜索展示，保留占位避免误用
+  // Knowledge search display removed, placeholder kept to avoid misuse
 
   const clearChat = () => {
     setMessages([])
   }
 
-  // 格式化后端返回的答案 - 仅展示answer.output部分
+  // Format backend returned answer - only display answer.output part
   const formatAnswer = (answer: any): string => {
-    console.log('formatAnswer 输入:', answer)
-    console.log('formatAnswer 输入类型:', typeof answer)
+    console.log('formatAnswer input:', answer)
+    console.log('formatAnswer input type:', typeof answer)
 
-    // 如果答案是字符串，尝试解析其中的JSON结构
+    // If answer is string, try to parse JSON structure
     if (typeof answer === 'string') {
-      console.log('答案是字符串，尝试解析JSON')
+      console.log('Answer is string, trying to parse JSON')
       try {
-        // 尝试解析字符串为对象
+        // Try to parse string as object
         const parsedAnswer = JSON.parse(answer)
-        console.log('解析成功:', parsedAnswer)
+        console.log('Parse successful:', parsedAnswer)
 
-        // 如果解析成功且包含output字段，返回output值
+        // If parse successful and contains output field, return output value
         if (parsedAnswer && typeof parsedAnswer === 'object' && parsedAnswer.hasOwnProperty('output')) {
-          console.log('找到output字段，值:', parsedAnswer.output)
+          console.log('Found output field, value:', parsedAnswer.output)
           return String(parsedAnswer.output);
         }
       } catch (e) {
-        console.log('JSON解析失败，尝试其他方法')
-        // 如果JSON解析失败，尝试使用正则表达式提取output字段
+        console.log('JSON parse failed, trying other methods')
+        // If JSON parse fails, try using regex to extract output field
         const outputMatch = answer.match(/'output':\s*'([^']*)'/);
         if (outputMatch && outputMatch[1]) {
-          console.log('正则匹配到output字段，值:', outputMatch[1])
+          console.log('Regex matched output field, value:', outputMatch[1])
           return outputMatch[1];
         }
       }
 
-      // 如果无法解析或没有output字段，直接返回原字符串
-      console.log('无法提取output字段，返回原字符串')
+      // If cannot parse or no output field, return original string
+      console.log('Cannot extract output field, returning original string')
       return answer;
     }
 
-    // 如果答案是对象，仅提取output字段
+    // If answer is object, only extract output field
     if (typeof answer === 'object' && answer !== null) {
-      console.log('答案是对象，检查output字段')
-      console.log('对象键:', Object.keys(answer))
-      console.log('是否有output字段:', answer.hasOwnProperty('output'))
+      console.log('Answer is object, checking output field')
+      console.log('Object keys:', Object.keys(answer))
+      console.log('Has output field:', answer.hasOwnProperty('output'))
 
-      // 如果有output字段，使用output字段的值
+      // If has output field, use output field value
       if (answer.hasOwnProperty('output')) {
-        console.log('找到output字段，值:', answer.output)
+        console.log('Found output field, value:', answer.output)
         return String(answer.output);
       }
 
-      // 如果没有output字段，返回空字符串或提示信息
-      console.log('没有output字段，返回提示信息')
-      return '暂无可用内容';
+      // If no output field, return empty string or prompt message
+      console.log('No output field, returning prompt message')
+      return 'No available content';
     }
 
-    // 其他情况，转换为字符串
-    console.log('其他情况，转换为字符串')
+    // Other cases, convert to string
+    console.log('Other cases, convert to string')
     return String(answer);
   }
 
@@ -216,19 +216,19 @@ const AssistantPage: React.FC = () => {
     <div className="search-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">AI助手</h1>
-          <p className="page-subtitle">基于知识库的智能问答助手</p>
+          <h1 className="page-title">AI Assistant</h1>
+          <p className="page-subtitle">Intelligent Q&A Assistant based on Knowledge Base</p>
         </div>
       </div>
 
       <div className="search-container">
-        {/* 聊天模式 */}
+        {/* Chat mode */}
         <div className="chat-container">
           <div className="chat-header">
             <div className="chat-info">
               <Bot size={20} />
-              <span>AI助手</span>
-              <span className="status online">在线</span>
+              <span>AI Assistant</span>
+              <span className="status online">Online</span>
             </div>
 
             {messages.length > 0 && (
@@ -237,7 +237,7 @@ const AssistantPage: React.FC = () => {
                 className="btn btn-secondary btn-sm"
               >
                 <RefreshCw size={14} />
-                清空对话
+                Clear Chat
               </button>
             )}
           </div>
@@ -246,29 +246,29 @@ const AssistantPage: React.FC = () => {
             {messages.length === 0 ? (
               <div className="welcome-message">
                 <Bot size={48} />
-                <h3>您好！我是AI助手</h3>
-                <p>我可以帮您解答问题、分析信息，请输入您的问题。</p>
+                <h3>Hello! I'm an AI Assistant</h3>
+                <p>I can help you answer questions and analyze information. Please enter your question.</p>
 
                 <div className="example-questions">
-                  <h4>示例问题：</h4>
+                  <h4>Example Questions:</h4>
                   <div className="examples">
                     <button
-                      onClick={() => setQuery('人工智能在医疗领域的应用有哪些？')}
+                      onClick={() => setQuery('What are the applications of artificial intelligence in healthcare?')}
                       className="example-btn"
                     >
-                      人工智能在医疗领域的应用有哪些？
+                      What are the applications of artificial intelligence in healthcare?
                     </button>
                     <button
-                      onClick={() => setQuery('深度学习和机器学习的区别是什么？')}
+                      onClick={() => setQuery('What is the difference between deep learning and machine learning?')}
                       className="example-btn"
                     >
-                      深度学习和机器学习的区别是什么？
+                      What is the difference between deep learning and machine learning?
                     </button>
                     <button
-                      onClick={() => setQuery('GPT模型的发展历程')}
+                      onClick={() => setQuery('Development history of GPT models')}
                       className="example-btn"
                     >
-                      GPT模型的发展历程
+                      Development history of GPT models
                     </button>
                   </div>
                 </div>
@@ -290,47 +290,47 @@ const AssistantPage: React.FC = () => {
                             background: 'var(--elev)',
                             color: 'var(--muted)'
                           }}>
-                            {message.origin === 'online_search' ? '来源：联网搜索' : '来源：知识库'}
+                            {message.origin === 'online_search' ? 'Source: Online Search' : 'Source: Knowledge Base'}
                           </span>
                         </div>
                       )}
                       <div className="message-text">
                         {message.type === 'bot' ? (
-                          // 机器人回答使用特殊格式
+                          // Bot answer uses special format
                           <div className="bot-answer">
                             {message.content.split('\n').map((paragraph, index) => (
                               <p key={index}>{paragraph}</p>
                             ))}
                           </div>
                         ) : (
-                          // 用户消息保持原格式
+                          // User message keeps original format
                           message.content.split('\n').map((paragraph, index) => (
                             <p key={index}>{paragraph}</p>
                           ))
                         )}
                       </div>
 
-                      {/* 显示原始答案信息，仅在有rawAnswer且为bot消息时显示 */}
+                      {/* Display raw answer information, only shown when there is rawAnswer and it's a bot message */}
                       {message.type === 'bot' && message.rawAnswer && (
                         <details className="raw-answer-details">
-                          <summary>查看原始答案</summary>
+                          <summary>View Raw Answer</summary>
                           <div className="raw-answer-content">
                             {(() => {
-                              // 如果rawAnswer是数组（原始来源信息）
+                              // If rawAnswer is array (original source information)
                               if (Array.isArray(message.rawAnswer)) {
                                 return (
                                   <div className="raw-sources-list">
                                     {message.rawAnswer.map((source, index) => (
                                       <div key={index} className="raw-source-item">
-                                        <h5>来源 {index + 1}:</h5>
+                                        <h5>Source {index + 1}:</h5>
                                         <div className="raw-source-content">
-                                          <p><strong>内容:</strong> {source.content || '无内容'}</p>
+                                          <p><strong>Content:</strong> {source.content || 'No content'}</p>
                                           {source.metadata && (
                                             <div className="raw-source-meta">
-                                              <p><strong>标题:</strong> {source.metadata.title || '无标题'}</p>
-                                              <p><strong>作者:</strong> {source.metadata.author || '未知'}</p>
-                                              <p><strong>发布日期:</strong> {source.metadata.pub_date || '未知'}</p>
-                                              <p><strong>标签:</strong> {source.metadata.tags || '无标签'}</p>
+                                              <p><strong>Title:</strong> {source.metadata.title || 'No title'}</p>
+                                              <p><strong>Author:</strong> {source.metadata.author || 'Unknown'}</p>
+                                              <p><strong>Publish Date:</strong> {source.metadata.pub_date || 'Unknown'}</p>
+                                              <p><strong>Tags:</strong> {source.metadata.tags || 'No tags'}</p>
                                             </div>
                                           )}
                                         </div>
@@ -340,7 +340,7 @@ const AssistantPage: React.FC = () => {
                                 );
                               }
 
-                              // 如果是字符串，尝试解析并提取output
+                              // If string, try to parse and extract output
                               if (typeof message.rawAnswer === 'string') {
                                 try {
                                   const parsed = JSON.parse(message.rawAnswer);
@@ -348,18 +348,18 @@ const AssistantPage: React.FC = () => {
                                     return <div className="raw-answer-text">{String(parsed.output)}</div>;
                                   }
                                 } catch (e) {
-                                  // 如果JSON解析失败，尝试正则表达式
+                                  // If JSON parse fails, try regex
                                   const outputMatch = message.rawAnswer.match(/'output':\s*'([^']*)'/);
                                   if (outputMatch && outputMatch[1]) {
                                     return <div className="raw-answer-text">{outputMatch[1]}</div>;
                                   }
                                 }
                               }
-                              // 如果是对象且有output字段
+                              // If object and has output field
                               if (typeof message.rawAnswer === 'object' && message.rawAnswer !== null && message.rawAnswer.hasOwnProperty('output')) {
                                 return <div className="raw-answer-text">{String(message.rawAnswer.output)}</div>;
                               }
-                              // 其他情况显示原始内容
+                              // Other cases display original content
                               return <div className="raw-answer-text">{String(message.rawAnswer)}</div>;
                             })()}
                           </div>
@@ -377,14 +377,14 @@ const AssistantPage: React.FC = () => {
                             <button
                               onClick={() => copyToClipboard(message.content)}
                               className="action-btn"
-                              title="复制"
+                              title="Copy"
                             >
                               <Copy size={14} />
                             </button>
-                            <button className="action-btn" title="点赞">
+                            <button className="action-btn" title="Like">
                               <ThumbsUp size={14} />
                             </button>
-                            <button className="action-btn" title="点踩">
+                            <button className="action-btn" title="Dislike">
                               <ThumbsDown size={14} />
                             </button>
                           </div>
@@ -413,7 +413,7 @@ const AssistantPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 输入框 */}
+        {/* Input box */}
         <div className="input-container">
           <div className="input-wrapper">
             <input
@@ -422,7 +422,7 @@ const AssistantPage: React.FC = () => {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={'输入您的问题...'}
+              placeholder={'Enter your question...'}
               className="search-input"
               disabled={loading}
             />
@@ -542,15 +542,15 @@ const AssistantPage: React.FC = () => {
           flex: 1;
           overflow-y: auto;
           padding: 20px;
-          min-height: 0; /* 确保flex容器正确收缩 */
-          /* 确保滚动条始终可见 */
+          min-height: 0; /* Ensure flex container shrinks correctly */
+          /* Ensure scrollbar is always visible */
           scrollbar-width: thin;
           scrollbar-color: #ccc #f1f1f1;
-          max-height: calc(100vh - 280px); /* 设置最大高度 */
-          border: 1px solid #eee; /* 添加边框使容器边界更明显 */
+          max-height: calc(100vh - 280px); /* Set maximum height */
+          border: 1px solid #eee; /* Add border to make container boundaries more obvious */
         }
         
-        /* Webkit浏览器的滚动条样式 */
+        /* Webkit browser scrollbar styles */
         .messages-container::-webkit-scrollbar {
           width: 8px;
         }
@@ -678,7 +678,7 @@ const AssistantPage: React.FC = () => {
           margin-bottom: 0;
         }
 
-        /* 机器人回答的特殊样式 */
+        /* Special styles for bot answers */
         .bot-answer {
           font-size: 15px;
           line-height: 1.6;
