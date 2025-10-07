@@ -7,6 +7,7 @@ from models.rss_source import RssSource
 from models.document import Document
 from models.user import User
 from models.analysis import Analysis
+from models.web_source import WebSource
 
 # Try to load dotenv to support reading environment variables from .env file
 try:

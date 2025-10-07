@@ -7,6 +7,7 @@ import type { ApiResponse } from '@/types'
 import { authAPI } from './modules/auth'
 import { documentAPI } from './modules/document'
 import { rssAPI } from './modules/rss'
+import { webAPI } from './modules/web'
 import { analyticsAPI } from './modules/analytics'
 import { assistantAPI } from './modules/assistant'
 import { schedulerAPI } from './modules/scheduler'
@@ -23,6 +24,7 @@ interface APIInstance {
   auth: typeof authAPI
   documents: typeof documentAPI
   rss: typeof rssAPI
+  web: typeof webAPI
   analytics: typeof analyticsAPI
   assistant: typeof assistantAPI
   scheduler: typeof schedulerAPI
@@ -42,6 +44,7 @@ export {
   authAPI,
   documentAPI,
   rssAPI,
+  webAPI,
   analyticsAPI,
   assistantAPI,
   schedulerAPI
@@ -52,6 +55,7 @@ const api: APIInstance = {
   auth: authAPI,
   documents: documentAPI,
   rss: rssAPI,
+  web: webAPI,
   analytics: analyticsAPI,
   assistant: assistantAPI,
   scheduler: schedulerAPI
@@ -65,6 +69,7 @@ export const createAPIInstance = (config: APIConfig = {}): APIInstance => {
     auth: authAPI,
     documents: documentAPI,
     rss: rssAPI,
+    web: webAPI,
     analytics: analyticsAPI,
     assistant: assistantAPI,
     scheduler: schedulerAPI

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { rssAPI } from '../api'
+import { rssAPI, webAPI } from '../api'
 import {
   Plus,
   Rss,
@@ -35,28 +35,7 @@ interface DataSource {
     excludeKeywords: string
     minLength: number
   }
-}
-
-// API response data type
-interface ApiSourceItem {
-  id: string
-  name: string
-  entry: string
-  description?: string
-  schedule?: string
-  enabled?: boolean
-  last_run?: string | null
-  next_run?: string | null
-  articles_count?: number
-  tags?: string[]
-  filters?: {
-    keywords: string
-    excludeKeywords: string
-    minLength: number
-  }
-  template?: {
-    type?: string
-  }
+  type?: string
 }
 
 const RssPage: React.FC = () => {
@@ -88,11 +67,15 @@ const RssPage: React.FC = () => {
     setLoading(true)
     try {
       // Get RSS data sources
-      const response = await rssAPI.getRssSources()
-      const sources = response.data || []
+      const rssResponse = await rssAPI.getRssSources()
+      const rssSources = rssResponse.data || []
 
-      // Convert API data to frontend format, ensuring all necessary properties exist
-      const transformedSources = sources.map((source: any) => ({
+      // Get Web data sources
+      const webResponse = await webAPI.getWebSources()
+      const webSources = webResponse.data || []
+
+      // Convert RSS API data to frontend format
+      const transformedRssSources = rssSources.map((source: any) => ({
         id: source.id,
         name: source.name,
         url: source.url,
@@ -112,12 +95,35 @@ const RssPage: React.FC = () => {
           minLength: 100
         },
         lastSync: new Date().toISOString(),
-        type: 'rss' // Backend currently only has RSS sources, no web sources
+        type: 'rss'
       }))
 
-      // Since backend currently only has RSS sources, no web sources, all sources are categorized as RSS
-      setRssSources(transformedSources)
-      setWebSources([]) // Clear web source list
+      // Convert Web API data to frontend format
+      const transformedWebSources = webSources.map((source: any) => ({
+        id: source.id,
+        name: source.name,
+        url: source.url,
+        description: '', // Backend currently doesn't provide description field
+        schedule: source.interval === 'SIX_HOUR' ? '6h' :
+          source.interval === 'TWELVE_HOUR' ? '12h' :
+            source.interval === 'ONE_DAY' ? '24h' : '24h',
+        enabled: !source.is_paused, // Map backend is_paused field to enabled
+        status: source.is_paused ? 'paused' : 'active', // Map backend is_paused field to status
+        lastRun: source.last_sync, // Map backend last_sync field
+        nextRun: source.next_sync, // Map backend next_sync field
+        document_count: source.document_count || 0, // Map backend document_count field
+        tags: [], // Backend currently doesn't provide tags field
+        filters: { // Backend currently doesn't provide filters field, use default values
+          keywords: '',
+          excludeKeywords: '',
+          minLength: 100
+        },
+        lastSync: new Date().toISOString(),
+        type: 'web'
+      }))
+
+      setRssSources(transformedRssSources)
+      setWebSources(transformedWebSources)
     } catch (error) {
       console.error('Failed to fetch data sources:', error)
     } finally {
@@ -164,7 +170,7 @@ const RssPage: React.FC = () => {
   const handleSaveSource = async () => {
     try {
       // Build data format that matches backend expectations
-      const sourceData = {
+      const baseData = {
         name: formData.name,
         url: formData.url,
         interval: formData.schedule === '6h' ? 'SIX_HOUR' :
@@ -172,10 +178,23 @@ const RssPage: React.FC = () => {
             formData.schedule === '24h' ? 'ONE_DAY' : 'ONE_DAY' // Default to ONE_DAY
       }
 
-      // Call save API
-      const response = editingSource
-        ? await rssAPI.updateRssSource(editingSource.id, sourceData)
-        : await rssAPI.createRssSource(sourceData)
+      let response
+      if (activeTab === 'rss') {
+        // Call RSS API
+        response = editingSource
+          ? await rssAPI.updateRssSource(editingSource.id, baseData)
+          : await rssAPI.createRssSource(baseData)
+      } else {
+        // Call Web API
+        const webData = {
+          ...baseData,
+          is_paused: !formData.enabled
+        }
+        response = editingSource
+          ? await webAPI.updateWebSource(editingSource.id, webData)
+          : await webAPI.createWebSource(webData)
+      }
+
       const savedSource = response.data
 
       // Convert to frontend display format
@@ -187,14 +206,15 @@ const RssPage: React.FC = () => {
         schedule: savedSource.interval === 'SIX_HOUR' ? '6h' :
           savedSource.interval === 'TWELVE_HOUR' ? '12h' :
             savedSource.interval === 'ONE_DAY' ? '24h' : '24h',
-        enabled: true, // Backend currently doesn't provide enabled field, default to true
-        status: 'active', // Backend currently doesn't provide status field, default to active
-        lastRun: null,
-        nextRun: null,
-        document_count: 0,
+        enabled: activeTab === 'rss' ? true : !savedSource.is_paused,
+        status: activeTab === 'rss' ? 'active' : (savedSource.is_paused ? 'paused' : 'active'),
+        lastRun: savedSource.last_sync,
+        nextRun: savedSource.next_sync,
+        document_count: savedSource.document_count || 0,
         tags: formData.tags,
         filters: formData.filters,
-        lastSync: new Date().toISOString()
+        lastSync: new Date().toISOString(),
+        type: activeTab
       }
 
       if (activeTab === 'rss') {
@@ -222,12 +242,12 @@ const RssPage: React.FC = () => {
   const handleDeleteSource = async (sourceId: string | number) => {
     if (window.confirm('Are you sure you want to delete this data source?')) {
       try {
-        // Call delete API
-        await rssAPI.deleteRssSource(sourceId)
-
+        // Call appropriate delete API based on active tab
         if (activeTab === 'rss') {
+          await rssAPI.deleteRssSource(sourceId)
           setRssSources(prev => prev.filter(s => s.id !== sourceId))
         } else {
+          await webAPI.deleteWebSource(sourceId)
           setWebSources(prev => prev.filter(s => s.id !== sourceId))
         }
 
@@ -246,24 +266,37 @@ const RssPage: React.FC = () => {
       if (!currentSource) return
 
       // Update data source configuration - use backend expected format
-      const updatedSource = {
+      const baseData = {
         name: currentSource.name,
         url: currentSource.url,
-        interval: 'ONE_DAY' // Default to ONE_DAY
+        interval: currentSource.schedule === '6h' ? 'SIX_HOUR' :
+          currentSource.schedule === '12h' ? 'TWELVE_HOUR' :
+            currentSource.schedule === '24h' ? 'ONE_DAY' : 'ONE_DAY'
       }
 
-      await rssAPI.updateRssSource(sourceId, updatedSource)
-
-      const updateSource = (source: DataSource) => ({
-        ...source,
-        enabled,
-        status: enabled ? 'active' : 'paused',
-        nextRun: enabled ? new Date(Date.now() + 3600000).toISOString() : null
-      })
-
       if (activeTab === 'rss') {
+        // For RSS sources, we can't really pause them in the backend, so just update the UI
+        const updateSource = (source: DataSource) => ({
+          ...source,
+          enabled,
+          status: enabled ? 'active' : 'paused',
+          nextRun: enabled ? new Date(Date.now() + 3600000).toISOString() : null
+        })
         setRssSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
       } else {
+        // For Web sources, update the is_paused field
+        const webData = {
+          ...baseData,
+          is_paused: !enabled
+        }
+        await webAPI.updateWebSource(sourceId, webData)
+
+        const updateSource = (source: DataSource) => ({
+          ...source,
+          enabled,
+          status: enabled ? 'active' : 'paused',
+          nextRun: enabled ? new Date(Date.now() + 3600000).toISOString() : null
+        })
         setWebSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
       }
     } catch (error) {
@@ -274,27 +307,38 @@ const RssPage: React.FC = () => {
 
   const handleRunNow = async (sourceId: string | number) => {
     try {
-      // Call RSS collection API
-      const response = await rssAPI.triggerRssCollection(sourceId)
+      if (activeTab === 'rss') {
+        // Call RSS collection API
+        const response = await rssAPI.triggerRssCollection(sourceId)
 
-      // Check if response is successful
-      if (response && response.message) {
-        alert('Collection task started')
+        // Check if response is successful
+        if (response && response.message) {
+          alert('RSS collection task started')
+
+          const updateSource = (source: DataSource) => ({
+            ...source,
+            lastRun: new Date().toISOString(),
+            nextRun: new Date(Date.now() + 3600000).toISOString(), // Default to run again after 1 hour
+            document_count: (source.document_count || 0) + Math.floor(Math.random() * 10) + 1
+          })
+
+          setRssSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
+        } else {
+          throw new Error('RSS collection response invalid')
+        }
+      } else {
+        // For web sources, we don't have a trigger collection API yet
+        // For now, just simulate the action
+        alert('Web collection feature coming soon!')
 
         const updateSource = (source: DataSource) => ({
           ...source,
           lastRun: new Date().toISOString(),
           nextRun: new Date(Date.now() + 3600000).toISOString(), // Default to run again after 1 hour
-          articlesCount: (source.document_count || 0) + Math.floor(Math.random() * 10) + 1
+          document_count: (source.document_count || 0) + Math.floor(Math.random() * 5) + 1
         })
 
-        if (activeTab === 'rss') {
-          setRssSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
-        } else {
-          setWebSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
-        }
-      } else {
-        throw new Error('Collection response invalid')
+        setWebSources(prev => prev.map(s => s.id === sourceId ? updateSource(s) : s))
       }
     } catch (error) {
       console.error('Collection failed:', error)

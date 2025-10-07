@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 from apis.rss import rss_bp
+from apis.web import web_bp
 from apis.document import document_bp
 from apis.auth import auth_bp
 from apis.assistant import assistant_bp
@@ -34,6 +35,8 @@ def create_app():
 
     # 注册RSS API蓝图
     app.register_blueprint(rss_bp)
+    # 注册Web API蓝图
+    app.register_blueprint(web_bp)
     # 注册文档API蓝图
     app.register_blueprint(document_bp)
     # 注册鉴权API蓝图

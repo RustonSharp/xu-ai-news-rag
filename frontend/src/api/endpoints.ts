@@ -32,6 +32,8 @@ interface CollectionEndpoints {
   RSS_SOURCES: string
   RSS_SOURCE: EndpointFunction
   RSS_FEEDS: EndpointFunction
+  WEB_SOURCES: string
+  WEB_SOURCE: EndpointFunction
   WEB_CRAWL: string
   CRAWL_TASKS: string
   CRAWL_TASK: EndpointFunction
@@ -103,6 +105,8 @@ export const API_ENDPOINTS: ApiEndpoints = {
     RSS_SOURCES: '/api/rss/sources',
     RSS_SOURCE: (id: string | number) => `/api/rss/sources/${id}`,
     RSS_FEEDS: (id: string | number) => `/api/rss/feeds/${id}`,
+    WEB_SOURCES: '/api/web/sources',
+    WEB_SOURCE: (id: string | number) => `/api/web/sources/${id}`,
     WEB_CRAWL: '/api/collection/crawl',
     CRAWL_TASKS: '/api/collection/tasks',
     CRAWL_TASK: (id: string | number) => `/api/collection/tasks/${id}`
