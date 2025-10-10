@@ -26,7 +26,7 @@ def create_app():
     # 配置CORS，允许前端应用访问
     CORS(app, resources={
         r"/api/*": {
-            "origins": ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
+            "origins": ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://localhost:3001"],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"]
         }
@@ -54,7 +54,7 @@ app = create_app()
 
 # 从环境变量获取配置
 host = os.getenv("APP_HOST", "0.0.0.0")
-port = int(os.getenv("APP_PORT", 5001))
+port = int(os.getenv("APP_PORT", 19131))
 debug = os.getenv("APP_DEBUG", "true").lower() == "true"
 auto_start_scheduler = os.getenv("AUTO_START_SCHEDULER", "true").lower() == "true"
 
