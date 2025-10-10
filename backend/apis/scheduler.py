@@ -1,14 +1,14 @@
 from flask import Blueprint, jsonify, request
 from flask_cors import cross_origin
 from utils.logging_config import app_logger
-from rss_scheduler import rss_scheduler
+from services.scheduler_service import scheduler_service
+from core.database import db_manager
 from sqlmodel import Session, select
-from models.rss_source import RssSource
-from utils.init_sqlite import engine
+from models.source import Source
 import os
 
 # 创建RSS调度器API蓝图
-scheduler_bp = Blueprint('scheduler', __name__, url_prefix='/api/scheduler')
+scheduler_bp = Blueprint('scheduler', __name__, url_prefix='/api/v1/scheduler')
 
 @scheduler_bp.route('/status', methods=['GET'])
 @cross_origin()
@@ -17,7 +17,7 @@ def get_scheduler_status():
     try:
         with Session(engine) as session:
             # 获取所有RSS源
-            rss_sources = session.exec(select(RssSource)).all()
+            rss_sources = session.exec(select(Source).where(Source.source_type == "rss")).all()
             
             # 获取当前活动的线程
             active_threads = {}
@@ -120,7 +120,7 @@ def fetch_rss_now(rss_id):
         
         with Session(engine) as session:
             # 检查RSS源是否存在
-            rss_source = session.exec(select(RssSource).where(RssSource.id == rss_id)).first()
+            rss_source = session.exec(select(Source).where(Source.id == rss_id, Source.source_type == "rss")).first()
             if not rss_source:
                 return jsonify({
                     "success": False,

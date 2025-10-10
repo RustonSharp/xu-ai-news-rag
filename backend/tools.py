@@ -1365,7 +1365,15 @@ if __name__ == "__main__":
                 db_path = os.getenv("DATABASE_PATH")
                 if not db_path:
                     raise ValueError("DATABASE_PATH environment variable is not set")
-                return create_engine(f"sqlite:///{db_path}")
+                return create_engine(
+                    f"sqlite:///{db_path}",
+                    pool_size=20,
+                    max_overflow=30,
+                    pool_timeout=60,
+                    pool_recycle=3600,
+                    pool_pre_ping=True,
+                    echo=False
+                )
             # 测试存储文档
             # 从 sqlite获取数据
             engine = get_db_engine()

@@ -45,8 +45,9 @@ const DocsPage: React.FC = () => {
 
   const fetchRssSources = async () => {
     try {
-      const response = await rssAPI.getRssSources()
-      setRssSources(response.data || [])
+      const response = await rssAPI.getRssSources({ type: 'rss' })
+      const data = response.data || response
+      setRssSources(data.sources || [])
     } catch (error) {
       console.error('Failed to fetch RSS sources:', error)
       setRssSources([])

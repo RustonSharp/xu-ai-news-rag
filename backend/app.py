@@ -1,18 +1,14 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-from apis.rss import rss_bp
-from apis.web import web_bp
+from apis.source import source_bp
 from apis.document import document_bp
 from apis.auth import auth_bp
 from apis.assistant import assistant_bp
 from apis.scheduler import scheduler_bp
-from dotenv import load_dotenv
-import os
 from utils.logging_config import app_logger
 from utils.init_sqlite import init_db
-from rss_scheduler import rss_scheduler
-# 加载环境变量
-load_dotenv()
+from services.scheduler_service import scheduler_service
+from config.settings import settings
 
 def create_app():
     """创建Flask应用实例"""
@@ -27,16 +23,14 @@ def create_app():
     # 配置CORS，允许前端应用访问
     CORS(app, resources={
         r"/api/*": {
-            "origins": ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
+            "origins": settings.CORS_ORIGINS,
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"]
         }
     })
 
-    # 注册RSS API蓝图
-    app.register_blueprint(rss_bp)
-    # 注册Web API蓝图
-    app.register_blueprint(web_bp)
+    # 注册统一数据源API蓝图
+    app.register_blueprint(source_bp)
     # 注册文档API蓝图
     app.register_blueprint(document_bp)
     # 注册鉴权API蓝图
@@ -55,20 +49,14 @@ def create_app():
 
 app = create_app()
 
-# 从环境变量获取配置
-host = os.getenv("APP_HOST", "0.0.0.0")
-port = int(os.getenv("APP_PORT", 5001))
-debug = os.getenv("APP_DEBUG", "true").lower() == "true"
-auto_start_scheduler = os.getenv("AUTO_START_SCHEDULER", "true").lower() == "true"
-
 # 根据环境变量决定是否自动启动RSS定时任务调度器
-if auto_start_scheduler:
+if settings.AUTO_START_SCHEDULER:
     app_logger.info("Auto-starting RSS scheduler")
-    rss_scheduler.start()
+    scheduler_service.start()
 else:
     app_logger.info("RSS scheduler auto-start disabled")
 
 
 if __name__ == '__main__':
-    app_logger.info(f"Starting Flask app on {host}:{port} with debug={debug}")
-    app.run(host=host, port=port, debug=debug)
+    app_logger.info(f"Starting Flask app on {settings.APP_HOST}:{settings.APP_PORT} with debug={settings.APP_DEBUG}")
+    app.run(host=settings.APP_HOST, port=settings.APP_PORT, debug=settings.APP_DEBUG)

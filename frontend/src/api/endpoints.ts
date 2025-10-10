@@ -102,11 +102,11 @@ export const API_ENDPOINTS: ApiEndpoints = {
 
   // 采集相关
   COLLECTION: {
-    RSS_SOURCES: '/api/rss/sources',
-    RSS_SOURCE: (id: string | number) => `/api/rss/sources/${id}`,
-    RSS_FEEDS: (id: string | number) => `/api/rss/feeds/${id}`,
-    WEB_SOURCES: '/api/web/sources',
-    WEB_SOURCE: (id: string | number) => `/api/web/sources/${id}`,
+    RSS_SOURCES: '/api/sources',
+    RSS_SOURCE: (id: string | number) => `/api/sources/${id}`,
+    RSS_FEEDS: (id: string | number) => `/api/sources/${id}/feeds`,
+    WEB_SOURCES: '/api/sources',
+    WEB_SOURCE: (id: string | number) => `/api/sources/${id}`,
     WEB_CRAWL: '/api/collection/crawl',
     CRAWL_TASKS: '/api/collection/tasks',
     CRAWL_TASK: (id: string | number) => `/api/collection/tasks/${id}`

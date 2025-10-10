@@ -1,3 +1,5 @@
+@import './styles/chat.css';
+
 /* 全局样式变量 */
 :root {
   /* 颜色系统 */
@@ -9,48 +11,48 @@
   --warning: #f59e0b;
   --danger: #ef4444;
   --info: #3b82f6;
-  
+
   /* 文本颜色 */
   --text: #1f2937;
   --text-light: #374151;
   --muted: #6b7280;
   --muted-light: #9ca3af;
-  
+
   /* 背景颜色 */
   --bg: #ffffff;
   --bg-secondary: #f9fafb;
   --panel: #ffffff;
   --elev: #f3f4f6;
   --overlay: rgba(0, 0, 0, 0.5);
-  
+
   /* 边框颜色 */
   --border: #e5e7eb;
   --border-light: #f3f4f6;
   --border-dark: #d1d5db;
-  
+
   /* 阴影 */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  
+
   /* 圆角 */
   --radius: 8px;
   --radius-sm: 4px;
   --radius-lg: 12px;
   --radius-xl: 16px;
-  
+
   /* 间距 */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
-  
+
   /* 字体 */
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-  
+
   /* 过渡动画 */
   --transition: all 0.2s ease;
   --transition-fast: all 0.15s ease;
@@ -63,13 +65,13 @@
   --text-light: #e5e7eb;
   --muted: #9ca3af;
   --muted-light: #6b7280;
-  
+
   --bg: #111827;
   --bg-secondary: #1f2937;
   --panel: #1f2937;
   --elev: #374151;
   --overlay: rgba(0, 0, 0, 0.7);
-  
+
   --border: #374151;
   --border-light: #4b5563;
   --border-dark: #6b7280;
@@ -82,13 +84,13 @@
     --text-light: #e5e7eb;
     --muted: #9ca3af;
     --muted-light: #6b7280;
-    
+
     --bg: #111827;
     --bg-secondary: #1f2937;
     --panel: #1f2937;
     --elev: #374151;
     --overlay: rgba(0, 0, 0, 0.7);
-    
+
     --border: #374151;
     --border-light: #4b5563;
     --border-dark: #6b7280;
@@ -378,8 +380,13 @@ body {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 状态标签 */
@@ -438,24 +445,24 @@ body {
     padding: 12px 16px;
     gap: 16px;
   }
-  
+
   .nav-links {
     gap: 12px;
   }
-  
+
   .main {
     padding: 16px;
   }
-  
+
   .card {
     padding: 16px;
   }
-  
+
   .toolbar {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .toolbar-right {
     margin-left: 0;
     justify-content: flex-start;

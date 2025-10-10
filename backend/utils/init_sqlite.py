@@ -3,11 +3,10 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlmodel import SQLModel, create_engine
 from utils.logging_config import app_logger
-from models.rss_source import RssSource
+from models.source import Source
 from models.document import Document
 from models.user import User
 from models.analysis import Analysis
-from models.web_source import WebSource
 
 # Try to load dotenv to support reading environment variables from .env file
 try:
@@ -24,7 +23,15 @@ if not db_path:
     engine = None
 else:
     app_logger.info(f"Database path: {db_path}")
-    engine = create_engine(f"sqlite:///{db_path}")
+    engine = create_engine(
+        f"sqlite:///{db_path}",
+        pool_size=20,
+        max_overflow=30,
+        pool_timeout=60,
+        pool_recycle=3600,
+        pool_pre_ping=True,
+        echo=False
+    )
 
 def init_db():
     """

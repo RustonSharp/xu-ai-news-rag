@@ -1,15 +1,22 @@
+"""
+Scheduler service for RSS feed scheduling and management.
+"""
 import threading
 import time
 import datetime
+from typing import Dict, Any, Optional
 from sqlmodel import Session, select
 from models.source import Source
 from models.document import Document
+from core.database import db_manager
+from services.document_service import DocumentService
 from utils.logging_config import app_logger
-from utils.init_sqlite import engine
-from fetch_document import fetch_rss_feeds
 import os
 
-class RSSScheduler:
+
+class SchedulerService:
+    """Service for RSS scheduling operations."""
+    
     def __init__(self):
         self.running = False
         self.threads = {}
@@ -18,9 +25,9 @@ class RSSScheduler:
         auto_start = os.getenv("AUTO_START_SCHEDULER", "true").lower() == "true"
         if auto_start:
             self.start()
-        
+    
     def start(self):
-        """启动定时任务调度器"""
+        """Start the scheduled task scheduler."""
         if self.running:
             app_logger.warning("RSS scheduler is already running")
             return
@@ -28,13 +35,13 @@ class RSSScheduler:
         self.running = True
         app_logger.info("Starting RSS scheduler")
         
-        # 启动主调度线程
+        # Start main scheduler thread
         scheduler_thread = threading.Thread(target=self._scheduler_loop)
         scheduler_thread.daemon = True
         scheduler_thread.start()
-        
+    
     def stop(self):
-        """停止定时任务调度器"""
+        """Stop the scheduled task scheduler."""
         if not self.running:
             app_logger.warning("RSS scheduler is not running")
             return
@@ -42,7 +49,7 @@ class RSSScheduler:
         self.running = False
         app_logger.info("Stopping RSS scheduler")
         
-        # 等待所有线程结束
+        # Wait for all threads to end
         with self.lock:
             for rss_id, thread in self.threads.items():
                 if thread.is_alive():
@@ -50,7 +57,7 @@ class RSSScheduler:
             self.threads.clear()
     
     def _scheduler_loop(self):
-        """主调度循环"""
+        """Main scheduler loop."""
         while self.running:
             try:
                 now = datetime.datetime.now()
@@ -58,10 +65,11 @@ class RSSScheduler:
                 current_minute = now.minute
                 # Change from debug to info level so it's always visible
                 app_logger.info(f"Scheduler tick at {now.strftime('%Y-%m-%d %H:%M:%S')}")
-                # 只在整点执行（分钟为0）
+                
+                # Only execute at the top of the hour (minute is 0)
                 if current_minute == 0:
-                    with Session(engine) as session:
-                        # 根据当前时间确定要执行的间隔类型
+                    with db_manager.get_session() as session:
+                        # Determine target interval type based on current time
                         target_interval = None
                         if current_hour == 0:
                             target_interval = 'ONE_DAY'
@@ -70,28 +78,28 @@ class RSSScheduler:
                         elif current_hour == 12:
                             target_interval = 'TWELVE_HOUR'
                         
-                        # 如果是目标时间点，则执行对应间隔的RSS源
+                        # If it's a target time, execute RSS sources with matching interval
                         if target_interval:
                             app_logger.info(f"Executing RSS sources with interval {target_interval} at {current_hour}:00")
                             
-                            # 获取所有未暂停且间隔类型匹配的RSS源
+                            # Get all non-paused RSS sources with matching interval type
                             statement = select(Source).where(
                                 Source.interval == target_interval,
                                 Source.source_type == "rss"
                             )
-                            # 检查是否有is_paused字段并过滤
+                            # Check if is_paused field exists and filter
                             if hasattr(Source, 'is_paused'):
                                 statement = statement.where(Source.is_paused == False)
                             
                             rss_sources = session.exec(statement).all()
                             
                             for rss_source in rss_sources:
-                                # 检查是否已经有该RSS源的线程在运行
+                                # Check if there's already a thread running for this RSS source
                                 with self.lock:
                                     if rss_source.id in self.threads and self.threads[rss_source.id].is_alive():
                                         continue
                                     
-                                    # 创建新的线程来处理RSS源
+                                    # Create new thread to handle RSS source
                                     thread = threading.Thread(
                                         target=self._process_rss_source,
                                         args=(rss_source.id,)
@@ -101,49 +109,51 @@ class RSSScheduler:
                                     self.threads[rss_source.id] = thread
                                     app_logger.info(f"Started RSS fetch thread for source {rss_source.name} (ID: {rss_source.id}) with interval {rss_source.interval}")
                 
-                # 每分钟检查一次
+                # Check every minute
                 time.sleep(60)
                 
             except Exception as e:
                 app_logger.error(f"Error in scheduler loop: {str(e)}")
-                time.sleep(60)  # 发生错误时等待1分钟
-    
+                time.sleep(60)  # Wait 1 minute when error occurs
     
     def _process_rss_source(self, rss_id: int):
-        """处理单个RSS源的定时任务"""
+        """Process scheduled task for a single RSS source."""
         try:
-            with Session(engine) as session:
-                # 检查RSS源是否仍然存在
-                rss_source = session.exec(select(Source).where(Source.id == rss_id, Source.source_type == "rss")).first()
+            with db_manager.get_session() as session:
+                # Check if RSS source still exists
+                rss_source = session.exec(
+                    select(Source).where(Source.id == rss_id, Source.source_type == "rss")
+                ).first()
                 if not rss_source:
                     app_logger.info(f"RSS source with ID {rss_id} no longer exists, stopping thread")
                     return
                 
-                # 检查RSS源是否暂停
+                # Check if RSS source is paused
                 if hasattr(rss_source, 'is_paused') and rss_source.is_paused:
                     app_logger.info(f"RSS source {rss_source.name} (ID: {rss_id}) is paused, skipping fetch")
                     return
                 
-                # 执行RSS获取
+                # Execute RSS fetch
                 app_logger.info(f"Fetching RSS for source {rss_source.name} (ID: {rss_id})")
-                success = fetch_rss_feeds(rss_id, session)
+                document_service = DocumentService(session)
+                success = document_service.fetch_rss_feeds(rss_id)
                 
                 if success:
-                    # 更新上次同步时间
+                    # Update last sync time
                     from datetime import datetime
                     rss_source.last_sync = datetime.now()
                     
-                    # 根据interval设置下次运行时间
+                    # Set next run time based on interval
                     now = datetime.now()
                     from datetime import timedelta
                     if rss_source.interval == 'SIX_HOUR':
-                        # 每6小时运行一次
+                        # Run every 6 hours
                         rss_source.next_sync = now + timedelta(hours=6)
                     elif rss_source.interval == 'TWELVE_HOUR':
-                        # 每12小时运行一次
+                        # Run every 12 hours
                         rss_source.next_sync = now + timedelta(hours=12)
                     else:  # ONE_DAY
-                        # 每24小时运行一次
+                        # Run every 24 hours
                         rss_source.next_sync = now + timedelta(days=1)
                     
                     session.commit()
@@ -154,11 +164,70 @@ class RSSScheduler:
         except Exception as e:
             app_logger.error(f"Error processing RSS source {rss_id}: {str(e)}")
         finally:
-            # 线程结束时清理
+            # Clean up when thread ends
             with self.lock:
                 if rss_id in self.threads:
                     del self.threads[rss_id]
             app_logger.info(f"RSS fetch thread for source ID {rss_id} completed")
 
-# 创建全局调度器实例
-rss_scheduler = RSSScheduler()
+    def get_scheduler_status(self) -> Dict[str, Any]:
+        """Get current scheduler status."""
+        with self.lock:
+            active_threads = {k: v.is_alive() for k, v in self.threads.items()}
+        
+        return {
+            "running": self.running,
+            "active_threads": active_threads,
+            "total_threads": len(self.threads)
+        }
+
+    def force_sync_source(self, source_id: int) -> bool:
+        """Force sync a specific source."""
+        try:
+            with db_manager.get_session() as session:
+                document_service = DocumentService(session)
+                success = document_service.fetch_rss_feeds(source_id)
+                
+                if success:
+                    app_logger.info(f"Force sync successful for source {source_id}")
+                else:
+                    app_logger.warning(f"Force sync failed for source {source_id}")
+                
+                return success
+        except Exception as e:
+            app_logger.error(f"Error in force sync for source {source_id}: {str(e)}")
+            return False
+
+    def pause_source(self, source_id: int) -> bool:
+        """Pause a specific source."""
+        try:
+            with db_manager.get_session() as session:
+                source = session.exec(select(Source).where(Source.id == source_id)).first()
+                if source and hasattr(source, 'is_paused'):
+                    source.is_paused = True
+                    session.commit()
+                    app_logger.info(f"Source {source_id} paused")
+                    return True
+                return False
+        except Exception as e:
+            app_logger.error(f"Error pausing source {source_id}: {str(e)}")
+            return False
+
+    def resume_source(self, source_id: int) -> bool:
+        """Resume a specific source."""
+        try:
+            with db_manager.get_session() as session:
+                source = session.exec(select(Source).where(Source.id == source_id)).first()
+                if source and hasattr(source, 'is_paused'):
+                    source.is_paused = False
+                    session.commit()
+                    app_logger.info(f"Source {source_id} resumed")
+                    return True
+                return False
+        except Exception as e:
+            app_logger.error(f"Error resuming source {source_id}: {str(e)}")
+            return False
+
+
+# Global scheduler service instance
+scheduler_service = SchedulerService()

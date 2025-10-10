@@ -1,10 +1,9 @@
-from models.rss_source import RssSource
+from models.source import Source
 from sqlmodel import Session, select
 from utils.logging_config import app_logger
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from models.rss_source import RssSource
 from models.document import Document
 import feedparser
 import time
@@ -69,7 +68,7 @@ def store_documents_in_knowledge_base(document_list):
 
 # 定义一个函数，用于从RSS源中获取数据
 def fetch_rss_feeds(id:int, session:Session) -> bool:
-    rss_source = session.exec(select(RssSource).where(RssSource.id == id)).first()
+    rss_source = session.exec(select(Source).where(Source.id == id, Source.source_type == "rss")).first()
     document_list = []
     if rss_source:
         # 解析RSS源
