@@ -72,7 +72,7 @@ class TestDocumentAPI:
             mock_doc1.pub_date = None
             mock_doc1.author = '测试作者1'
             mock_doc1.tags = 'tag1,tag2'
-            mock_doc1.rss_source_id = 1
+            mock_doc1.source_id = 1
             # 设置crawled_at为datetime对象而不是None
             from datetime import datetime
             mock_doc1.crawled_at = datetime(2025, 1, 1, 12, 0, 0)
@@ -85,7 +85,7 @@ class TestDocumentAPI:
             mock_doc2.pub_date = None
             mock_doc2.author = '测试作者2'
             mock_doc2.tags = 'tag3,tag4'
-            mock_doc2.rss_source_id = 2
+            mock_doc2.source_id = 2
             # 设置crawled_at为datetime对象而不是None
             mock_doc2.crawled_at = datetime(2025, 1, 2, 12, 0, 0)
             
@@ -115,7 +115,7 @@ class TestDocumentAPI:
             mock_doc.pub_date = None
             mock_doc.author = '测试作者'
             mock_doc.tags = 'tag1,tag2'
-            mock_doc.rss_source_id = 1
+            mock_doc.source_id = 1
             # 设置crawled_at为datetime对象而不是None
             from datetime import datetime
             mock_doc.crawled_at = datetime(2025, 1, 1, 12, 0, 0)
@@ -149,7 +149,7 @@ class TestDocumentAPI:
             mock_doc.pub_date = None
             mock_doc.author = '测试作者'
             mock_doc.tags = 'tag1,tag2'
-            mock_doc.rss_source_id = 1
+            mock_doc.source_id = 1
             # 设置crawled_at为datetime对象而不是None
             from datetime import datetime
             mock_doc.crawled_at = datetime(2025, 1, 1, 12, 0, 0)

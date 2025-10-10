@@ -103,7 +103,7 @@ def get_documents():
                 "pub_date": doc.pub_date.isoformat() if doc.pub_date else None,
                 "author": doc.author,
                 "tags": doc.tags.split(",") if doc.tags else [],
-                "rss_source_id": doc.rss_source_id,
+                "source_id": doc.source_id,
                 "crawled_at": doc.crawled_at.isoformat()
             })
         
@@ -152,7 +152,7 @@ def get_documents_page():
                 "pub_date": doc.pub_date.isoformat() if doc.pub_date else None,
                 "author": doc.author,
                 "tags": doc.tags.split(",") if doc.tags else [],
-                "rss_source_id": doc.rss_source_id,
+                "source_id": doc.source_id,
                 "crawled_at": doc.crawled_at.isoformat()
             })
         
@@ -189,7 +189,7 @@ def get_document(doc_id):
             "pub_date": document.pub_date.isoformat() if document.pub_date else None,
             "author": document.author,
             "tags": document.tags.split(",") if document.tags else [],
-            "rss_source_id": document.rss_source_id,
+            "source_id": document.source_id,
             "crawled_at": document.crawled_at.isoformat()
         })
     except Exception as e:
@@ -217,7 +217,7 @@ def get_documents_by_source_id(source_id):
                 "pub_date": doc.pub_date.isoformat() if doc.pub_date else None,
                 "author": doc.author,
                 "tags": doc.tags.split(",") if doc.tags else [],
-                "rss_source_id": doc.rss_source_id,
+                "source_id": doc.source_id,
                 "crawled_at": doc.crawled_at.isoformat()
             })
         
@@ -267,23 +267,54 @@ def upload_excel():
                     "description": row.get('description', ''),
                     "pub_date": row.get('pub_date', None),
                     "author": row.get('author', ''),
-                    "tags": ','.join(map(str, row.get('tags', []))) if isinstance(row.get('tags', []), list) else str(row.get('tags', '')),
-                    "rss_source_id": row.get('rss_source_id', None)
+                    "tags": ','.join(map(str, row.get('tags', []))) if isinstance(row.get('tags', []), list) else str(row.get('tags', ''))
                 }
                 documents_data.append(doc_data)
             
             # Process documents using service
             document_service = get_document_service()
-            result = document_service.upload_excel_documents(documents_data)
+            result = document_service.upload_excel_documents(documents_data, filename)
             
             return jsonify({
-                "message": result.message,
-                "documents_processed": result.documents_processed,
-                "success": result.success
+                "message": result["message"],
+                "documents_processed": result["documents_processed"],
+                "success": result["success"]
             }), 201
         else:
             app_logger.error("Invalid file type")
             return jsonify({"error": "Invalid file type, only .xlsx and .xls are allowed"}), 400
     except Exception as e:
         app_logger.error(f"Error in uploading Excel file: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+# Batch delete documents
+@document_bp.route('/batch', methods=['DELETE'])
+def batch_delete_documents():
+    try:
+        app_logger.info("DELETE /api/documents/batch - Request received")
+        
+        # Get document IDs from request body
+        data = request.get_json()
+        if not data or 'ids' not in data:
+            app_logger.error("No document IDs provided")
+            return jsonify({"error": "No document IDs provided"}), 400
+        
+        document_ids = data['ids']
+        if not isinstance(document_ids, list) or len(document_ids) == 0:
+            app_logger.error("Invalid document IDs format")
+            return jsonify({"error": "Invalid document IDs format"}), 400
+        
+        # Process documents using service
+        document_service = get_document_service()
+        result = document_service.batch_delete_documents(document_ids)
+        
+        return jsonify({
+            "message": result["message"],
+            "deleted_count": result["deleted_count"],
+            "success": result["success"]
+        }), 200
+        
+    except Exception as e:
+        app_logger.error(f"Error in batch deleting documents: {str(e)}")
         return jsonify({"error": str(e)}), 500

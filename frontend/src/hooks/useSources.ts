@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { rssAPI } from '../api'
+import { sourceAPI } from '../api'
 
 interface RssSource {
     id: number
@@ -42,7 +42,7 @@ export const useRssSources = () => {
         setError(null)
 
         try {
-            const response = await rssAPI.getSources({ type: 'rss' })
+            const response = await sourceAPI.getSources({ type: 'rss' })
             // Handle the new API response structure
             const data = response.data || response
             setSources(data.sources || [])
@@ -55,7 +55,7 @@ export const useRssSources = () => {
 
     const fetchStats = useCallback(async () => {
         try {
-            const response = await rssAPI.getStats()
+            const response = await sourceAPI.getStats()
             setStats(response.data)
         } catch (err) {
             console.error('Failed to fetch RSS stats:', err)
@@ -73,7 +73,11 @@ export const useRssSources = () => {
         setError(null)
 
         try {
-            const response = await rssAPI.createSource(sourceData)
+            const apiData = {
+                ...sourceData,
+                tags: sourceData.tags ? sourceData.tags.join(', ') : undefined
+            }
+            const response = await sourceAPI.createSource(apiData)
             await fetchSources() // Refresh the list
             return response.data
         } catch (err) {
@@ -97,7 +101,11 @@ export const useRssSources = () => {
         setError(null)
 
         try {
-            const response = await rssAPI.updateSource(id, sourceData)
+            const apiData = {
+                ...sourceData,
+                tags: sourceData.tags ? sourceData.tags.join(', ') : undefined
+            }
+            const response = await sourceAPI.updateSource(id, apiData)
             await fetchSources() // Refresh the list
             return response.data
         } catch (err) {
@@ -113,7 +121,7 @@ export const useRssSources = () => {
         setError(null)
 
         try {
-            await rssAPI.deleteSource(id)
+            await sourceAPI.deleteSource(id)
             await fetchSources() // Refresh the list
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to delete RSS source')
@@ -128,7 +136,7 @@ export const useRssSources = () => {
         setError(null)
 
         try {
-            const response = await rssAPI.triggerCollection(sourceId)
+            const response = await sourceAPI.triggerCollection(sourceId)
             await fetchSources() // Refresh the list to get updated document counts
             return response.data
         } catch (err) {

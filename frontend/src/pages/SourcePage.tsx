@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { rssAPI } from '../api'
+import { sourceAPI } from '../api'
 import {
   Plus,
   Rss,
@@ -29,6 +29,10 @@ interface DataSource {
   lastRun?: string | null
   nextRun?: string | null
   document_count?: number
+  total_documents?: number
+  last_document_count?: number
+  sync_errors?: number
+  last_error?: string | null
   tags: string[]
   filters: {
     keywords: string
@@ -83,7 +87,7 @@ const SourcePage: React.FC = () => {
 
       for (const type of sourceTypes) {
         try {
-          const response = await rssAPI.getRssSources({ type })
+          const response = await sourceAPI.getSources({ type })
           const data = response.data || response
           const sources = data.sources || []
 
@@ -100,7 +104,11 @@ const SourcePage: React.FC = () => {
             status: source.is_paused ? 'paused' : 'active',
             lastRun: source.last_sync,
             nextRun: source.next_sync,
-            document_count: source.document_count || 0,
+            document_count: source.total_documents || 0,
+            total_documents: source.total_documents || 0,
+            last_document_count: source.last_document_count || 0,
+            sync_errors: source.sync_errors || 0,
+            last_error: source.last_error,
             tags: source.tags ? source.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean) : [],
             source_type: source.source_type,
             filters: {
@@ -182,14 +190,14 @@ const SourcePage: React.FC = () => {
 
       // 使用统一的 API 创建/更新数据源
       const response = editingSource
-        ? await rssAPI.updateRssSource(editingSource.id, baseData)
-        : await rssAPI.createRssSource(baseData)
+        ? await sourceAPI.updateSource(editingSource.id, baseData)
+        : await sourceAPI.createSource(baseData)
 
       const savedSource = response.data
 
       // 如果是新创建的数据源且未启用，需要更新状态
       if (!editingSource && !formData.enabled) {
-        await rssAPI.updateRssSource(savedSource.id, {
+        await sourceAPI.updateSource(savedSource.id, {
           ...baseData,
           is_paused: true
         })
@@ -208,7 +216,11 @@ const SourcePage: React.FC = () => {
         status: formData.enabled ? 'active' : 'paused',
         lastRun: savedSource.last_sync,
         nextRun: savedSource.next_sync,
-        document_count: savedSource.document_count || 0,
+        document_count: savedSource.total_documents || 0,
+        total_documents: savedSource.total_documents || 0,
+        last_document_count: savedSource.last_document_count || 0,
+        sync_errors: savedSource.sync_errors || 0,
+        last_error: savedSource.last_error,
         tags: formData.tags,
         source_type: savedSource.source_type,
         filters: formData.filters,
@@ -246,7 +258,7 @@ const SourcePage: React.FC = () => {
     if (window.confirm('Are you sure you want to delete this data source?')) {
       try {
         // 使用统一的 API 删除数据源
-        await rssAPI.deleteRssSource(sourceId)
+        await sourceAPI.deleteSource(sourceId)
 
         // 从所有列表中删除
         setRssSources(prev => prev.filter(s => s.id !== sourceId))
@@ -281,7 +293,7 @@ const SourcePage: React.FC = () => {
       }
 
       // 使用统一的 API 更新数据源
-      await rssAPI.updateRssSource(sourceId, baseData)
+      await sourceAPI.updateSource(sourceId, baseData)
 
       const updateSource = (source: DataSource) => ({
         ...source,
@@ -313,7 +325,7 @@ const SourcePage: React.FC = () => {
       if (!currentSource) return
 
       // Call collection API
-      const response = await rssAPI.triggerRssCollection(sourceId)
+      const response = await sourceAPI.triggerCollection(sourceId)
 
       // Check if response is successful
       if (response && response.message) {
@@ -323,7 +335,8 @@ const SourcePage: React.FC = () => {
           ...source,
           lastRun: new Date().toISOString(),
           nextRun: new Date(Date.now() + 3600000).toISOString(), // Default to run again after 1 hour
-          document_count: (source.document_count || 0) + Math.floor(Math.random() * 10) + 1
+          document_count: (source.total_documents || 0) + Math.floor(Math.random() * 10) + 1,
+          total_documents: (source.total_documents || 0) + Math.floor(Math.random() * 10) + 1
         })
 
         // 根据数据源类型更新对应的状态
@@ -349,8 +362,13 @@ const SourcePage: React.FC = () => {
     return new Date(dateString).toLocaleString('en-US')
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
+  const getStatusIcon = (source: DataSource) => {
+    // 如果有同步错误，显示错误状态
+    if (source.sync_errors && source.sync_errors > 0) {
+      return <AlertCircle size={16} style={{ color: '#ef4444' }} />
+    }
+
+    switch (source.status) {
       case 'active':
         return <CheckCircle size={16} style={{ color: '#10b981' }} />
       case 'paused':
@@ -371,7 +389,7 @@ const SourcePage: React.FC = () => {
   })()
 
   return (
-    <div className="collection-page">
+    <div className="sources-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Data Source Management</h1>
@@ -417,18 +435,45 @@ const SourcePage: React.FC = () => {
               <div key={source.id} className="source-item">
                 <div className="source-header">
                   <div className="source-info">
-                    <div className="source-title">
+                    <div className="source-title-row">
                       <h3>{source.name}</h3>
-                      <div className="source-status">
-                        {getStatusIcon(source.status)}
+                      <div className="source-status" title={source.last_error || ''}>
+                        {getStatusIcon(source)}
                         <span className={`status-text ${source.status}`}>
-                          {source.status === 'active' ? 'Running' :
-                            source.status === 'paused' ? 'Paused' : 'Error'}
+                          {source.sync_errors && source.sync_errors > 0 ? 'Error' :
+                            source.status === 'active' ? 'Running' :
+                              source.status === 'paused' ? 'Paused' : 'Unknown'}
                         </span>
+                        {source.sync_errors && source.sync_errors > 0 && (
+                          <span className="error-count">({source.sync_errors})</span>
+                        )}
                       </div>
+                      <button
+                        onClick={() => handleToggleSource(source.id, !source.enabled)}
+                        className={`btn btn-sm ${source.enabled ? 'btn-secondary' : 'btn-primary'}`}
+                      >
+                        {source.enabled ? <Pause size={14} /> : <Play size={14} />}
+                        {source.enabled ? 'Pause' : 'Enable'}
+                      </button>
+
+                      <button
+                        onClick={() => handleRunNow(source.id)}
+                        className="btn btn-sm btn-secondary"
+                        disabled={!source.enabled}
+                      >
+                        <RefreshCw size={14} />
+                        Run Now
+                      </button>
+
+                      <button
+                        onClick={() => handleEditSource(source)}
+                        className="btn-icon"
+                      >
+                        <Edit3 size={14} />
+                      </button>
                     </div>
-                    <p className="source-description">{source.description}</p>
-                    <div className="source-meta">
+
+                    <div className="source-bottom-row">
                       <a
                         href={source.url}
                         target="_blank"
@@ -438,64 +483,43 @@ const SourcePage: React.FC = () => {
                         <ExternalLink size={12} />
                         {source.url}
                       </a>
-                      <div className="source-tags">
-                        {source.tags?.map((tag, index) => (
-                          <span key={index} className="tag">{tag}</span>
-                        ))}
-                      </div>
+                      <button
+                        onClick={() => handleDeleteSource(source.id)}
+                        className="btn-icon danger"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                  </div>
 
-                  <div className="source-actions">
-                    <button
-                      onClick={() => handleToggleSource(source.id, !source.enabled)}
-                      className={`btn btn-sm ${source.enabled ? 'btn-secondary' : 'btn-primary'}`}
-                    >
-                      {source.enabled ? <Pause size={14} /> : <Play size={14} />}
-                      {source.enabled ? 'Pause' : 'Enable'}
-                    </button>
-
-                    <button
-                      onClick={() => handleRunNow(source.id)}
-                      className="btn btn-sm btn-secondary"
-                      disabled={!source.enabled}
-                    >
-                      <RefreshCw size={14} />
-                      Run Now
-                    </button>
-
-                    <button
-                      onClick={() => handleEditSource(source)}
-                      className="btn-icon"
-                    >
-                      <Edit3 size={14} />
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteSource(source.id)}
-                      className="btn-icon danger"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <p className="source-description">{source.description}</p>
+                    <div className="source-tags">
+                      {source.tags?.map((tag, index) => (
+                        <span key={index} className="tag">{tag}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 <div className="source-stats">
-                  <div className="stat">
-                    <span className="stat-label">Collection Frequency</span>
-                    <span className="stat-value">{source.schedule}</span>
+                  <div className="stats-row">
+                    <div className="stat">
+                      <span className="stat-label">Collection Frequency</span>
+                      <span className="stat-value">{source.schedule}</span>
+                    </div>
+                    <div className="stat">
+                      <span className="stat-label">Article Count</span>
+                      <span className="stat-value">{source.total_documents || 0}</span>
+                    </div>
                   </div>
-                  <div className="stat">
-                    <span className="stat-label">Article Count</span>
-                    <span className="stat-value">{source.document_count || 0}</span>
-                  </div>
-                  <div className="stat">
-                    <span className="stat-label">Last Run</span>
-                    <span className="stat-value">{formatDate(source.lastRun)}</span>
-                  </div>
-                  <div className="stat">
-                    <span className="stat-label">Next Run</span>
-                    <span className="stat-value">{formatDate(source.nextRun)}</span>
+                  <div className="stats-row">
+                    <div className="stat">
+                      <span className="stat-label">Last Run</span>
+                      <span className="stat-value">{formatDate(source.lastRun)}</span>
+                    </div>
+                    <div className="stat">
+                      <span className="stat-label">Next Run</span>
+                      <span className="stat-value">{formatDate(source.nextRun)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -692,71 +716,63 @@ const SourcePage: React.FC = () => {
       )}
 
       <style>{`
-        .collection-page {
+        .sources-page {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 0 20px;
         }
 
         .page-header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          margin-bottom: 32px;
-          padding: 24px 0;
+          align-items: flex-start;
+          margin-bottom: 24px;
         }
 
         .page-title {
           font-size: 28px;
-          font-weight: 700;
+          font-weight: 600;
+          margin-bottom: 8px;
           color: var(--text);
-          margin: 0 0 8px 0;
-          background: linear-gradient(135deg, #4a5568, #2d3748);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
         }
 
         .page-subtitle {
-          font-size: 16px;
           color: var(--muted);
-          margin: 0;
+          margin-bottom: 32px;
+          font-size: 16px;
         }
 
         .tabs {
           display: flex;
-          gap: 8px;
-          margin-bottom: 32px;
+          gap: 4px;
           background: var(--elev);
-          padding: 6px;
-          border-radius: 12px;
-          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          padding: 4px;
+          margin-bottom: 24px;
         }
 
         .tab {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 12px 24px;
+          padding: 8px 16px;
           background: none;
           border: none;
           color: var(--muted);
           cursor: pointer;
-          border-radius: 8px;
-          transition: all 0.3s ease;
+          border-radius: calc(var(--radius) - 2px);
+          transition: all 0.2s ease;
+          font-size: 14px;
           font-weight: 500;
-          position: relative;
         }
 
         .tab:hover {
           color: var(--text);
-          background: rgba(255, 255, 255, 0.05);
         }
 
         .tab.active {
-          color: white;
-          background: linear-gradient(135deg, #4a5568, #2d3748);
-          box-shadow: 0 4px 12px rgba(74, 85, 104, 0.2);
+          background: var(--bg);
+          color: var(--primary);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .sources-list {
@@ -767,121 +783,132 @@ const SourcePage: React.FC = () => {
         .source-item {
           background: var(--panel);
           border: 1px solid var(--border);
-          border-radius: 16px;
+          border-radius: var(--radius-lg);
           padding: 0;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
           overflow: hidden;
           position: relative;
         }
 
         .source-item:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-          border-color: #4a5568;
-        }
-
-        .source-item::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: linear-gradient(90deg, #4a5568, #2d3748, #1a202c);
+          border-color: var(--primary);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .source-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          padding: 24px 24px 16px 24px;
+          padding: 16px;
         }
 
         .source-info {
+          flex: 2;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          height: 100%;
+          gap: 16px;
+        }
+
+        .source-title-row {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .source-title-row h3 {
+          margin: 0;
+          color: var(--text);
+          font-size: 18px;
+          font-weight: 600;
+          line-height: 1.2;
+          flex-shrink: 0;
+        }
+
+        .source-bottom-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+        }
+
+        .source-bottom-row .source-url {
           flex: 1;
           min-width: 0;
         }
 
-        .source-title {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 12px;
+        .source-bottom-row .btn-icon {
+          margin-top: 0;
         }
 
-        .source-title h3 {
-          margin: 0;
-          color: var(--text);
-          font-size: 20px;
-          font-weight: 600;
-          line-height: 1.2;
-        }
 
         .source-status {
           display: flex;
           align-items: center;
           gap: 8px;
           padding: 6px 12px;
-          background: rgba(74, 85, 104, 0.1);
-          border-radius: 20px;
-          border: 1px solid rgba(74, 85, 104, 0.2);
+          background: var(--elev);
+          border-radius: 6px;
+          border: 1px solid var(--border);
+          flex-shrink: 0;
         }
 
         .status-text {
           font-size: 12px;
-          font-weight: 600;
+          font-weight: 500;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
 
         .status-text.active {
-          color: #4a5568;
+          color: var(--success);
         }
 
         .status-text.paused {
-          color: #718096;
-          background: rgba(113, 128, 150, 0.1);
-          border-color: rgba(113, 128, 150, 0.2);
+          color: var(--warning);
         }
 
         .status-text.error {
-          color: #a0aec0;
-          background: rgba(160, 174, 192, 0.1);
-          border-color: rgba(160, 174, 192, 0.2);
+          color: var(--danger);
+        }
+
+        .error-count {
+          color: var(--danger);
+          font-size: 11px;
+          font-weight: 600;
+          margin-left: 4px;
         }
 
         .source-description {
           color: var(--muted);
-          margin: 0 0 16px 0;
-          line-height: 1.6;
-          font-size: 14px;
-        }
-
-        .source-meta {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
+          margin: 0;
+          line-height: 1.4;
+          font-size: 13px;
+          flex-shrink: 0;
         }
 
         .source-url {
           display: flex;
           align-items: center;
           gap: 8px;
-          color: #4a5568;
+          color: var(--primary);
           text-decoration: none;
           font-size: 14px;
           font-weight: 500;
           padding: 8px 12px;
-          background: rgba(74, 85, 104, 0.1);
-          border-radius: 8px;
-          border: 1px solid rgba(74, 85, 104, 0.2);
+          background: var(--elev);
+          border-radius: var(--radius);
+          border: 1px solid var(--border);
           transition: all 0.2s ease;
-          max-width: fit-content;
+          min-width: 0;
         }
 
         .source-url:hover {
-          background: rgba(74, 85, 104, 0.15);
-          transform: translateY(-1px);
+          background: var(--panel);
+          color: var(--primary-dark);
         }
 
         .source-tags {
@@ -891,51 +918,55 @@ const SourcePage: React.FC = () => {
         }
 
         .tag {
-          background: linear-gradient(135deg, rgba(74, 85, 104, 0.1), rgba(45, 55, 72, 0.1));
-          color: #4a5568;
-          padding: 6px 12px;
-          border-radius: 16px;
-          font-size: 12px;
+          background: rgba(91, 157, 255, 0.1);
+          color: var(--primary);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 11px;
           font-weight: 500;
-          border: 1px solid rgba(74, 85, 104, 0.2);
         }
 
-        .source-actions {
-          display: flex;
-          gap: 8px;
-          flex-shrink: 0;
-          margin-left: 16px;
-        }
 
         .source-stats {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          display: flex;
+          flex-direction: column;
           gap: 0;
-          background: linear-gradient(135deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.05));
+          background: var(--elev);
           border-top: 1px solid var(--border);
           min-width: 0;
-          overflow-x: auto;
+          flex: 1;
+          min-width: 250px;
+        }
+
+        .stats-row {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0;
         }
 
         .stat {
           display: flex;
           flex-direction: column;
           gap: 8px;
-          padding: 20px;
+          padding: 14px;
           text-align: center;
           position: relative;
-          min-width: 120px;
+          min-width: 130px;
           flex-shrink: 0;
         }
 
-        .stat:not(:last-child)::after {
+        .stat:first-child::after {
           content: '';
           position: absolute;
           right: 0;
-          top: 20px;
-          bottom: 20px;
+          top: 16px;
+          bottom: 16px;
           width: 1px;
           background: var(--border);
+        }
+
+        .stats-row:first-child .stat {
+          border-bottom: 1px solid var(--border);
         }
 
         .stat-label {
@@ -947,26 +978,26 @@ const SourcePage: React.FC = () => {
         }
 
         .stat-value {
-          font-size: 18px;
-          font-weight: 700;
+          font-size: 16px;
+          font-weight: 600;
           color: var(--text);
         }
 
         .empty-state {
           text-align: center;
-          padding: 80px 20px;
+          padding: 60px 20px;
           color: var(--muted);
         }
 
         .empty-state h3 {
-          margin: 24px 0 12px;
+          margin: 16px 0 8px;
           color: var(--text);
-          font-size: 20px;
+          font-size: 18px;
           font-weight: 600;
         }
 
         .empty-state p {
-          font-size: 16px;
+          font-size: 14px;
           margin: 0;
           opacity: 0.8;
         }
@@ -986,35 +1017,35 @@ const SourcePage: React.FC = () => {
         }
 
         .modal {
-          background: var(--bg);
-          border-radius: 20px;
+          background: var(--panel);
+          border-radius: var(--radius-lg);
           width: 90%;
           max-width: 600px;
           max-height: 90vh;
           overflow-y: auto;
           border: 1px solid var(--border);
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+          box-shadow: var(--shadow-lg);
         }
 
         .modal-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 24px;
+          padding: 20px;
           border-bottom: 1px solid var(--border);
-          background: linear-gradient(135deg, var(--elev), rgba(74, 85, 104, 0.05));
-          border-radius: 20px 20px 0 0;
+          background: var(--elev);
+          border-radius: var(--radius-lg) var(--radius-lg) 0 0;
         }
 
         .modal-header h2 {
           margin: 0;
           color: var(--text);
-          font-size: 20px;
-          font-weight: 700;
+          font-size: 18px;
+          font-weight: 600;
         }
 
         .modal-body {
-          padding: 24px;
+          padding: 20px;
         }
 
         .form-group {
@@ -1032,18 +1063,18 @@ const SourcePage: React.FC = () => {
         .input {
           width: 100%;
           padding: 12px 16px;
-          border: 2px solid var(--border);
-          border-radius: 12px;
-          background: var(--bg);
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          background: var(--elev);
           color: var(--text);
           font-size: 14px;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
         }
 
         .input:focus {
           outline: none;
-          border-color: #4a5568;
-          box-shadow: 0 0 0 4px rgba(74, 85, 104, 0.1);
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px rgba(91, 157, 255, 0.1);
         }
 
         .form-row {
@@ -1089,25 +1120,23 @@ const SourcePage: React.FC = () => {
           display: flex;
           align-items: center;
           gap: 16px;
-          padding: 20px;
-          border: 2px solid var(--border);
-          border-radius: 16px;
+          padding: 16px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
           background: var(--panel);
         }
 
         .source-type-option:hover {
-          border-color: #4a5568;
-          background: rgba(74, 85, 104, 0.05);
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(74, 85, 104, 0.1);
+          border-color: var(--primary);
+          background: var(--elev);
         }
 
         .source-type-option.selected {
-          border-color: #4a5568;
-          background: linear-gradient(135deg, rgba(74, 85, 104, 0.1), rgba(45, 55, 72, 0.1));
-          box-shadow: 0 8px 25px rgba(74, 85, 104, 0.15);
+          border-color: var(--primary);
+          background: var(--elev);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .source-type-info {
@@ -1117,12 +1146,12 @@ const SourcePage: React.FC = () => {
         .source-type-label {
           font-weight: 600;
           color: var(--text);
-          margin-bottom: 6px;
-          font-size: 16px;
+          margin-bottom: 4px;
+          font-size: 14px;
         }
 
         .source-type-description {
-          font-size: 13px;
+          font-size: 12px;
           color: var(--muted);
           line-height: 1.5;
         }
@@ -1130,50 +1159,49 @@ const SourcePage: React.FC = () => {
         .modal-footer {
           display: flex;
           justify-content: flex-end;
-          gap: 16px;
-          padding: 24px;
+          gap: 12px;
+          padding: 20px;
           border-top: 1px solid var(--border);
           background: var(--elev);
-          border-radius: 0 0 20px 20px;
+          border-radius: 0 0 var(--radius-lg) var(--radius-lg);
         }
 
         .btn {
-          padding: 12px 24px;
+          padding: 10px 16px;
           border: none;
-          border-radius: 12px;
+          border-radius: var(--radius);
           font-size: 14px;
-          font-weight: 600;
+          font-weight: 500;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
           display: inline-flex;
           align-items: center;
           gap: 8px;
         }
 
         .btn-primary {
-          background: linear-gradient(135deg, #4a5568, #2d3748);
+          background: var(--primary);
           color: white;
-          box-shadow: 0 4px 12px rgba(74, 85, 104, 0.2);
         }
 
         .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(74, 85, 104, 0.3);
+          background: var(--primary-dark);
+          transform: translateY(-1px);
         }
 
         .btn-secondary {
           background: var(--elev);
           color: var(--text);
-          border: 2px solid var(--border);
+          border: 1px solid var(--border);
         }
 
         .btn-secondary:hover {
-          background: var(--muted);
-          transform: translateY(-1px);
+          background: var(--panel);
+          border-color: var(--muted);
         }
 
         .btn-sm {
-          padding: 8px 16px;
+          padding: 6px 12px;
           font-size: 12px;
         }
 
@@ -1182,19 +1210,18 @@ const SourcePage: React.FC = () => {
           border: 1px solid var(--border);
           color: var(--muted);
           cursor: pointer;
-          padding: 10px;
-          border-radius: 8px;
-          transition: all 0.3s ease;
+          padding: 8px;
+          border-radius: var(--radius);
+          transition: all 0.2s ease;
         }
 
         .btn-icon:hover {
-          background: #4a5568;
+          background: var(--primary);
           color: white;
-          transform: translateY(-1px);
         }
 
         .btn-icon.danger:hover {
-          background: #ef4444;
+          background: var(--danger);
           color: white;
         }
 
@@ -1202,18 +1229,18 @@ const SourcePage: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 60px;
+          padding: 40px;
           color: var(--muted);
         }
 
         .spinner {
-          width: 24px;
-          height: 24px;
-          border: 3px solid var(--border);
-          border-top: 3px solid #4a5568;
+          width: 20px;
+          height: 20px;
+          border: 2px solid var(--border);
+          border-top: 2px solid var(--primary);
           border-radius: 50%;
           animation: spin 1s linear infinite;
-          margin-right: 16px;
+          margin-right: 8px;
         }
 
         @keyframes spin {
@@ -1222,10 +1249,6 @@ const SourcePage: React.FC = () => {
         }
 
         @media (max-width: 768px) {
-          .collection-page {
-            padding: 0 16px;
-          }
-
           .page-header {
             flex-direction: column;
             align-items: flex-start;
@@ -1234,31 +1257,48 @@ const SourcePage: React.FC = () => {
 
           .source-header {
             flex-direction: column;
-            gap: 20px;
+            gap: 16px;
           }
 
-          .source-actions {
-            align-self: stretch;
-            justify-content: space-between;
-            margin-left: 0;
+          .source-info {
+            height: auto;
+            justify-content: flex-start;
+            gap: 16px;
+          }
+
+          .source-title-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+
+          .source-bottom-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
           }
 
           .source-stats {
-            grid-template-columns: repeat(2, 1fr);
+            flex-direction: column;
             overflow-x: visible;
           }
 
+          .stats-row {
+            grid-template-columns: repeat(2, 1fr);
+          }
+
           .stat {
-            min-width: 100px;
-            padding: 16px 12px;
+            min-width: 110px;
+            padding: 14px;
+            text-align: center;
           }
 
-          .stat:not(:last-child)::after {
-            display: none;
-          }
-
-          .stat:nth-child(odd):not(:last-child)::after {
+          .stat:first-child::after {
             display: block;
+          }
+
+          .stats-row:first-child .stat {
+            border-bottom: 1px solid var(--border);
           }
 
           .form-row {
@@ -1277,6 +1317,11 @@ const SourcePage: React.FC = () => {
 
         @media (max-width: 480px) {
           .source-stats {
+            flex-direction: column;
+            gap: 1px;
+          }
+
+          .stats-row {
             grid-template-columns: 1fr;
             gap: 1px;
           }
@@ -1285,13 +1330,18 @@ const SourcePage: React.FC = () => {
             min-width: auto;
             padding: 12px 16px;
             border-bottom: 1px solid var(--border);
+            text-align: center;
           }
 
-          .stat:not(:last-child)::after {
+          .stat:first-child::after {
             display: none;
           }
 
-          .stat:last-child {
+          .stats-row:first-child .stat {
+            border-bottom: 1px solid var(--border);
+          }
+
+          .stats-row:last-child .stat:last-child {
             border-bottom: none;
           }
         }

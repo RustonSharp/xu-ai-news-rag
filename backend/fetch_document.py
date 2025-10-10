@@ -108,7 +108,7 @@ def fetch_rss_feeds(id:int, session:Session) -> bool:
                         tags=",".join(tag_strings),
                         pub_date=datetime.datetime(*entry.get("published_parsed", time.struct_time((1970, 1, 1, 0, 0, 0, 0, 1, 0)))[:6]) if entry.get("published_parsed") else None,
                         author=entry.get("author", None),
-                        rss_source_id=id
+                        source_id=id
                     )
                     session.add(document)
                     session.commit()

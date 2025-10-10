@@ -149,7 +149,7 @@ class AnalyticsService:
                     "id": doc.id,
                     "title": doc.title,
                     "crawled_at": doc.crawled_at.isoformat(),
-                    "rss_source_id": doc.rss_source_id
+                    "source_id": doc.source_id
                 })
             
             # Get top tags

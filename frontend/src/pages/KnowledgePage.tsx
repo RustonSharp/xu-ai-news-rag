@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { documentAPI, rssAPI } from '../api'
+import { documentAPI, sourceAPI } from '../api'
 import { Document } from '../types/document'
-import { RssSource } from '../types/rss'
+import { Source } from '../types/source'
 
 import axios from 'axios'
 import {
@@ -21,7 +21,7 @@ import {
 
 const DocsPage: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([])
-  const [rssSources, setRssSources] = useState<RssSource[]>([])
+  const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDocs, setSelectedDocs] = useState<Set<number>>(new Set())
   const [filters, setFilters] = useState({
@@ -40,17 +40,17 @@ const DocsPage: React.FC = () => {
 
   useEffect(() => {
     fetchDocuments()
-    fetchRssSources()
+    fetchAllSources()
   }, [filters, pagination.page, pagination.size])
 
-  const fetchRssSources = async () => {
+  const fetchAllSources = async () => {
     try {
-      const response = await rssAPI.getRssSources({ type: 'rss' })
+      const response = await sourceAPI.getSources()
       const data = response.data || response
-      setRssSources(data.sources || [])
+      setSources(data.sources || [])
     } catch (error) {
-      console.error('Failed to fetch RSS sources:', error)
-      setRssSources([])
+      console.error('Failed to fetch sources:', error)
+      setSources([])
     }
   }
 
@@ -108,9 +108,7 @@ const DocsPage: React.FC = () => {
     if (confirm(`Are you sure you want to delete ${selectedDocs.size} selected documents?`)) {
       try {
         // Call batch delete API
-        await axios.delete('/docs/batch', {
-          data: { ids: Array.from(selectedDocs) }
-        })
+        await documentAPI.batchDeleteDocuments(Array.from(selectedDocs))
 
         setDocuments(prev => prev.filter(doc => !selectedDocs.has(doc.id)))
         setSelectedDocs(new Set())
@@ -331,7 +329,7 @@ const DocsPage: React.FC = () => {
                       </td>
 
                       <td>
-                        <span className="source">{rssSources.find(source => source.id === doc.rss_source_id)?.name || 'Unknown'}</span>
+                        <span className="source">{sources.find(source => source.id === doc.source_id)?.name || 'Unknown'}</span>
                       </td>
                       <td>
                         <div className="tags">

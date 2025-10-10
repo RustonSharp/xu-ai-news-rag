@@ -97,8 +97,8 @@ class DocumentRepository(BaseRepository[Document]):
         """Get document count grouped by RSS source."""
         try:
             statement = (
-                select(Document.rss_source_id, func.count(Document.id))
-                .group_by(Document.rss_source_id)
+                select(Document.source_id, func.count(Document.id))
+                .group_by(Document.source_id)
             )
             results = self.session.exec(statement).all()
             return {source_id: count for source_id, count in results if source_id is not None}

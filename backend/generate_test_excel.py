@@ -18,9 +18,7 @@ def create_test_excel():
             'description': '探讨人工智能技术在医疗诊断、药物研发和健康管理方面的最新进展',
             'pub_date': datetime.now() - timedelta(days=5),
             'author': '张医生',
-            'tags': 'AI,医疗,科技',
-            'rss_source_id': 1,
-            'crawled_at': datetime.now() - timedelta(days=5)
+            'tags': 'AI,医疗,科技'
         },
         {
             'title': '量子计算的未来发展趋势',
@@ -28,9 +26,7 @@ def create_test_excel():
             'description': '分析量子计算技术的发展现状、面临的挑战以及未来可能的应用场景',
             'pub_date': datetime.now() - timedelta(days=10),
             'author': '李研究员',
-            'tags': '量子计算,科技,未来',
-            'rss_source_id': 1,
-            'crawled_at': datetime.now() - timedelta(days=10)
+            'tags': '量子计算,科技,未来'
         },
         {
             'title': '区块链技术在金融领域的应用',
@@ -38,9 +34,7 @@ def create_test_excel():
             'description': '介绍区块链技术如何改变传统金融行业，包括支付、清算和资产管理等方面',
             'pub_date': datetime.now() - timedelta(days=15),
             'author': '王分析师',
-            'tags': '区块链,金融,技术',
-            'rss_source_id': 2,
-            'crawled_at': datetime.now() - timedelta(days=15)
+            'tags': '区块链,金融,技术'
         },
         {
             'title': '可持续能源技术的发展',
@@ -48,9 +42,7 @@ def create_test_excel():
             'description': '探讨太阳能、风能等可再生能源技术的最新进展及其对环境的影响',
             'pub_date': datetime.now() - timedelta(days=20),
             'author': '陈工程师',
-            'tags': '可再生能源,环保,技术',
-            'rss_source_id': 2,
-            'crawled_at': datetime.now() - timedelta(days=20)
+            'tags': '可再生能源,环保,技术'
         },
         {
             'title': '5G技术对社会的影响',
@@ -58,9 +50,7 @@ def create_test_excel():
             'description': '分析5G技术如何改变人们的生活方式、工作模式和社交互动',
             'pub_date': datetime.now() - timedelta(days=25),
             'author': '赵专家',
-            'tags': '5G,通信,社会',
-            'rss_source_id': 3,
-            'crawled_at': datetime.now() - timedelta(days=25)
+            'tags': '5G,通信,社会'
         }
     ]
     

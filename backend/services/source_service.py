@@ -296,18 +296,19 @@ class SourceService:
                             tag_strings.append(tag)
                     
                     # 创建文档
-                    document_data = {
-                        "title": clean_title,
-                        "link": entry.link,
-                        "description": clean_description,
-                        "tags": ",".join(tag_strings),
-                        "pub_date": self._parse_pub_date(entry),
-                        "author": entry.get("author", None),
-                        "source_id": source.id
-                    }
+                    from models.document import Document
+                    document = Document(
+                        title=clean_title,
+                        link=entry.link,
+                        description=clean_description,
+                        tags=",".join(tag_strings),
+                        pub_date=self._parse_pub_date(entry),
+                        author=entry.get("author", None),
+                        source_id=source.id
+                    )
                     
                     # 创建文档
-                    document = doc_repo.create(document_data)
+                    document = doc_repo.create(document)
                     documents_created += 1
                     
                     # 准备知识库数据
@@ -372,20 +373,21 @@ class SourceService:
                         continue
                     
                     # 创建文档
-                    document_data = {
-                        "title": title,
-                        "link": source.url,
-                        "description": content,
-                        "tags": source.tags or "",
-                        "pub_date": datetime.now(),
-                        "author": None,
-                        "source_id": source.id
-                    }
-                    
-                    # 创建文档
+                    from models.document import Document
                     from repositories.document_repository import DocumentRepository
                     doc_repo = DocumentRepository(self.session)
-                    document = doc_repo.create(document_data)
+                    document = Document(
+                        title=title,
+                        link=source.url,
+                        description=content,
+                        tags=source.tags or "",
+                        pub_date=datetime.now(),
+                        author=None,
+                        source_id=source.id
+                    )
+                    
+                    # 创建文档
+                    document = doc_repo.create(document)
                     documents_created += 1
                     
                     # 准备知识库数据

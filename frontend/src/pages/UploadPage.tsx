@@ -419,7 +419,7 @@ const UploadPage: React.FC = () => {
             <li><strong>Batch Upload:</strong> Max 20 files simultaneously</li>
             <li><strong>Tag Functionality:</strong> Add tags to uploaded documents for easy categorization and search</li>
             <li><strong>Data Source:</strong> Specify document source for data management and traceability</li>
-            <li><strong>Excel Files:</strong> Excel files will be directly imported as knowledge base documents, supporting batch import. Excel files should contain the following columns: title, link, description, pub_date, author, tags, rss_source_id, crawled_at.</li>
+            <li><strong>Excel Files:</strong> Excel files will be directly imported as knowledge base documents, supporting batch import. Excel files should contain the following columns: title, link, description, pub_date, author, tags, source_id, crawled_at.</li>
           </ul>
         </div>
       </div>

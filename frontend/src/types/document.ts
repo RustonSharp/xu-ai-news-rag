@@ -9,7 +9,7 @@ export interface Document {
   pub_date?: string | null
   author?: string | null
   tags: string[]
-  rss_source_id: number
+  source_id: number
   crawled_at: string
 }
 

@@ -14,7 +14,7 @@ class DocumentBase(BaseModel):
     author: Optional[str] = Field(None, max_length=200)
     tags: Optional[str] = Field(None, max_length=1000)
     pub_date: Optional[datetime] = None
-    rss_source_id: Optional[int] = None
+    source_id: int
 
 
 class DocumentCreate(DocumentBase):

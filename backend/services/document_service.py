@@ -8,7 +8,7 @@ import re
 from typing import List, Dict, Any, Optional
 from sqlmodel import Session, select
 from bs4 import BeautifulSoup
-from models.source import Source
+from models.source import Source, SourceType
 from models.document import Document
 from repositories.document_repository import DocumentRepository
 from services.knowledge_base.vector_store_service import vector_store_service
@@ -23,6 +23,64 @@ class DocumentService:
     def __init__(self, session: Session):
         self.session = session
         self.document_repo = DocumentRepository(session)
+    
+    def _get_or_create_file_source(self) -> Source:
+        """
+        Get or create a FILE type source for Excel uploads.
+        
+        Returns:
+            Source: The FILE type source
+        """
+        # Try to find existing FILE type source
+        file_source = self.session.exec(
+            select(Source).where(Source.source_type == SourceType.FILE)
+        ).first()
+        
+        if not file_source:
+            # Create new FILE type source
+            file_source = Source(
+                name="Excel Uploads",
+                url="file://excel_uploads",
+                source_type=SourceType.FILE,
+                description="Documents uploaded via Excel files",
+                tags="excel,upload,file"
+            )
+            self.session.add(file_source)
+            self.session.commit()
+            self.session.refresh(file_source)
+            app_logger.info(f"Created new FILE type source with ID: {file_source.id}")
+        
+        return file_source
+    
+    def _create_excel_source(self, filename: str) -> Source:
+        """
+        Create a unique FILE type source for a specific Excel file.
+        
+        Args:
+            filename: Name of the Excel file
+            
+        Returns:
+            Source: The newly created FILE type source
+        """
+        # Generate source name with filename and timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        source_name = f"{filename}_{timestamp}"
+        
+        # Create new FILE type source for this Excel file
+        file_source = Source(
+            name=source_name,
+            url=f"file://excel_uploads/{filename}",
+            source_type=SourceType.FILE,
+            description=f"Documents uploaded from Excel file: {filename}",
+            tags=f"excel,upload,file,{filename}"
+        )
+        
+        self.session.add(file_source)
+        self.session.commit()
+        self.session.refresh(file_source)
+        app_logger.info(f"Created new FILE type source for Excel '{filename}' with ID: {file_source.id}")
+        
+        return file_source
     
     def clean_text(self, raw: str) -> str:
         """
@@ -140,7 +198,7 @@ class DocumentService:
                             tags=",".join(tag_strings),
                             pub_date=datetime.datetime(*entry.get("published_parsed", time.struct_time((1970, 1, 1, 0, 0, 0, 0, 1, 0)))[:6]) if entry.get("published_parsed") else None,
                             author=entry.get("author", None),
-                            rss_source_id=source_id
+                            source_id=source_id
                         )
                         
                         self.session.add(document)
@@ -156,7 +214,8 @@ class DocumentService:
                             "description": document.description,
                             "tags": document.tags,
                             "pub_date": document.pub_date.isoformat() if document.pub_date else None,
-                            "author": document.author
+                            "author": document.author,
+                            "source_id": document.source_id
                         })
                     else:
                         app_logger.info(f"Document already exists in DB: {entry.title}")
@@ -251,7 +310,7 @@ class DocumentService:
                 author=doc.author,
                 tags=doc.tags,
                 pub_date=doc.pub_date,
-                rss_source_id=doc.rss_source_id,
+                source_id=doc.source_id,
                 crawled_at=doc.crawled_at
             ))
         
@@ -262,3 +321,127 @@ class DocumentService:
             size=search_params.size,
             total_pages=documents['total_pages']
         )
+
+    def upload_excel_documents(self, documents_data: List[Dict[str, Any]], filename: str) -> Dict[str, Any]:
+        """
+        Upload documents from Excel data.
+        
+        Args:
+            documents_data: List of document dictionaries from Excel
+            filename: Name of the Excel file
+            
+        Returns:
+            Dict with upload result information
+        """
+        try:
+            processed_count = 0
+            document_list = []
+            
+            # Create a unique source for this Excel file
+            file_source = self._create_excel_source(filename)
+            
+            for doc_data in documents_data:
+                # Clean the text content
+                clean_title = self.clean_text(doc_data.get('title', ''))
+                clean_description = self.clean_text(doc_data.get('description', ''))
+                
+                # Create new Document instance
+                # Always use the FILE type source for Excel uploads
+                document = Document(
+                    title=clean_title,
+                    link=doc_data.get('link', ''),
+                    description=clean_description,
+                    tags=doc_data.get('tags', ''),
+                    pub_date=doc_data.get('pub_date'),
+                    author=doc_data.get('author'),
+                    source_id=file_source.id
+                )
+                
+                self.session.add(document)
+                self.session.commit()
+                self.session.refresh(document)
+                
+                processed_count += 1
+                app_logger.info(f"Added document from Excel: {clean_title}")
+                
+                # Prepare for knowledge base storage
+                document_list.append({
+                    "id": document.id,
+                    "title": document.title,
+                    "link": document.link,
+                    "description": document.description,
+                    "tags": document.tags,
+                    "pub_date": document.pub_date.isoformat() if document.pub_date else None,
+                    "author": document.author,
+                    "source_id": document.source_id
+                })
+            
+            # Store in knowledge base in background thread
+            if document_list:
+                kb_thread = threading.Thread(
+                    target=self.store_documents_in_knowledge_base, 
+                    args=(document_list,)
+                )
+                kb_thread.daemon = True
+                kb_thread.start()
+                app_logger.info(f"Started background thread to store {len(document_list)} Excel documents in knowledge base")
+            
+            return {
+                "success": True,
+                "message": f"Successfully processed {processed_count} documents from Excel",
+                "documents_processed": processed_count
+            }
+            
+        except Exception as e:
+            app_logger.error(f"Error processing Excel documents: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error processing Excel documents: {str(e)}",
+                "documents_processed": 0
+            }
+    
+    def batch_delete_documents(self, document_ids: List[int]) -> Dict[str, Any]:
+        """
+        Batch delete documents by their IDs.
+        
+        Args:
+            document_ids: List of document IDs to delete
+            
+        Returns:
+            Dict with deletion result information
+        """
+        try:
+            deleted_count = 0
+            
+            for doc_id in document_ids:
+                # Find the document
+                document = self.session.get(Document, doc_id)
+                if document:
+                    # Delete from knowledge base first (if exists)
+                    try:
+                        vector_store_service.delete_document(doc_id)
+                        app_logger.info(f"Deleted document {doc_id} from knowledge base")
+                    except Exception as e:
+                        app_logger.warning(f"Failed to delete document {doc_id} from knowledge base: {str(e)}")
+                    
+                    # Delete from database
+                    self.session.delete(document)
+                    self.session.commit()
+                    deleted_count += 1
+                    app_logger.info(f"Deleted document with ID: {doc_id}")
+                else:
+                    app_logger.warning(f"Document with ID {doc_id} not found")
+            
+            return {
+                "success": True,
+                "message": f"Successfully deleted {deleted_count} documents",
+                "deleted_count": deleted_count
+            }
+            
+        except Exception as e:
+            app_logger.error(f"Error batch deleting documents: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error batch deleting documents: {str(e)}",
+                "deleted_count": 0
+            }

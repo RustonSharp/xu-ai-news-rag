@@ -14,6 +14,4 @@ class Document(SQLModel, table=True):
     tags: str = Field(default="")
     source_id: int = Field(foreign_key="sources.id", description="统一数据源ID")
     crawled_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
-    
-    # 为了向后兼容，保留rss_source_id字段但标记为废弃
-    rss_source_id: Optional[int] = Field(default=None, foreign_key="sources.id", description="废弃字段，请使用source_id")
+

@@ -4,7 +4,7 @@
 export type SourceStatus = 'active' | 'inactive' | 'error'
 
 // 数据源实体
-export interface RssSource {
+export interface Source {
   id: number
   name: string
   url: string
@@ -14,6 +14,18 @@ export interface RssSource {
   config?: SourceConfig
   createdAt?: string
   updatedAt?: string
+  // 新增字段
+  source_type?: 'rss' | 'web'
+  interval?: string
+  is_paused?: boolean
+  is_active?: boolean
+  last_sync?: string
+  next_sync?: string
+  total_documents?: number
+  last_document_count?: number
+  sync_errors?: number
+  last_error?: string
+  tags?: string
 }
 
 // 数据源配置

@@ -9,7 +9,7 @@ interface Document {
     pub_date: string | null
     author: string | null
     tags: string[]
-    rss_source_id: number | null
+    source_id: number | null
     crawled_at: string
 }
 
@@ -22,7 +22,7 @@ interface DocumentStats {
         id: number
         title: string
         crawled_at: string
-        rss_source_id: number | null
+        source_id: number | null
     }>
 }
 
