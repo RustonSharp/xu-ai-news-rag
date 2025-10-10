@@ -11,17 +11,18 @@ import shutil
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools import create_knowledge_base_tool, create_online_search_tool
+from services.knowledge_base.vector_store_service import VectorStoreService
+from services.search.online_search_service import OnlineSearchService
 
 
 class TestCreateKnowledgeBaseTool:
     """测试create_knowledge_base_tool函数"""
     
-    @patch('tools.HuggingFaceEmbeddings')
-    @patch('tools.FAISS')
-    @patch('tools.CrossEncoder')
-    @patch('tools.os.path.exists')
-    @patch('tools.os.getenv')
+    @patch('services.knowledge_base.vector_store_service.HuggingFaceEmbeddings')
+    @patch('services.knowledge_base.vector_store_service.FAISS')
+    @patch('services.knowledge_base.vector_store_service.CrossEncoder')
+    @patch('services.knowledge_base.vector_store_service.os.path.exists')
+    @patch('services.knowledge_base.vector_store_service.os.getenv')
     def test_create_knowledge_base_tool_success(self, mock_getenv, mock_exists, mock_cross_encoder, mock_faiss, mock_embeddings):
         """测试成功创建知识库工具"""
         # 设置mock
@@ -41,7 +42,8 @@ class TestCreateKnowledgeBaseTool:
         mock_cross_encoder.return_value = mock_reranker
         
         # 执行测试
-        result = create_knowledge_base_tool()
+        vector_service = VectorStoreService()
+        result = vector_service.create_search_tool()
         
         # 验证
         assert result is not None
@@ -49,11 +51,11 @@ class TestCreateKnowledgeBaseTool:
         mock_embeddings.assert_called_once()
         mock_faiss.load_local.assert_called_once()
     
-    @patch('tools.HuggingFaceEmbeddings')
-    @patch('tools.FAISS')
-    @patch('tools.os.makedirs')
-    @patch('tools.os.path.exists')
-    @patch('tools.os.getenv')
+    @patch('services.knowledge_base.vector_store_service.HuggingFaceEmbeddings')
+    @patch('services.knowledge_base.vector_store_service.FAISS')
+    @patch('services.knowledge_base.vector_store_service.os.makedirs')
+    @patch('services.knowledge_base.vector_store_service.os.path.exists')
+    @patch('services.knowledge_base.vector_store_service.os.getenv')
     def test_create_knowledge_base_tool_no_index(self, mock_getenv, mock_exists, mock_makedirs, mock_faiss, mock_embeddings):
         """测试索引文件不存在的情况"""
         # 设置mock
@@ -80,10 +82,10 @@ class TestCreateKnowledgeBaseTool:
             assert result is not None
             mock_faiss.from_texts.assert_called_once()
     
-    @patch('tools.HuggingFaceEmbeddings')
-    @patch('tools.FAISS')
-    @patch('tools.os.path.exists')
-    @patch('tools.os.getenv')
+    @patch('services.knowledge_base.vector_store_service.HuggingFaceEmbeddings')
+    @patch('services.knowledge_base.vector_store_service.FAISS')
+    @patch('services.knowledge_base.vector_store_service.os.path.exists')
+    @patch('services.knowledge_base.vector_store_service.os.getenv')
     def test_create_knowledge_base_tool_embedding_fallback(self, mock_getenv, mock_exists, mock_faiss, mock_embeddings):
         """测试嵌入模型fallback机制"""
         # 设置mock - 第一个模型失败，第二个成功
@@ -143,27 +145,29 @@ class TestCreateKnowledgeBaseTool:
 class TestCreateOnlineSearchTool:
     """测试create_online_search_tool函数"""
     
-    @patch('tools.os.getenv')
+    @patch('services.search.online_search_service.os.getenv')
     def test_create_online_search_tool_success(self, mock_getenv):
         """测试成功创建在线搜索工具"""
         # 设置mock
         mock_getenv.return_value = "test_api_key"
         
         # 执行测试
-        result = create_online_search_tool()
+        search_service = OnlineSearchService()
+        result = search_service.create_search_tool()
         
         # 验证
         assert result is not None
         assert hasattr(result, 'invoke')
     
-    @patch('tools.os.getenv')
+    @patch('services.search.online_search_service.os.getenv')
     def test_create_online_search_tool_no_api_key(self, mock_getenv):
         """测试没有API密钥的情况"""
         # 设置mock
         mock_getenv.return_value = None
         
         # 执行测试
-        result = create_online_search_tool()
+        search_service = OnlineSearchService()
+        result = search_service.create_search_tool()
         
         # 验证
         assert result is not None
@@ -194,8 +198,8 @@ class TestCreateOnlineSearchTool:
 class TestToolIntegration:
     """测试工具集成功能"""
     
-    @patch('tools.create_knowledge_base_tool')
-    @patch('tools.create_online_search_tool')
+    @patch('services.knowledge_base.vector_store_service.create_knowledge_base_tool')
+    @patch('services.search.online_search_service.create_online_search_tool')
     def test_tools_work_together(self, mock_online_tool, mock_kb_tool):
         """测试工具协同工作"""
         # 设置mock
@@ -240,8 +244,8 @@ class TestToolIntegration:
 class TestErrorHandling:
     """测试错误处理"""
     
-    @patch('tools.HuggingFaceEmbeddings')
-    @patch('tools.os.getenv')
+    @patch('services.knowledge_base.vector_store_service.HuggingFaceEmbeddings')
+    @patch('services.search.online_search_service.os.getenv')
     def test_embedding_model_load_failure(self, mock_getenv, mock_embeddings):
         """测试嵌入模型加载失败"""
         # 设置mock
@@ -252,14 +256,15 @@ class TestErrorHandling:
         with pytest.raises(Exception, match="无法加载任何嵌入模型"):
             create_knowledge_base_tool()
     
-    @patch('tools.os.getenv')
+    @patch('services.search.online_search_service.os.getenv')
     def test_tavily_initialization_failure(self, mock_getenv):
         """测试Tavily初始化失败"""
         # 设置mock
         mock_getenv.return_value = "test_api_key"
         
         # 执行测试
-        result = create_online_search_tool()
+        search_service = OnlineSearchService()
+        result = search_service.create_search_tool()
         
         # 验证返回了模拟工具
         assert result is not None

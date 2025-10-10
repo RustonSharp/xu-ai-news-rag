@@ -215,6 +215,25 @@ class VectorStoreService:
         except Exception as e:
             app_logger.error(f"Error getting vector store stats: {str(e)}")
             return {"error": str(e)}
+    
+    def create_search_tool(self):
+        """Create a search tool for the vector store."""
+        from langchain_core.tools import StructuredTool
+        
+        def search_func(query: str, k: int = 3, rerank: bool = True) -> List[Dict[str, Any]]:
+            """Search the vector store for relevant documents."""
+            try:
+                results = self.retrieve_with_rerank(query, k, rerank)
+                return results
+            except Exception as e:
+                app_logger.error(f"Error in search tool: {str(e)}")
+                return []
+        
+        return StructuredTool.from_function(
+            func=search_func,
+            name="vector_search",
+            description="Search the vector store for relevant documents"
+        )
 
 
 # Global service instance

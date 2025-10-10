@@ -23,6 +23,7 @@ flask
 bcrypt
 pyjwt
 playwright>=1.40.0
+loguru
 
 # 测试依赖
 pytest>=7.0.0

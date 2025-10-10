@@ -12,7 +12,7 @@ T = TypeVar('T')
 class BaseRepository(Generic[T], ABC):
     """Base repository class with common CRUD operations."""
     
-    def __init__(self, session: Session, model_class: Type[T]):
+    def __init__(self, session: Optional[Session] = None, model_class: Optional[Type[T]] = None):
         self.session = session
         self.model_class = model_class
     
@@ -29,12 +29,13 @@ class BaseRepository(Generic[T], ABC):
             app_logger.error(f"Error creating {self.model_class.__name__}: {str(e)}")
             raise
     
-    def get_by_id(self, id: int) -> Optional[T]:
+    def get_by_id(self, model_class: Type[T], id: int, session: Optional[Session] = None) -> Optional[T]:
         """Get object by ID."""
         try:
-            return self.session.get(self.model_class, id)
+            current_session = session or self.session
+            return current_session.get(model_class, id)
         except Exception as e:
-            app_logger.error(f"Error getting {self.model_class.__name__} by ID {id}: {str(e)}")
+            app_logger.error(f"Error getting {model_class.__name__} by ID {id}: {str(e)}")
             raise
     
     def get_all(self, skip: int = 0, limit: int = 100) -> List[T]:
@@ -46,10 +47,11 @@ class BaseRepository(Generic[T], ABC):
             app_logger.error(f"Error getting all {self.model_class.__name__}: {str(e)}")
             raise
     
-    def update(self, id: int, update_data: Dict[str, Any]) -> Optional[T]:
+    def update(self, model_class: Type[T], id: int, update_data: Dict[str, Any], session: Optional[Session] = None) -> Optional[T]:
         """Update object by ID."""
         try:
-            obj = self.get_by_id(id)
+            current_session = session or self.session
+            obj = current_session.get(model_class, id)
             if not obj:
                 return None
             
@@ -57,29 +59,30 @@ class BaseRepository(Generic[T], ABC):
                 if hasattr(obj, key):
                     setattr(obj, key, value)
             
-            self.session.commit()
-            self.session.refresh(obj)
-            app_logger.info(f"Updated {self.model_class.__name__} with ID: {id}")
+            current_session.commit()
+            current_session.refresh(obj)
+            app_logger.info(f"Updated {model_class.__name__} with ID: {id}")
             return obj
         except Exception as e:
-            self.session.rollback()
-            app_logger.error(f"Error updating {self.model_class.__name__} with ID {id}: {str(e)}")
+            current_session.rollback()
+            app_logger.error(f"Error updating {model_class.__name__} with ID {id}: {str(e)}")
             raise
     
-    def delete(self, id: int) -> bool:
+    def delete(self, model_class: Type[T], id: int, session: Optional[Session] = None) -> bool:
         """Delete object by ID."""
         try:
-            obj = self.get_by_id(id)
+            current_session = session or self.session
+            obj = current_session.get(model_class, id)
             if not obj:
                 return False
             
-            self.session.delete(obj)
-            self.session.commit()
-            app_logger.info(f"Deleted {self.model_class.__name__} with ID: {id}")
+            current_session.delete(obj)
+            current_session.commit()
+            app_logger.info(f"Deleted {model_class.__name__} with ID: {id}")
             return True
         except Exception as e:
-            self.session.rollback()
-            app_logger.error(f"Error deleting {self.model_class.__name__} with ID {id}: {str(e)}")
+            current_session.rollback()
+            app_logger.error(f"Error deleting {model_class.__name__} with ID {id}: {str(e)}")
             raise
     
     def count(self) -> int:

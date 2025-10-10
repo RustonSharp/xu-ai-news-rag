@@ -13,7 +13,7 @@ from utils.logging_config import app_logger
 class DocumentRepository(BaseRepository[Document]):
     """Repository for document operations."""
     
-    def __init__(self, session: Session):
+    def __init__(self, session: Optional[Session] = None):
         super().__init__(session, Document)
     
     def get_by_source_id(self, source_id: int, skip: int = 0, limit: int = 100) -> List[Document]:
@@ -30,6 +30,10 @@ class DocumentRepository(BaseRepository[Document]):
         except Exception as e:
             app_logger.error(f"Error getting documents by source ID {source_id}: {str(e)}")
             raise
+    
+    def get_by_source(self, source_id: int, session: Optional[Session] = None) -> List[Document]:
+        """Get documents by source ID (alias for compatibility)."""
+        return self.get_by_source_id(source_id)
     
     def get_by_date_range(self, start_date: datetime, end_date: datetime, skip: int = 0, limit: int = 100) -> List[Document]:
         """Get documents by date range."""
@@ -244,4 +248,53 @@ class DocumentRepository(BaseRepository[Document]):
             }
         except Exception as e:
             app_logger.error(f"Error getting paginated documents: {str(e)}")
+            raise
+    
+    def search_by_title(self, title: str, session: Optional[Session] = None) -> List[Document]:
+        """Search documents by title."""
+        try:
+            current_session = session or self.session
+            statement = (
+                select(Document)
+                .where(Document.title.contains(title))
+                .order_by(desc(Document.crawled_at))
+            )
+            return list(current_session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error searching documents by title: {str(e)}")
+            raise
+    
+    def search_by_content(self, content: str, session: Optional[Session] = None) -> List[Document]:
+        """Search documents by content."""
+        try:
+            current_session = session or self.session
+            statement = (
+                select(Document)
+                .where(Document.content.contains(content))
+                .order_by(desc(Document.crawled_at))
+            )
+            return list(current_session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error searching documents by content: {str(e)}")
+            raise
+    
+    def get_count(self, session: Optional[Session] = None) -> int:
+        """Get total document count."""
+        try:
+            current_session = session or self.session
+            statement = select(func.count()).select_from(Document)
+            return current_session.exec(statement).one()
+        except Exception as e:
+            app_logger.error(f"Error getting document count: {str(e)}")
+            raise
+    
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get document statistics."""
+        try:
+            total_docs = self.get_count()
+            return {
+                "total_documents": total_docs
+            }
+        except Exception as e:
+            app_logger.error(f"Error getting document statistics: {str(e)}")
             raise

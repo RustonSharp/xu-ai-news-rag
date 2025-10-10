@@ -60,7 +60,7 @@ class SourceService:
             
             source = self.source_repo.create(source)
             
-            return SourceResponse.from_orm(source)
+            return SourceResponse.model_validate(source)
         except Exception as e:
             app_logger.error(f"Error creating source: {str(e)}")
             raise
@@ -71,7 +71,7 @@ class SourceService:
             source = self.source_repo.get_by_id(source_id)
             if not source:
                 return None
-            return SourceResponse.from_orm(source)
+            return SourceResponse.model_validate(source)
         except Exception as e:
             app_logger.error(f"Error getting source {source_id}: {str(e)}")
             raise
@@ -131,7 +131,7 @@ class SourceService:
                     raise ValueError("数据源URL已被其他数据源使用")
             
             # 转换更新数据
-            update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
+            update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
             
             # 处理配置字段
             if 'config' in update_dict and update_dict['config']:
@@ -145,7 +145,7 @@ class SourceService:
             if not source:
                 return None
             
-            return SourceResponse.from_orm(source)
+            return SourceResponse.model_validate(source)
         except ValueError as e:
             raise
         except Exception as e:
@@ -214,7 +214,7 @@ class SourceService:
         """获取需要同步的数据源"""
         try:
             sources = self.source_repo.get_sources_due_for_sync()
-            return [SourceResponse.from_orm(source) for source in sources]
+            return [SourceResponse.model_validate(source) for source in sources]
         except Exception as e:
             app_logger.error(f"Error getting sources due for sync: {str(e)}")
             raise
@@ -257,8 +257,13 @@ class SourceService:
         try:
             app_logger.info(f"Fetching RSS feeds from {source.url}")
             
+            # 验证和规范化URL
+            url = self._normalize_url(source.url)
+            if not url:
+                raise ValueError(f"Invalid URL: {source.url}")
+            
             # 解析RSS订阅
-            rss_feed = feedparser.parse(source.url)
+            rss_feed = feedparser.parse(url)
             if not rss_feed.entries:
                 app_logger.warning(f"No entries found in RSS feed from {source.url}")
                 return 0
@@ -347,8 +352,13 @@ class SourceService:
             headers = config.get('web_headers', {})
             timeout = config.get('web_timeout', 30)
             
+            # 验证和规范化URL
+            url = self._normalize_url(source.url)
+            if not url:
+                raise ValueError(f"Invalid URL: {source.url}")
+            
             # 发送HTTP请求
-            response = requests.get(source.url, headers=headers, timeout=timeout)
+            response = requests.get(url, headers=headers, timeout=timeout)
             response.raise_for_status()
             
             # 解析HTML
@@ -413,6 +423,27 @@ class SourceService:
         except Exception as e:
             app_logger.error(f"Error fetching web content: {str(e)}")
             raise
+    
+    def _normalize_url(self, url: str) -> str:
+        """规范化URL，确保包含scheme"""
+        if not url:
+            return None
+        
+        url = url.strip()
+        
+        # 如果URL已经包含scheme，直接返回
+        if url.startswith(('http://', 'https://')):
+            return url
+        
+        # 如果URL以//开头，添加https://
+        if url.startswith('//'):
+            return f"https:{url}"
+        
+        # 如果URL不包含scheme，添加https://
+        if not url.startswith(('http://', 'https://', 'ftp://', 'file://')):
+            return f"https://{url}"
+        
+        return url
     
     def _clean_text(self, raw: str) -> str:
         """清理HTML/Markdown文本为纯文本"""
@@ -483,3 +514,139 @@ class SourceService:
             send_notification_email(settings.NOTIFICATION_EMAILS, subject, message)
         except Exception as e:
             app_logger.error(f"Error sending notification email: {str(e)}")
+    
+    # RSS-specific methods for backward compatibility
+    def get_rss_sources(self, session: Session) -> List[SourceResponse]:
+        """获取RSS源列表（向后兼容）"""
+        try:
+            sources = self.source_repo.filter_by({'source_type': 'rss'})
+            return [SourceResponse.model_validate(source) for source in sources]
+        except Exception as e:
+            app_logger.error(f"Error getting RSS sources: {str(e)}")
+            raise
+    
+    def get_rss_source_by_id(self, source_id: int, session: Session) -> Optional[SourceResponse]:
+        """根据ID获取RSS源（向后兼容）"""
+        try:
+            source = self.source_repo.get_by_id(source_id)
+            if not source or source.source_type != 'rss':
+                return None
+            return SourceResponse.model_validate(source)
+        except Exception as e:
+            app_logger.error(f"Error getting RSS source {source_id}: {str(e)}")
+            raise
+    
+    def create_rss_source(self, source_data: Dict[str, Any], session: Session) -> SourceResponse:
+        """创建RSS源（向后兼容）"""
+        try:
+            # 检查URL是否已存在
+            existing_source = self.source_repo.get_by_url(source_data['url'])
+            if existing_source:
+                raise ValueError("RSS源URL已存在")
+            
+            # 创建SourceCreate对象
+            from schemas.source_schema import SourceCreate
+            create_data = SourceCreate(
+                name=source_data['name'],
+                url=source_data['url'],
+                source_type='rss',
+                interval=source_data.get('interval', 'ONE_DAY'),
+                description=source_data.get('description', ''),
+                tags=source_data.get('tags', []),
+                config=source_data.get('config', {})
+            )
+            
+            return self.create_source(create_data)
+        except Exception as e:
+            app_logger.error(f"Error creating RSS source: {str(e)}")
+            raise
+    
+    def update_rss_source(self, source_id: int, update_data: Dict[str, Any], session: Session) -> Optional[SourceResponse]:
+        """更新RSS源（向后兼容）"""
+        try:
+            from schemas.source_schema import SourceUpdate
+            update_schema = SourceUpdate(**update_data)
+            return self.update_source(source_id, update_schema)
+        except Exception as e:
+            app_logger.error(f"Error updating RSS source {source_id}: {str(e)}")
+            raise
+    
+    def delete_rss_source(self, source_id: int, session: Session) -> bool:
+        """删除RSS源（向后兼容）"""
+        try:
+            return self.delete_source(source_id)
+        except Exception as e:
+            app_logger.error(f"Error deleting RSS source {source_id}: {str(e)}")
+            raise
+    
+    def pause_rss_source(self, source_id: int, session: Session) -> bool:
+        """暂停RSS源"""
+        try:
+            source = self.source_repo.get_by_id(source_id)
+            if not source or source.source_type != 'rss':
+                return False
+            
+            update_data = {'is_paused': True}
+            updated_source = self.source_repo.update(source_id, update_data)
+            return updated_source is not None
+        except Exception as e:
+            app_logger.error(f"Error pausing RSS source {source_id}: {str(e)}")
+            raise
+    
+    def resume_rss_source(self, source_id: int, session: Session) -> bool:
+        """恢复RSS源"""
+        try:
+            source = self.source_repo.get_by_id(source_id)
+            if not source or source.source_type != 'rss':
+                return False
+            
+            update_data = {'is_paused': False}
+            updated_source = self.source_repo.update(source_id, update_data)
+            return updated_source is not None
+        except Exception as e:
+            app_logger.error(f"Error resuming RSS source {source_id}: {str(e)}")
+            raise
+    
+    def get_active_rss_sources(self, session: Session) -> List[SourceResponse]:
+        """获取活跃的RSS源"""
+        try:
+            sources = self.source_repo.filter_by({
+                'source_type': 'rss',
+                'is_paused': False,
+                'is_active': True
+            })
+            return [SourceResponse.model_validate(source) for source in sources]
+        except Exception as e:
+            app_logger.error(f"Error getting active RSS sources: {str(e)}")
+            raise
+    
+    def validate_rss_url(self, url: str) -> bool:
+        """验证RSS URL"""
+        try:
+            normalized_url = self._normalize_url(url)
+            if not normalized_url:
+                return False
+            
+            # 尝试解析RSS feed
+            rss_feed = feedparser.parse(normalized_url)
+            return len(rss_feed.entries) > 0
+        except Exception as e:
+            app_logger.error(f"Error validating RSS URL {url}: {str(e)}")
+            return False
+    
+    def get_rss_source_statistics(self, session: Session) -> Dict[str, Any]:
+        """获取RSS源统计信息"""
+        try:
+            stats = self.source_repo.get_source_statistics()
+            # 过滤只返回RSS源的统计
+            rss_stats = {
+                'total_sources': stats.get('total_sources', 0),
+                'active_sources': stats.get('active_sources', 0),
+                'paused_sources': stats.get('paused_sources', 0),
+                'total_documents': stats.get('total_documents', 0),
+                'last_24h_documents': stats.get('last_24h_documents', 0)
+            }
+            return rss_stats
+        except Exception as e:
+            app_logger.error(f"Error getting RSS source statistics: {str(e)}")
+            raise

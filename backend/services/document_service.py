@@ -281,7 +281,7 @@ class DocumentService:
         """Get top tags."""
         return self.document_repo.get_top_tags(limit)
     
-    def get_documents(self, search_params) -> Dict[str, Any]:
+    def get_documents_with_params(self, search_params) -> Dict[str, Any]:
         """Get documents with pagination and filtering."""
         from schemas.document_schema import DocumentListResponse, DocumentResponse
         
@@ -321,6 +321,89 @@ class DocumentService:
             size=search_params.size,
             total_pages=documents['total_pages']
         )
+    
+    # Additional methods for backward compatibility
+    def get_documents(self, session: Session) -> List[Document]:
+        """Get all documents (backward compatibility)."""
+        try:
+            return self.document_repo.get_all()
+        except Exception as e:
+            app_logger.error(f"Error getting documents: {str(e)}")
+            raise
+    
+    def get_document_by_id(self, document_id: int, session: Session) -> Optional[Document]:
+        """Get document by ID (backward compatibility)."""
+        try:
+            return self.document_repo.get_by_id(document_id)
+        except Exception as e:
+            app_logger.error(f"Error getting document {document_id}: {str(e)}")
+            raise
+    
+    def get_documents_paginated(self, page: int, size: int, session: Session) -> List[Document]:
+        """Get paginated documents (backward compatibility)."""
+        try:
+            offset = (page - 1) * size
+            return self.document_repo.get_paginated(page, size)['items']
+        except Exception as e:
+            app_logger.error(f"Error getting paginated documents: {str(e)}")
+            raise
+    
+    def search_documents(self, query: str, session: Session) -> List[Document]:
+        """Search documents (backward compatibility)."""
+        try:
+            return self.document_repo.search(query)
+        except Exception as e:
+            app_logger.error(f"Error searching documents: {str(e)}")
+            raise
+    
+    def get_documents_by_source(self, source_id: int, session: Session) -> List[Document]:
+        """Get documents by source (backward compatibility)."""
+        try:
+            return self.document_repo.get_by_source_id(source_id)
+        except Exception as e:
+            app_logger.error(f"Error getting documents by source {source_id}: {str(e)}")
+            raise
+    
+    def get_documents_by_date_range(self, start_date, end_date, session: Session) -> List[Document]:
+        """Get documents by date range (backward compatibility)."""
+        try:
+            return self.document_repo.get_by_date_range(start_date, end_date)
+        except Exception as e:
+            app_logger.error(f"Error getting documents by date range: {str(e)}")
+            raise
+    
+    def get_document_statistics(self, session: Session) -> Dict[str, Any]:
+        """Get document statistics (backward compatibility)."""
+        try:
+            return self.document_repo.get_statistics()
+        except Exception as e:
+            app_logger.error(f"Error getting document statistics: {str(e)}")
+            raise
+    
+    def create_document(self, document_data: Dict[str, Any], session: Session) -> Document:
+        """Create document (backward compatibility)."""
+        try:
+            document = Document(**document_data)
+            return self.document_repo.create(document)
+        except Exception as e:
+            app_logger.error(f"Error creating document: {str(e)}")
+            raise
+    
+    def update_document(self, document_id: int, update_data: Dict[str, Any], session: Session) -> Optional[Document]:
+        """Update document (backward compatibility)."""
+        try:
+            return self.document_repo.update(document_id, update_data)
+        except Exception as e:
+            app_logger.error(f"Error updating document {document_id}: {str(e)}")
+            raise
+    
+    def delete_document(self, document_id: int, session: Session) -> bool:
+        """Delete document (backward compatibility)."""
+        try:
+            return self.document_repo.delete(document_id)
+        except Exception as e:
+            app_logger.error(f"Error deleting document {document_id}: {str(e)}")
+            raise
 
     def upload_excel_documents(self, documents_data: List[Dict[str, Any]], filename: str) -> Dict[str, Any]:
         """

@@ -104,6 +104,10 @@ class AssistantService:
             app_logger.error(f"Failed to initialize assistant: {str(e)}")
             raise
     
+    def _initialize_agent(self):
+        """Initialize the agent (alias for compatibility)."""
+        return self._initialize_assistant()
+    
     def _create_knowledge_base_tool(self):
         """Create knowledge base tool."""
         from langchain_core.tools import StructuredTool

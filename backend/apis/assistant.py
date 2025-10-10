@@ -12,6 +12,10 @@ def get_assistant_service():
     session = get_db_session_sync()
     return AssistantService(session)
 
+def get_assistant():
+    """获取助手实例（用于测试兼容性）"""
+    return get_assistant_service()
+
 @assistant_bp.route('/query', methods=['POST'])
 def query_assistant():
     """处理用户查询的API端点"""

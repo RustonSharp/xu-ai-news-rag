@@ -2,13 +2,14 @@
 统一数据源API，支持RSS、Web爬取等多种类型的数据源管理。
 """
 from flask import Blueprint, request, jsonify
+from sqlmodel import Session
 from core.dependencies import get_db_session_sync
 from services.source_service import SourceService
 from schemas.source_schema import (
     SourceCreate, SourceUpdate, SourceSearchParams, SourceTriggerResponse
 )
 from utils.logging_config import app_logger
-from rss_scheduler import rss_scheduler
+from services.scheduler_service import scheduler_service
 
 # 创建蓝图
 source_bp = Blueprint('source', __name__, url_prefix='/api/sources')
@@ -146,12 +147,12 @@ def create_source():
         
         # 重启调度器以包含新添加的数据源
         from config.settings import settings
-        if rss_scheduler.running and settings.AUTO_START_SCHEDULER:
+        if scheduler_service.running and settings.AUTO_START_SCHEDULER:
             app_logger.info("Restarting scheduler to include new source")
-            rss_scheduler.stop()
+            scheduler_service.stop()
             import time
             time.sleep(1)
-            rss_scheduler.start()
+            scheduler_service.start()
         
         return jsonify({
             "id": source.id,
@@ -196,12 +197,12 @@ def update_source(source_id):
         
         # 重启调度器以应用数据源更改
         from config.settings import settings
-        if rss_scheduler.running and settings.AUTO_START_SCHEDULER:
+        if scheduler_service.running and settings.AUTO_START_SCHEDULER:
             app_logger.info("Restarting scheduler to apply source changes")
-            rss_scheduler.stop()
+            scheduler_service.stop()
             import time
             time.sleep(1)
-            rss_scheduler.start()
+            scheduler_service.start()
         
         return jsonify({
             "id": source.id,
@@ -233,12 +234,12 @@ def delete_source(source_id):
         
         # 重启调度器以移除已删除的数据源
         from config.settings import settings
-        if rss_scheduler.running and settings.AUTO_START_SCHEDULER:
+        if scheduler_service.running and settings.AUTO_START_SCHEDULER:
             app_logger.info("Restarting scheduler to remove deleted source")
-            rss_scheduler.stop()
+            scheduler_service.stop()
             import time
             time.sleep(1)
-            rss_scheduler.start()
+            scheduler_service.start()
         
         return jsonify({"message": "数据源删除成功"})
     except Exception as e:

@@ -50,3 +50,13 @@ class Source(SQLModel, table=True):
     is_active: bool = Field(default=True, description="是否激活")
     sync_errors: int = Field(default=0, description="同步错误次数")
     last_error: Optional[str] = Field(default=None, nullable=True, description="最后错误信息")
+    
+    def __str__(self) -> str:
+        """字符串表示"""
+        return f"Source(id={self.id}, name='{self.name}', type='{self.source_type}')"
+    
+    def __eq__(self, other) -> bool:
+        """相等性比较"""
+        if not isinstance(other, Source):
+            return False
+        return self.id == other.id and self.name == other.name

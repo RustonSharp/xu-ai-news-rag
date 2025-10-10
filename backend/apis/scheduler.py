@@ -8,27 +8,27 @@ from models.source import Source
 import os
 
 # 创建RSS调度器API蓝图
-scheduler_bp = Blueprint('scheduler', __name__, url_prefix='/api/v1/scheduler')
+scheduler_bp = Blueprint('scheduler', __name__, url_prefix='/api/scheduler')
 
 @scheduler_bp.route('/status', methods=['GET'])
 @cross_origin()
 def get_scheduler_status():
     """获取调度器状态"""
     try:
-        with Session(engine) as session:
+        with db_manager.get_session() as session:
             # 获取所有RSS源
             rss_sources = session.exec(select(Source).where(Source.source_type == "rss")).all()
             
             # 获取当前活动的线程
             active_threads = {}
-            with rss_scheduler.lock:
-                for rss_id, thread in rss_scheduler.threads.items():
+            with scheduler_service.lock:
+                for rss_id, thread in scheduler_service.threads.items():
                     if thread.is_alive():
                         active_threads[rss_id] = True
             
             # 构建响应数据
             status_data = {
-                "running": rss_scheduler.running,
+                "running": scheduler_service.running,
                 "rss_sources": []
             }
             
@@ -66,13 +66,13 @@ def start_scheduler():
                 "message": "调度器手动启动已禁用"
             }), 400
             
-        if rss_scheduler.running:
+        if scheduler_service.running:
             return jsonify({
                 "success": False,
                 "message": "调度器已经在运行中"
             }), 400
         
-        rss_scheduler.start()
+        scheduler_service.start()
         app_logger.info("RSS scheduler started via API")
         
         return jsonify({
@@ -91,13 +91,13 @@ def start_scheduler():
 def stop_scheduler():
     """停止调度器"""
     try:
-        if not rss_scheduler.running:
+        if not scheduler_service.running:
             return jsonify({
                 "success": False,
                 "message": "调度器未在运行"
             }), 400
         
-        rss_scheduler.stop()
+        scheduler_service.stop()
         app_logger.info("RSS scheduler stopped via API")
         
         return jsonify({
@@ -116,9 +116,9 @@ def stop_scheduler():
 def fetch_rss_now(rss_id):
     """立即获取指定RSS源的新闻"""
     try:
-        from fetch_document import fetch_rss_feeds
+        from services.document_service import DocumentService
         
-        with Session(engine) as session:
+        with db_manager.get_session() as session:
             # 检查RSS源是否存在
             rss_source = session.exec(select(Source).where(Source.id == rss_id, Source.source_type == "rss")).first()
             if not rss_source:
@@ -135,7 +135,8 @@ def fetch_rss_now(rss_id):
                 }), 400
             
             # 立即获取RSS
-            success = fetch_rss_feeds(rss_id, session)
+            document_service = DocumentService(session)
+            success = document_service.fetch_rss_feeds(rss_id)
             
             if success:
                 app_logger.info(f"Manual RSS fetch triggered for source {rss_source.name} (ID: {rss_id})")

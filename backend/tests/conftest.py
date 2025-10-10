@@ -12,8 +12,14 @@ import sys
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from assistant import create_assistant, query_with_sources
-from tools import create_knowledge_base_tool, create_online_search_tool
+# 导入服务模块
+from services.assistant_service import AssistantService
+from services.knowledge_base.vector_store_service import VectorStoreService
+from services.search.online_search_service import OnlineSearchService
+from services.auth_service import AuthService
+from services.document_service import DocumentService
+from services.source_service import SourceService
+from services.scheduler_service import SchedulerService
 
 
 @pytest.fixture(scope="session")
@@ -143,4 +149,103 @@ def auth_headers():
         'Authorization': 'Bearer test_token',
         'Content-Type': 'application/json'
     }
+
+
+@pytest.fixture(scope="function")
+def mock_database_session():
+    """模拟数据库会话"""
+    mock_session = Mock()
+    
+    # 创建Mock查询结果
+    mock_query_result = Mock()
+    mock_query_result.all.return_value = []
+    mock_query_result.first.return_value = None
+    mock_query_result.one.return_value = 0
+    
+    # 设置exec方法的返回值 - 让它返回一个可迭代的Mock对象
+    mock_session.exec.return_value = mock_query_result
+    
+    # 让exec方法本身也返回可迭代对象（用于直接调用list()的情况）
+    def mock_exec(statement):
+        # 返回一个可迭代的Mock对象
+        iterable_mock = Mock()
+        iterable_mock.__iter__ = Mock(return_value=iter([]))
+        iterable_mock.all.return_value = []
+        iterable_mock.first.return_value = None
+        iterable_mock.one.return_value = 0
+        return iterable_mock
+    
+    # 不要覆盖exec方法，让测试可以设置return_value
+    # mock_session.exec = mock_exec
+    
+    # 其他方法
+    mock_session.add.return_value = None
+    mock_session.commit.return_value = None
+    mock_session.refresh.return_value = None
+    mock_session.delete.return_value = None
+    
+    return mock_session
+
+
+@pytest.fixture(scope="function")
+def mock_user():
+    """模拟用户"""
+    mock_user = Mock()
+    mock_user.id = 1
+    mock_user.username = "test_user"
+    mock_user.email = "test@example.com"
+    mock_user.is_active = True
+    return mock_user
+
+
+@pytest.fixture(scope="function")
+def mock_document():
+    """模拟文档"""
+    mock_doc = Mock()
+    mock_doc.id = 1
+    mock_doc.title = "测试文档"
+    mock_doc.content = "测试内容"
+    mock_doc.link = "http://test.com"
+    mock_doc.description = "测试描述"
+    mock_doc.pub_date = None
+    mock_doc.author = "测试作者"
+    mock_doc.tags = "tag1,tag2"
+    mock_doc.source_id = 1
+    from datetime import datetime
+    mock_doc.crawled_at = datetime(2025, 1, 1, 12, 0, 0)
+    return mock_doc
+
+
+@pytest.fixture(scope="function")
+def mock_rss_source():
+    """模拟RSS源"""
+    from models.source import SourceType, SourceInterval
+    from datetime import datetime
+    
+    mock_source = Mock()
+    mock_source.id = 1
+    mock_source.name = "测试RSS源"
+    mock_source.url = "http://test.com/rss"
+    mock_source.source_type = SourceType.RSS
+    mock_source.interval = SourceInterval.ONE_DAY
+    mock_source.description = "测试描述"
+    mock_source.tags = "test,tag"
+    mock_source.config = {"test": "config"}
+    mock_source.is_paused = False
+    mock_source.is_active = True
+    mock_source.last_sync = datetime(2025, 1, 1, 12, 0, 0)
+    mock_source.next_sync = datetime(2025, 1, 2, 12, 0, 0)
+    mock_source.total_documents = 10
+    mock_source.last_document_count = 5
+    mock_source.sync_errors = 0
+    mock_source.last_error = None
+    mock_source.created_at = datetime(2025, 1, 1, 10, 0, 0)
+    mock_source.updated_at = datetime(2025, 1, 1, 10, 0, 0)
+    return mock_source
+
+
+@pytest.fixture(scope="function")
+def mock_jwt_token():
+    """模拟JWT令牌"""
+    return "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3MzcwNzIwMDB9.test_signature"
 

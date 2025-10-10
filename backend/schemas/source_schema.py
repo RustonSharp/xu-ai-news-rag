@@ -3,7 +3,7 @@
 """
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from models.source import SourceType, SourceInterval
 
 
@@ -114,7 +114,8 @@ class SourceConfigSchema(BaseModel):
     date_selector: Optional[str] = Field(None, description="日期选择器")
     author_selector: Optional[str] = Field(None, description="作者选择器")
     
-    @validator('web_headers')
+    @field_validator('web_headers')
+    @classmethod
     def validate_web_headers(cls, v):
         if v is not None:
             for key, value in v.items():

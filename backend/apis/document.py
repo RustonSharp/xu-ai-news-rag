@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from sqlmodel import Session
 from core.dependencies import get_db_session_sync
 from services.document_service import DocumentService
 from services.analytics_service import AnalyticsService

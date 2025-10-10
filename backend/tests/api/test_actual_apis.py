@@ -189,7 +189,7 @@ class TestSchedulerAPI:
     @pytest.mark.skip(reason="复杂的API测试，需要更深入的mock设置")
     def test_get_scheduler_status_success(self, test_client):
         """测试获取调度器状态成功"""
-        with patch('apis.scheduler.rss_scheduler') as mock_scheduler:
+        with patch('apis.scheduler.scheduler_service') as mock_scheduler:
             # 设置mock
             mock_scheduler.running = True
             mock_scheduler.threads = {1: Mock(), 2: Mock()}
@@ -223,7 +223,7 @@ class TestSchedulerAPI:
     
     def test_start_scheduler_success(self, test_client):
         """测试启动调度器成功"""
-        with patch('apis.scheduler.rss_scheduler') as mock_scheduler:
+        with patch('apis.scheduler.scheduler_service') as mock_scheduler:
             # 设置mock
             mock_scheduler.running = False
             mock_scheduler.start.return_value = None
@@ -243,7 +243,7 @@ class TestSchedulerAPI:
     
     def test_stop_scheduler_success(self, test_client):
         """测试停止调度器成功"""
-        with patch('apis.scheduler.rss_scheduler') as mock_scheduler:
+        with patch('apis.scheduler.scheduler_service') as mock_scheduler:
             # 设置mock
             mock_scheduler.running = True
             mock_scheduler.stop.return_value = None
@@ -260,7 +260,7 @@ class TestSchedulerAPI:
     
     def test_fetch_rss_now_success(self, test_client):
         """测试立即获取RSS成功"""
-        with patch('fetch_document.fetch_rss_feeds') as mock_fetch:
+        with patch('services.scheduler_service.scheduler_service.fetch_rss_feeds') as mock_fetch:
             # 设置mock
             mock_fetch.return_value = True
             

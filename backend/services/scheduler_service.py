@@ -24,9 +24,9 @@ class SchedulerService:
         # Automatically start scheduler based on environment variable
         auto_start = os.getenv("AUTO_START_SCHEDULER", "true").lower() == "true"
         if auto_start:
-            self.start()
+            self.start_scheduler()
     
-    def start(self):
+    def start_scheduler(self):
         """Start the scheduled task scheduler."""
         if self.running:
             app_logger.warning("RSS scheduler is already running")
@@ -40,7 +40,7 @@ class SchedulerService:
         scheduler_thread.daemon = True
         scheduler_thread.start()
     
-    def stop(self):
+    def stop_scheduler(self):
         """Stop the scheduled task scheduler."""
         if not self.running:
             app_logger.warning("RSS scheduler is not running")
@@ -226,6 +226,117 @@ class SchedulerService:
                 return False
         except Exception as e:
             app_logger.error(f"Error resuming source {source_id}: {str(e)}")
+            return False
+    
+    # Additional methods for backward compatibility
+    def start(self, session: Optional[Session] = None) -> bool:
+        """Start scheduler (backward compatibility)."""
+        if self.running:
+            app_logger.warning("RSS scheduler is already running")
+            return False
+            
+        self.running = True
+        app_logger.info("Starting RSS scheduler")
+        
+        # Start main scheduler thread
+        scheduler_thread = threading.Thread(target=self._scheduler_loop)
+        scheduler_thread.daemon = True
+        scheduler_thread.start()
+        return True
+    
+    def stop(self) -> bool:
+        """Stop scheduler (backward compatibility)."""
+        if not self.running:
+            app_logger.warning("RSS scheduler is not running")
+            return False
+            
+        self.running = False
+        app_logger.info("Stopping RSS scheduler")
+        
+        # Wait for all threads to end
+        with self.lock:
+            for rss_id, thread in self.threads.items():
+                if thread.is_alive():
+                    thread.join(timeout=1)
+            self.threads.clear()
+        return True
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Get scheduler status (backward compatibility)."""
+        return self.get_scheduler_status()
+    
+    def fetch_rss_source(self, source_id: int, session: Optional[Session] = None) -> bool:
+        """Fetch RSS source (backward compatibility)."""
+        return self.force_sync_source(source_id)
+    
+    def schedule_rss_source(self, source_id: int, session: Optional[Session] = None) -> bool:
+        """Schedule RSS source (backward compatibility)."""
+        try:
+            with self.lock:
+                if source_id not in self.threads or not self.threads[source_id].is_alive():
+                    thread = threading.Thread(
+                        target=self._process_rss_source,
+                        args=(source_id,)
+                    )
+                    thread.daemon = True
+                    thread.start()
+                    self.threads[source_id] = thread
+                    return True
+            return False
+        except Exception as e:
+            app_logger.error(f"Error scheduling RSS source {source_id}: {str(e)}")
+            return False
+    
+    def unschedule_rss_source(self, source_id: int) -> bool:
+        """Unschedule RSS source (backward compatibility)."""
+        try:
+            with self.lock:
+                if source_id in self.threads:
+                    del self.threads[source_id]
+                    return True
+            return False
+        except Exception as e:
+            app_logger.error(f"Error unscheduling RSS source {source_id}: {str(e)}")
+            return False
+    
+    def cleanup_finished_threads(self) -> int:
+        """Cleanup finished threads (backward compatibility)."""
+        try:
+            cleaned_count = 0
+            with self.lock:
+                finished_threads = [tid for tid, thread in self.threads.items() if not thread.is_alive()]
+                for tid in finished_threads:
+                    del self.threads[tid]
+                    cleaned_count += 1
+            return cleaned_count
+        except Exception as e:
+            app_logger.error(f"Error cleaning up finished threads: {str(e)}")
+            return 0
+    
+    def get_thread_info(self, source_id: int) -> Optional[Dict[str, Any]]:
+        """Get thread info (backward compatibility)."""
+        try:
+            with self.lock:
+                if source_id in self.threads:
+                    thread = self.threads[source_id]
+                    return {
+                        "source_id": source_id,
+                        "is_alive": thread.is_alive(),
+                        "name": thread.name
+                    }
+            return None
+        except Exception as e:
+            app_logger.error(f"Error getting thread info for {source_id}: {str(e)}")
+            return None
+    
+    def restart(self, session: Optional[Session] = None) -> bool:
+        """Restart scheduler (backward compatibility)."""
+        try:
+            self.stop()
+            time.sleep(0.1)  # Brief pause
+            return self.start(session)
+        except Exception as e:
+            app_logger.error(f"Error restarting scheduler: {str(e)}")
             return False
 
 

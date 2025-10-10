@@ -5,6 +5,7 @@ from apis.document import document_bp
 from apis.auth import auth_bp
 from apis.assistant import assistant_bp
 from apis.scheduler import scheduler_bp
+from apis.analytics import analytics_bp
 from utils.logging_config import app_logger
 from utils.init_sqlite import init_db
 from services.scheduler_service import scheduler_service
@@ -39,6 +40,8 @@ def create_app():
     app.register_blueprint(assistant_bp)
     # 注册调度器API蓝图
     app.register_blueprint(scheduler_bp)
+    # 注册分析API蓝图
+    app.register_blueprint(analytics_bp)
 
     @app.route('/')
     def hello_world():

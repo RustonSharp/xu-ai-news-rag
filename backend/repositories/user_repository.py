@@ -12,7 +12,7 @@ from utils.logging_config import app_logger
 class UserRepository(BaseRepository[User]):
     """Repository for user operations."""
     
-    def __init__(self, session: Session):
+    def __init__(self, session: Optional[Session] = None):
         super().__init__(session, User)
     
     def get_by_username(self, username: str) -> Optional[User]:

@@ -12,14 +12,15 @@ from utils.logging_config import app_logger
 class SourceRepository(BaseRepository[Source]):
     """统一数据源Repository，支持多种数据源类型"""
     
-    def __init__(self, session: Session):
+    def __init__(self, session: Optional[Session] = None):
         super().__init__(session, Source)
     
-    def get_by_url(self, url: str) -> Optional[Source]:
+    def get_by_url(self, url: str, session: Optional[Session] = None) -> Optional[Source]:
         """根据URL获取数据源"""
         try:
+            current_session = session or self.session
             statement = select(Source).where(Source.url == url)
-            return self.session.exec(statement).first()
+            return current_session.exec(statement).first()
         except Exception as e:
             app_logger.error(f"Error getting source by URL {url}: {str(e)}")
             raise
@@ -281,4 +282,32 @@ class SourceRepository(BaseRepository[Source]):
         except Exception as e:
             self.session.rollback()
             app_logger.error(f"Error resetting errors for source ID {source_id}: {str(e)}")
+            raise
+    
+    def get_active_sources(self, session: Optional[Session] = None) -> List[Source]:
+        """获取活跃的数据源"""
+        try:
+            current_session = session or self.session
+            statement = (
+                select(Source)
+                .where(and_(Source.is_active == True, Source.is_paused == False))
+                .order_by(Source.created_at.desc())
+            )
+            return list(current_session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error getting active sources: {str(e)}")
+            raise
+    
+    def get_paused_sources(self, session: Optional[Session] = None) -> List[Source]:
+        """获取暂停的数据源"""
+        try:
+            current_session = session or self.session
+            statement = (
+                select(Source)
+                .where(Source.is_paused == True)
+                .order_by(Source.created_at.desc())
+            )
+            return list(current_session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error getting paused sources: {str(e)}")
             raise

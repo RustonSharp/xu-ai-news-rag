@@ -37,8 +37,13 @@ class WebScraperService:
         try:
             app_logger.info(f"Starting web crawl for URL: {url}")
             
+            # Normalize URL
+            normalized_url = self._normalize_url(url)
+            if not normalized_url:
+                raise ValueError(f"Invalid URL: {url}")
+            
             # Send HTTP request
-            response = requests.get(url, headers=self.default_headers, timeout=30)
+            response = requests.get(normalized_url, headers=self.default_headers, timeout=30)
             response.raise_for_status()
             
             # Parse HTML content
@@ -57,7 +62,7 @@ class WebScraperService:
             char_count = len(content) if content else 0
             
             result = {
-                'url': url,
+                'url': normalized_url,
                 'title': title,
                 'description': description,
                 'content': content,
@@ -76,7 +81,7 @@ class WebScraperService:
         except requests.exceptions.RequestException as e:
             app_logger.error(f"Request error while crawling {url}: {str(e)}")
             return {
-                'url': url,
+                'url': normalized_url if 'normalized_url' in locals() else url,
                 'status': 'error',
                 'error': f'Request failed: {str(e)}',
                 'crawl_time': time.time()
@@ -84,7 +89,7 @@ class WebScraperService:
         except Exception as e:
             app_logger.error(f"Unexpected error while crawling {url}: {str(e)}")
             return {
-                'url': url,
+                'url': normalized_url if 'normalized_url' in locals() else url,
                 'status': 'error',
                 'error': f'Unexpected error: {str(e)}',
                 'crawl_time': time.time()
@@ -260,6 +265,27 @@ class WebScraperService:
             time.sleep(1)
         
         return results
+
+    def _normalize_url(self, url: str) -> str:
+        """Normalize URL to ensure it has a scheme."""
+        if not url:
+            return None
+        
+        url = url.strip()
+        
+        # If URL already has a scheme, return as is
+        if url.startswith(('http://', 'https://')):
+            return url
+        
+        # If URL starts with //, add https://
+        if url.startswith('//'):
+            return f"https:{url}"
+        
+        # If URL doesn't have a scheme, add https://
+        if not url.startswith(('http://', 'https://', 'ftp://', 'file://')):
+            return f"https://{url}"
+        
+        return url
 
     def is_valid_url(self, url: str) -> bool:
         """Check if URL is valid."""

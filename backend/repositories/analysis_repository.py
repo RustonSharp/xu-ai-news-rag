@@ -12,7 +12,7 @@ from utils.logging_config import app_logger
 class AnalysisRepository(BaseRepository[Analysis]):
     """Repository for analysis operations."""
     
-    def __init__(self, session: Session):
+    def __init__(self, session: Optional[Session] = None):
         super().__init__(session, Analysis)
     
     def get_latest_analysis(self) -> Optional[Analysis]:
@@ -37,6 +37,25 @@ class AnalysisRepository(BaseRepository[Analysis]):
             return list(self.session.exec(statement))
         except Exception as e:
             app_logger.error(f"Error getting analyses by method {method}: {str(e)}")
+            raise
+    
+    def get_by_type(self, method: str, session: Optional[Session] = None) -> List[Analysis]:
+        """Get analyses by method type (alias for compatibility)."""
+        return self.get_analyses_by_method(method)
+    
+    def get_latest(self, method: str, session: Optional[Session] = None) -> Optional[Analysis]:
+        """Get the latest analysis by method type."""
+        try:
+            current_session = session or self.session
+            statement = (
+                select(Analysis)
+                .where(Analysis.method == method)
+                .order_by(desc(Analysis.created_at))
+                .limit(1)
+            )
+            return current_session.exec(statement).first()
+        except Exception as e:
+            app_logger.error(f"Error getting latest analysis by method {method}: {str(e)}")
             raise
     
     def get_analyses_by_date_range(self, start_date: datetime, end_date: datetime, skip: int = 0, limit: int = 100) -> List[Analysis]:

@@ -1,13 +1,16 @@
 """
 Authentication service for user management.
 """
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from sqlmodel import Session
 from repositories.user_repository import UserRepository
 from utils.jwt_utils import create_access_token, verify_token
 from utils.logging_config import app_logger
 from config.settings import settings
+
+# 使用bcrypt替代passlib
+import bcrypt
 
 
 class AuthService:
@@ -17,7 +20,7 @@ class AuthService:
         self.session = session
         self.user_repo = UserRepository(session)
     
-    def authenticate_user(self, username: str, password: str) -> Optional[Dict[str, Any]]:
+    def authenticate_user(self, username: str, password: str, session: Optional[Session] = None) -> Optional[Dict[str, Any]]:
         """Authenticate user with username and password."""
         try:
             user = self.user_repo.authenticate_user(username, password)
@@ -185,3 +188,47 @@ class AuthService:
         except Exception as e:
             app_logger.error(f"Error getting active users: {str(e)}")
             return []
+    
+    # Additional methods for backward compatibility
+    def create_access_token(self, user) -> str:
+        """Create access token for user."""
+        try:
+            token_data = {
+                "sub": str(user.id),
+                "username": user.username,
+                "exp": datetime.utcnow() + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+            }
+            return create_access_token(token_data)
+        except Exception as e:
+            app_logger.error(f"Error creating access token: {str(e)}")
+            raise
+    
+    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """Verify JWT token."""
+        try:
+            return verify_token(token)
+        except Exception as e:
+            app_logger.error(f"Error verifying token: {str(e)}")
+            return None
+    
+    def register_user(self, username: str, email: str, password: str, 
+                     full_name: Optional[str] = None) -> Dict[str, Any]:
+        """Register a new user (alias for create_user)."""
+        return self.create_user(username, email, password, full_name)
+    
+    def hash_password(self, password: str) -> str:
+        """Hash password."""
+        try:
+            salt = bcrypt.gensalt()
+            return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+        except Exception as e:
+            app_logger.error(f"Error hashing password: {str(e)}")
+            raise
+    
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """Verify password."""
+        try:
+            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+        except Exception as e:
+            app_logger.error(f"Error verifying password: {str(e)}")
+            return False
