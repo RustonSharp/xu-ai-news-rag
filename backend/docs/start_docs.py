@@ -48,8 +48,8 @@ def start_complete_docs():
     print("\n🛑 按 Ctrl+C 停止服务器")
     
     try:
-        from complete_api_docs import create_complete_docs_app
-        app = create_complete_docs_app()
+        from api_docs import create_docs_app
+        app = create_docs_app()
         app.run(host='0.0.0.0', port=5002, debug=True)
     except KeyboardInterrupt:
         print("\n👋 服务器已停止")

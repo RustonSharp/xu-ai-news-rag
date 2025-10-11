@@ -12,7 +12,7 @@ from flask import Flask
 from flask_restx import Api, Resource, fields
 from flask_cors import CORS
 
-def create_complete_docs_app():
+def create_docs_app():
     """创建包含所有API的完整文档"""
     app = Flask(__name__)
     CORS(app)
@@ -605,7 +605,7 @@ def create_complete_docs_app():
     return app
 
 if __name__ == '__main__':
-    app = create_complete_docs_app()
+    app = create_docs_app()
     print("🚀 启动完整API文档服务器...")
     print("📖 文档地址: http://localhost:5002/api/docs/")
     print("🛑 按 Ctrl+C 停止服务器")
