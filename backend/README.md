@@ -8,7 +8,7 @@ The backend is built with Flask and provides a RESTful API for managing news sou
 
 ## Features
 
-- **RSS Source Management**: Add, update, delete, and monitor RSS news sources with automatic scheduling
+- **Unified Source Management**: Support for RSS feeds and web scraping with automatic scheduling
 - **Document Management**: Store, retrieve, and analyze news documents with Excel import support
 - **AI Assistant**: Intelligent question-answering with source citations and detailed logging
 - **Knowledge Base**: FAISS vector database for efficient document retrieval with reranking
@@ -17,17 +17,22 @@ The backend is built with Flask and provides a RESTful API for managing news sou
 - **User Authentication**: JWT-based authentication system
 - **Comprehensive Testing**: Unit tests, integration tests, and API tests with 34% code coverage
 - **Detailed Logging**: Transparent search process logging with emoji indicators
+- **Web Scraping**: Advanced web content extraction with Playwright
+- **Email Notifications**: Automated email alerts for new content and errors
 
 ## Architecture
 
 The backend follows a modular architecture with the following main components:
 
-- **API Layer**: Flask Blueprints for different functionalities (auth, rss, document, assistant, scheduler)
-- **Data Models**: SQLModel for database entities (User, Document, RSS Source, Analysis)
+- **API Layer**: Flask Blueprints for different functionalities (auth, source, document, assistant, scheduler, analytics)
+- **Data Models**: SQLModel for database entities (User, Document, Source, Analysis)
 - **AI Components**: LangChain integration for LLM orchestration and tool use with Ollama
 - **Vector Database**: FAISS for efficient similarity search with reranking support
 - **Document Processing**: Text splitting, embedding, and clustering capabilities with UMAP and HDBSCAN
-- **Scheduler**: Background RSS collection with configurable intervals
+- **Scheduler**: Background data collection with configurable intervals
+- **Repository Pattern**: Data access layer with base repository and specialized repositories
+- **Service Layer**: Business logic separation with dedicated services
+- **Schema Validation**: Pydantic schemas for request/response validation
 - **Testing Framework**: Comprehensive test suite with pytest, coverage reporting, and CI/CD support
 
 ## API Endpoints
@@ -40,29 +45,34 @@ The backend follows a modular architecture with the following main components:
 - `GET /profile` - Get user profile
 - `PUT /profile` - Update user profile
 
-### RSS Sources (`/api/rss`)
-- `GET /sources` - Get all RSS sources
-- `GET /sources/<id>` - Get specific RSS source
-- `POST /sources` - Create new RSS source
-- `PUT /sources/<id>` - Update RSS source
-- `DELETE /sources/<id>` - Delete RSS source
-- `GET /feeds/<id>` - Get RSS feeds
-- `POST /feeds/<id>` - Trigger RSS collection
+### Data Sources (`/api/sources`)
+- `GET /` - Get all data sources (RSS and Web)
+- `GET /<id>` - Get specific data source
+- `POST /` - Create new data source
+- `PUT /<id>` - Update data source
+- `DELETE /<id>` - Delete data source
+- `POST /<id>/collect` - Trigger data collection
+- `GET /stats` - Get source statistics
+- `GET /due-for-sync` - Get sources due for sync
 
 ### Scheduler (`/api/scheduler`)
 - `GET /status` - Get scheduler status
-- `POST /start` - Start RSS scheduler
-- `POST /stop` - Stop RSS scheduler
-- `POST /fetch` - Trigger immediate RSS collection
+- `POST /start` - Start data collection scheduler
+- `POST /stop` - Stop data collection scheduler
+- `POST /fetch` - Trigger immediate data collection
 
 ### Documents (`/api/documents`)
 - `GET /` - Get all documents
 - `GET /page` - Get paginated documents with filtering
 - `GET /<id>` - Get specific document
-- `GET /get_documents_by_source_id/<source_id>` - Get documents by RSS source
+- `GET /get_documents_by_source_id/<source_id>` - Get documents by source
+- `POST /upload_excel` - Upload documents from Excel file
+
+### Analytics (`/api/analytics`)
+- `GET /stats` - Get analytics statistics
 - `GET /cluster_analysis` - Perform cluster analysis on documents
 - `GET /cluster_analysis/latest` - Get latest cluster analysis results
-- `POST /upload_excel` - Upload documents from Excel file
+- `POST /cluster_analysis` - Trigger new cluster analysis
 
 ### Assistant (`/api/assistant`)
 - `POST /query` - Submit query to AI assistant
@@ -97,12 +107,29 @@ TAVILY_API_KEY=your_tavily_api_key_here
 
 # JWT Secret
 JWT_SECRET_KEY=your_jwt_secret_key_here
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 # Application Settings
 APP_HOST=0.0.0.0
 APP_PORT=5001
 APP_DEBUG=true
 AUTO_START_SCHEDULER=true
+
+# Email Notifications
+NOTIFICATION_EMAILS=your_email@example.com,another@example.com
+
+# File Upload
+MAX_FILE_SIZE=10485760
+ALLOWED_EXTENSIONS=xlsx,xls,pdf,txt
+
+# Pagination
+DEFAULT_PAGE_SIZE=20
+MAX_PAGE_SIZE=100
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=logs/app.log
 ```
 
 ### Installation
