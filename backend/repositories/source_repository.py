@@ -113,7 +113,7 @@ class SourceRepository(BaseRepository[Source]):
                         documents_fetched: int = 0, sync_errors: int = 0, last_error: str = None) -> bool:
         """更新数据源同步时间"""
         try:
-            source = self.get_by_id(source_id)
+            source = self.get_by_id(Source, source_id)
             if not source:
                 return False
             
@@ -267,7 +267,7 @@ class SourceRepository(BaseRepository[Source]):
     def reset_source_errors(self, source_id: int) -> bool:
         """重置数据源错误计数"""
         try:
-            source = self.get_by_id(source_id)
+            source = self.get_by_id(Source, source_id)
             if not source:
                 return False
             

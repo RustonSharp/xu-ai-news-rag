@@ -104,8 +104,8 @@ const SourcePage: React.FC = () => {
             status: source.is_paused ? 'paused' : 'active',
             lastRun: source.last_sync,
             nextRun: source.next_sync,
-            document_count: source.total_documents || 0,
-            total_documents: source.total_documents || 0,
+            document_count: source.document_count || 0,
+            total_documents: source.document_count || 0,
             last_document_count: source.last_document_count || 0,
             sync_errors: source.sync_errors || 0,
             last_error: source.last_error,
@@ -335,8 +335,8 @@ const SourcePage: React.FC = () => {
           ...source,
           lastRun: new Date().toISOString(),
           nextRun: new Date(Date.now() + 3600000).toISOString(), // Default to run again after 1 hour
-          document_count: (source.total_documents || 0) + Math.floor(Math.random() * 10) + 1,
-          total_documents: (source.total_documents || 0) + Math.floor(Math.random() * 10) + 1
+          document_count: (source.document_count || 0) + Math.floor(Math.random() * 10) + 1,
+          total_documents: (source.document_count || 0) + Math.floor(Math.random() * 10) + 1
         })
 
         // 根据数据源类型更新对应的状态
@@ -444,9 +444,9 @@ const SourcePage: React.FC = () => {
                             source.status === 'active' ? 'Running' :
                               source.status === 'paused' ? 'Paused' : 'Unknown'}
                         </span>
-                        {source.sync_errors && source.sync_errors > 0 && (
+                        {/* {source.sync_errors && source.sync_errors > 0 && (
                           <span className="error-count">({source.sync_errors})</span>
-                        )}
+                        )} */}
                       </div>
                       <button
                         onClick={() => handleToggleSource(source.id, !source.enabled)}

@@ -91,7 +91,7 @@ def get_documents():
         
         # 获取文档服务并查询文档
         document_service = get_document_service()
-        result = document_service.get_documents(search_params)
+        result = document_service.get_documents_with_params(search_params)
         
         # 转换为前端期望的格式
         documents_data = []
@@ -140,7 +140,7 @@ def get_documents_page():
         
         # 获取文档服务并查询文档
         document_service = get_document_service()
-        result = document_service.get_documents(search_params)
+        result = document_service.get_documents_with_params(search_params)
         
         # 转换为前端期望的格式
         items_data = []
