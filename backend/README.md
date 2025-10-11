@@ -164,17 +164,31 @@ The API will be available at `http://localhost:5001`.
 
 ## Usage
 
-### Adding RSS Sources
+### Adding Data Sources
 
-To add a new RSS source:
+To add a new data source (RSS or Web):
 
 ```bash
-curl -X POST http://localhost:5001/api/rss/sources \
+# Add RSS source
+curl -X POST http://localhost:5001/api/sources \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Example News",
     "url": "https://example.com/rss",
-    "interval": "ONE_DAY"
+    "source_type": "rss",
+    "interval": "ONE_DAY",
+    "description": "Example news source"
+  }'
+
+# Add Web scraping source
+curl -X POST http://localhost:5001/api/sources \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Example Website",
+    "url": "https://example.com/news",
+    "source_type": "web",
+    "interval": "ONE_DAY",
+    "description": "Example web scraping source"
   }'
 ```
 
@@ -273,30 +287,77 @@ The system includes comprehensive logging with emoji indicators for easy debuggi
 ```
 backend/
 ├── apis/                    # API blueprints
+│   ├── analytics.py        # Analytics endpoints
 │   ├── assistant.py        # AI assistant endpoints
 │   ├── auth.py            # Authentication endpoints
 │   ├── document.py        # Document management
-│   ├── rss.py             # RSS source management
-│   └── scheduler.py       # Scheduler control
+│   ├── scheduler.py       # Scheduler control
+│   └── source.py          # Unified source management
+├── config/                  # Configuration
+│   └── settings.py        # Application settings
+├── core/                   # Core functionality
+│   ├── database.py        # Database configuration
+│   └── dependencies.py    # Dependency injection
 ├── models/                 # Data models
+│   ├── analysis.py        # Analysis model
+│   ├── document.py        # Document model
+│   ├── source.py          # Source model
+│   ├── user.py            # User model
+│   └── enums/             # Enum definitions
+├── repositories/           # Data access layer
+│   ├── base_repository.py # Base repository
+│   ├── analysis_repository.py
+│   ├── document_repository.py
+│   ├── source_repository.py
+│   └── user_repository.py
+├── schemas/                # Pydantic schemas
+│   ├── analytics_schema.py
+│   ├── assistant_schema.py
+│   ├── document_schema.py
+│   └── source_schema.py
+├── services/               # Business logic layer
+│   ├── analytics/         # Analytics services
+│   ├── knowledge_base/    # Knowledge base services
+│   ├── search/            # Search services
+│   ├── analytics_service.py
+│   ├── assistant_service.py
+│   ├── auth_service.py
+│   ├── document_service.py
+│   ├── scheduler_service.py
+│   ├── source_service.py
+│   └── web_scraper_service.py
 ├── tests/                  # Test suite
 │   ├── unit/              # Unit tests
 │   ├── integration/       # Integration tests
-│   └── api/               # API tests
+│   ├── api/               # API tests
+│   └── fixtures/          # Test fixtures
 ├── utils/                  # Utility functions
+│   ├── email_sender.py    # Email notifications
+│   ├── init_sqlite.py     # Database initialization
+│   ├── jwt_utils.py       # JWT utilities
+│   └── logging_config.py  # Logging configuration
 ├── data/                   # Database and vector store
-├── tools.py               # AI tools and knowledge base
-├── assistant.py           # Main assistant logic
+├── logs/                   # Log files
+├── models_cache/           # Cached ML models
+├── htmlcov/               # Coverage reports
 └── app.py                 # Flask application
 ```
 
 ### Key Technologies
 
-- **Flask**: Web framework
+- **Flask**: Web framework with CORS support
 - **SQLModel**: ORM and data validation
-- **LangChain**: LLM orchestration
-- **FAISS**: Vector similarity search
+- **Pydantic**: Data validation and serialization
+- **LangChain**: LLM orchestration and tool use
+- **FAISS**: Vector similarity search with reranking
 - **Ollama**: Local LLM hosting
 - **Tavily**: Online search API
-- **pytest**: Testing framework
-- **UMAP/HDBSCAN**: Advanced clustering
+- **Playwright**: Web scraping and automation
+- **pytest**: Testing framework with coverage
+- **UMAP/HDBSCAN**: Advanced clustering algorithms
+- **scikit-learn**: Machine learning utilities
+- **sentence-transformers**: Text embeddings
+- **BeautifulSoup4**: HTML parsing
+- **bcrypt**: Password hashing
+- **PyJWT**: JWT token handling
+- **loguru**: Advanced logging
