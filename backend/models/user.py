@@ -10,7 +10,10 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     username: str
     password_hash: str
+    full_name: Optional[str] = None
     role: str = Field(default="user")
+    is_active: bool = Field(default=True)
+    last_login: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     
@@ -22,3 +25,13 @@ class User(SQLModel, table=True):
     def check_password(self, password: str) -> bool:
         """验证密码"""
         return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
+    
+    def __str__(self) -> str:
+        """字符串表示"""
+        return f"User(id={self.id}, username='{self.username}', email='{self.email}')"
+    
+    def __eq__(self, other) -> bool:
+        """相等性比较"""
+        if not isinstance(other, User):
+            return False
+        return self.id == other.id and self.email == other.email

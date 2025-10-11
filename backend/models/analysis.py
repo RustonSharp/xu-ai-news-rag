@@ -14,5 +14,15 @@ class Analysis(SQLModel, table=True):
     total_clusters: Optional[int] = Field(default=None)
     # 存储完整报告的JSON字符串
     report_json: str
+    
+    def __str__(self) -> str:
+        """字符串表示"""
+        return f"Analysis(id={self.id}, method='{self.method}', clusters={self.total_clusters})"
+    
+    def __eq__(self, other) -> bool:
+        """相等性比较"""
+        if not isinstance(other, Analysis):
+            return False
+        return self.id == other.id and self.method == other.method
 
 

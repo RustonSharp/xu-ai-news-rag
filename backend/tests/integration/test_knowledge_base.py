@@ -12,8 +12,8 @@ import shutil
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from tools import create_knowledge_base_tool
-from assistant import query_with_sources
+from services.knowledge_base.vector_store_service import VectorStoreService
+from services.assistant_service import AssistantService
 
 
 class TestKnowledgeBaseIntegration:
@@ -26,10 +26,10 @@ class TestKnowledgeBaseIntegration:
         yield temp_dir
         shutil.rmtree(temp_dir)
     
-    @patch('tools.HuggingFaceEmbeddings')
-    @patch('tools.FAISS')
-    @patch('tools.os.path.exists')
-    @patch('tools.os.getenv')
+    @patch('services.knowledge_base.vector_store_service.HuggingFaceEmbeddings')
+    @patch('services.knowledge_base.vector_store_service.FAISS')
+    @patch('os.path.exists')
+    @patch('os.getenv')
     def test_knowledge_base_full_workflow(self, mock_getenv, mock_exists, mock_faiss, mock_embeddings, temp_db_dir):
         """测试知识库完整工作流程"""
         # 设置mock
@@ -70,7 +70,7 @@ class TestKnowledgeBaseIntegration:
         mock_faiss.load_local.return_value = mock_faiss_instance
         
         # 模拟重排模型
-        with patch('tools.CrossEncoder') as mock_cross_encoder:
+        with patch('sentence_transformers.CrossEncoder') as mock_cross_encoder:
             mock_reranker = Mock()
             mock_reranker.predict.return_value = [0.8, 0.6, 0.4]
             mock_cross_encoder.return_value = mock_reranker
@@ -92,10 +92,10 @@ class TestKnowledgeBaseIntegration:
             # 由于重排过程可能失败，我们检查是否调用了相似性搜索
             assert mock_faiss_instance.similarity_search_with_score.called or mock_faiss_instance.similarity_search.called
     
-    @patch('tools.HuggingFaceEmbeddings')
-    @patch('tools.FAISS')
-    @patch('tools.os.path.exists')
-    @patch('tools.os.getenv')
+    @patch('services.knowledge_base.vector_store_service.HuggingFaceEmbeddings')
+    @patch('services.knowledge_base.vector_store_service.FAISS')
+    @patch('os.path.exists')
+    @patch('os.getenv')
     def test_knowledge_base_with_different_queries(self, mock_getenv, mock_exists, mock_faiss, mock_embeddings):
         """测试不同查询的知识库检索"""
         # 设置mock
@@ -135,7 +135,7 @@ class TestKnowledgeBaseIntegration:
         mock_faiss.load_local.return_value = mock_faiss_instance
         
         # 模拟重排模型
-        with patch('tools.CrossEncoder') as mock_cross_encoder:
+        with patch('sentence_transformers.CrossEncoder') as mock_cross_encoder:
             mock_reranker = Mock()
             mock_reranker.predict.return_value = [0.8, 0.6, 0.4]
             mock_cross_encoder.return_value = mock_reranker
@@ -167,9 +167,9 @@ class TestKnowledgeBaseIntegration:
 class TestAssistantKnowledgeBaseIntegration:
     """助手与知识库集成测试"""
     
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.Ollama')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
     def test_query_with_sources_knowledge_base_integration(self, mock_ollama, mock_kb_tool, mock_online_tool):
         """测试query_with_sources与知识库的集成"""
         # 设置mock
@@ -213,9 +213,9 @@ class TestAssistantKnowledgeBaseIntegration:
         # 注意：在线搜索工具会被创建但不会被调用
         mock_online_tool.assert_called_once()
     
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.Ollama')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
     def test_query_with_sources_fallback_integration(self, mock_ollama, mock_kb_tool, mock_online_tool):
         """测试query_with_sources的fallback集成"""
         # 设置mock
@@ -264,9 +264,9 @@ class TestAssistantKnowledgeBaseIntegration:
 class TestErrorHandlingIntegration:
     """错误处理集成测试"""
     
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.Ollama')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
     def test_knowledge_base_error_handling(self, mock_ollama, mock_kb_tool, mock_online_tool):
         """测试知识库错误处理"""
         # 设置mock
@@ -293,9 +293,9 @@ class TestErrorHandlingIntegration:
         with pytest.raises(Exception):
             query_with_sources("测试查询")
     
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.Ollama')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
     def test_online_search_error_handling(self, mock_ollama, mock_kb_tool, mock_online_tool):
         """测试在线搜索错误处理"""
         # 设置mock

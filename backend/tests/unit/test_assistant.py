@@ -9,16 +9,16 @@ import os
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from assistant import create_assistant, query_with_sources
+from services.assistant_service import AssistantService
 
 
 class TestCreateAssistant:
     """测试create_assistant函数"""
     
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.Ollama')
-    @patch('assistant.initialize_agent')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
+    @patch('services.assistant_service.AssistantService._initialize_agent')
     def test_create_assistant_success(self, mock_agent, mock_ollama, mock_online_tool, mock_kb_tool):
         """测试成功创建助手"""
         # 设置mock
@@ -36,9 +36,9 @@ class TestCreateAssistant:
         mock_ollama.assert_called_once_with(model="qwen2.5:3b", temperature=0)
         mock_agent.assert_called_once()
     
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.Ollama')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
     def test_create_assistant_tool_creation(self, mock_ollama, mock_online_tool, mock_kb_tool):
         """测试工具创建"""
         # 设置mock
@@ -61,9 +61,9 @@ class TestCreateAssistant:
 class TestQueryWithSources:
     """测试query_with_sources函数"""
     
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.Ollama')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
     def test_query_with_sources_knowledge_base_success(self, mock_ollama, mock_kb_tool, mock_online_tool):
         """测试知识库查询成功的情况"""
         # 设置mock
@@ -90,9 +90,9 @@ class TestQueryWithSources:
         # 注意：在线搜索工具会被创建但不会被调用
         mock_online_tool.assert_called_once()
     
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.Ollama')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
     def test_query_with_sources_fallback_to_online(self, mock_ollama, mock_kb_tool, mock_online_tool):
         """测试fallback到在线搜索的情况"""
         # 设置mock
@@ -128,9 +128,9 @@ class TestQueryWithSources:
         mock_kb.invoke.assert_called_once()
         mock_online.invoke.assert_called_once()
     
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.Ollama')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
     def test_query_with_sources_empty_knowledge_base(self, mock_ollama, mock_kb_tool, mock_online_tool):
         """测试知识库为空的情况"""
         # 设置mock
@@ -159,9 +159,9 @@ class TestQueryWithSources:
         assert 'answer' in result
         mock_online.invoke.assert_called_once()
     
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.Ollama')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
     def test_query_with_sources_placeholder_text(self, mock_ollama, mock_kb_tool, mock_online_tool):
         """测试知识库返回占位符文本的情况"""
         # 设置mock
@@ -199,10 +199,10 @@ class TestQueryWithSources:
 class TestAssistantIntegration:
     """测试助手集成功能"""
     
-    @patch('assistant.create_knowledge_base_tool')
-    @patch('assistant.create_online_search_tool')
-    @patch('assistant.Ollama')
-    @patch('assistant.initialize_agent')
+    @patch('services.knowledge_base.vector_store_service.VectorStoreService.create_search_tool')
+    @patch('services.search.online_search_service.OnlineSearchService.create_search_tool')
+    @patch('services.assistant_service.Ollama')
+    @patch('services.assistant_service.AssistantService._initialize_agent')
     def test_assistant_agent_creation(self, mock_agent, mock_ollama, mock_online_tool, mock_kb_tool):
         """测试智能体创建"""
         # 设置mock

@@ -6,11 +6,12 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3000,
+    port: 3001,
     host: true
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    target: 'esnext'
   },
   resolve: {
     alias: {

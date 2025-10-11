@@ -8,7 +8,7 @@ The backend is built with Flask and provides a RESTful API for managing news sou
 
 ## Features
 
-- **RSS Source Management**: Add, update, delete, and monitor RSS news sources with automatic scheduling
+- **Unified Source Management**: Support for RSS feeds and web scraping with automatic scheduling
 - **Document Management**: Store, retrieve, and analyze news documents with Excel import support
 - **AI Assistant**: Intelligent question-answering with source citations and detailed logging
 - **Knowledge Base**: FAISS vector database for efficient document retrieval with reranking
@@ -17,18 +17,30 @@ The backend is built with Flask and provides a RESTful API for managing news sou
 - **User Authentication**: JWT-based authentication system
 - **Comprehensive Testing**: Unit tests, integration tests, and API tests with 34% code coverage
 - **Detailed Logging**: Transparent search process logging with emoji indicators
+- **Web Scraping**: Advanced web content extraction with Playwright
+- **Email Notifications**: Automated email alerts for new content and errors
 
 ## Architecture
 
-The backend follows a modular architecture with the following main components:
+The backend follows a simplified, streamlined architecture optimized for personal projects:
 
-- **API Layer**: Flask Blueprints for different functionalities (auth, rss, document, assistant, scheduler)
-- **Data Models**: SQLModel for database entities (User, Document, RSS Source, Analysis)
+- **API Layer**: Flask Blueprints for different functionalities (auth, source, document, assistant, scheduler, analytics)
+- **Data Models**: SQLModel for database entities (User, Document, Source, Analysis)
 - **AI Components**: LangChain integration for LLM orchestration and tool use with Ollama
 - **Vector Database**: FAISS for efficient similarity search with reranking support
 - **Document Processing**: Text splitting, embedding, and clustering capabilities with UMAP and HDBSCAN
-- **Scheduler**: Background RSS collection with configurable intervals
+- **Scheduler**: Background data collection with configurable intervals
+- **Service Layer**: Unified business logic layer that handles both business operations and data access
+- **Schema Validation**: Consolidated Pydantic schemas for request/response validation (requests.py, responses.py)
 - **Testing Framework**: Comprehensive test suite with pytest, coverage reporting, and CI/CD support
+
+### Simplified Architecture Benefits
+
+- **Reduced Complexity**: Eliminated the repository layer to reduce over-engineering
+- **Direct Database Access**: Services directly interact with SQLModel for better performance
+- **Consolidated Schemas**: All request/response schemas in two files for easier maintenance
+- **Cleaner Code**: Fewer abstraction layers make the codebase more maintainable
+- **Faster Development**: Less boilerplate code means faster feature development
 
 ## API Endpoints
 
@@ -40,29 +52,34 @@ The backend follows a modular architecture with the following main components:
 - `GET /profile` - Get user profile
 - `PUT /profile` - Update user profile
 
-### RSS Sources (`/api/rss`)
-- `GET /sources` - Get all RSS sources
-- `GET /sources/<id>` - Get specific RSS source
-- `POST /sources` - Create new RSS source
-- `PUT /sources/<id>` - Update RSS source
-- `DELETE /sources/<id>` - Delete RSS source
-- `GET /feeds/<id>` - Get RSS feeds
-- `POST /feeds/<id>` - Trigger RSS collection
+### Data Sources (`/api/sources`)
+- `GET /` - Get all data sources (RSS and Web)
+- `GET /<id>` - Get specific data source
+- `POST /` - Create new data source
+- `PUT /<id>` - Update data source
+- `DELETE /<id>` - Delete data source
+- `POST /<id>/collect` - Trigger data collection
+- `GET /stats` - Get source statistics
+- `GET /due-for-sync` - Get sources due for sync
 
 ### Scheduler (`/api/scheduler`)
 - `GET /status` - Get scheduler status
-- `POST /start` - Start RSS scheduler
-- `POST /stop` - Stop RSS scheduler
-- `POST /fetch` - Trigger immediate RSS collection
+- `POST /start` - Start data collection scheduler
+- `POST /stop` - Stop data collection scheduler
+- `POST /fetch` - Trigger immediate data collection
 
 ### Documents (`/api/documents`)
 - `GET /` - Get all documents
 - `GET /page` - Get paginated documents with filtering
 - `GET /<id>` - Get specific document
-- `GET /get_documents_by_source_id/<source_id>` - Get documents by RSS source
+- `GET /get_documents_by_source_id/<source_id>` - Get documents by source
+- `POST /upload_excel` - Upload documents from Excel file
+
+### Analytics (`/api/analytics`)
+- `GET /stats` - Get analytics statistics
 - `GET /cluster_analysis` - Perform cluster analysis on documents
 - `GET /cluster_analysis/latest` - Get latest cluster analysis results
-- `POST /upload_excel` - Upload documents from Excel file
+- `POST /cluster_analysis` - Trigger new cluster analysis
 
 ### Assistant (`/api/assistant`)
 - `POST /query` - Submit query to AI assistant
@@ -97,12 +114,29 @@ TAVILY_API_KEY=your_tavily_api_key_here
 
 # JWT Secret
 JWT_SECRET_KEY=your_jwt_secret_key_here
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 # Application Settings
 APP_HOST=0.0.0.0
 APP_PORT=5001
 APP_DEBUG=true
 AUTO_START_SCHEDULER=true
+
+# Email Notifications
+NOTIFICATION_EMAILS=your_email@example.com,another@example.com
+
+# File Upload
+MAX_FILE_SIZE=10485760
+ALLOWED_EXTENSIONS=xlsx,xls,pdf,txt
+
+# Pagination
+DEFAULT_PAGE_SIZE=20
+MAX_PAGE_SIZE=100
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=logs/app.log
 ```
 
 ### Installation
@@ -137,17 +171,31 @@ The API will be available at `http://localhost:5001`.
 
 ## Usage
 
-### Adding RSS Sources
+### Adding Data Sources
 
-To add a new RSS source:
+To add a new data source (RSS or Web):
 
 ```bash
-curl -X POST http://localhost:5001/api/rss/sources \
+# Add RSS source
+curl -X POST http://localhost:5001/api/sources \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Example News",
     "url": "https://example.com/rss",
-    "interval": "ONE_DAY"
+    "source_type": "rss",
+    "interval": "ONE_DAY",
+    "description": "Example news source"
+  }'
+
+# Add Web scraping source
+curl -X POST http://localhost:5001/api/sources \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Example Website",
+    "url": "https://example.com/news",
+    "source_type": "web",
+    "interval": "ONE_DAY",
+    "description": "Example web scraping source"
   }'
 ```
 
@@ -246,30 +294,69 @@ The system includes comprehensive logging with emoji indicators for easy debuggi
 ```
 backend/
 ├── apis/                    # API blueprints
+│   ├── analytics.py        # Analytics endpoints
 │   ├── assistant.py        # AI assistant endpoints
 │   ├── auth.py            # Authentication endpoints
 │   ├── document.py        # Document management
-│   ├── rss.py             # RSS source management
-│   └── scheduler.py       # Scheduler control
+│   ├── scheduler.py       # Scheduler control
+│   └── source.py          # Unified source management
+├── config/                  # Configuration
+│   └── settings.py        # Application settings
+├── core/                   # Core functionality
+│   ├── database.py        # Database configuration
+│   └── dependencies.py    # Dependency injection
 ├── models/                 # Data models
+│   ├── analysis.py        # Analysis model
+│   ├── document.py        # Document model
+│   ├── source.py          # Source model
+│   ├── user.py            # User model
+│   └── enums/             # Enum definitions
+├── schemas/                # Pydantic schemas (consolidated)
+│   ├── requests.py         # All request schemas
+│   └── responses.py        # All response schemas
+├── services/               # Unified business logic and data access layer
+│   ├── analytics/         # Analytics services
+│   ├── knowledge_base/    # Knowledge base services
+│   ├── search/            # Search services
+│   ├── analytics_service.py    # Analytics + data access
+│   ├── assistant_service.py    # Assistant + data access
+│   ├── auth_service.py         # Authentication + data access
+│   ├── document_service.py     # Document management + data access
+│   ├── scheduler_service.py    # Scheduler + data access
+│   ├── source_service.py       # Source management + data access
+│   └── web_scraper_service.py  # Web scraping
 ├── tests/                  # Test suite
 │   ├── unit/              # Unit tests
 │   ├── integration/       # Integration tests
-│   └── api/               # API tests
+│   ├── api/               # API tests
+│   └── fixtures/          # Test fixtures
 ├── utils/                  # Utility functions
+│   ├── email_sender.py    # Email notifications
+│   ├── init_sqlite.py     # Database initialization
+│   ├── jwt_utils.py       # JWT utilities
+│   └── logging_config.py  # Logging configuration
 ├── data/                   # Database and vector store
-├── tools.py               # AI tools and knowledge base
-├── assistant.py           # Main assistant logic
+├── logs/                   # Log files
+├── models_cache/           # Cached ML models
+├── htmlcov/               # Coverage reports
 └── app.py                 # Flask application
 ```
 
 ### Key Technologies
 
-- **Flask**: Web framework
+- **Flask**: Web framework with CORS support
 - **SQLModel**: ORM and data validation
-- **LangChain**: LLM orchestration
-- **FAISS**: Vector similarity search
+- **Pydantic**: Data validation and serialization
+- **LangChain**: LLM orchestration and tool use
+- **FAISS**: Vector similarity search with reranking
 - **Ollama**: Local LLM hosting
 - **Tavily**: Online search API
-- **pytest**: Testing framework
-- **UMAP/HDBSCAN**: Advanced clustering
+- **Playwright**: Web scraping and automation
+- **pytest**: Testing framework with coverage
+- **UMAP/HDBSCAN**: Advanced clustering algorithms
+- **scikit-learn**: Machine learning utilities
+- **sentence-transformers**: Text embeddings
+- **BeautifulSoup4**: HTML parsing
+- **bcrypt**: Password hashing
+- **PyJWT**: JWT token handling
+- **loguru**: Advanced logging

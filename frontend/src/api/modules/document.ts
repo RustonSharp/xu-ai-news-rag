@@ -101,6 +101,15 @@ export const uploadDocument = async (
     })
 }
 
+// 批量删除文档
+export const batchDeleteDocuments = async (ids: number[]): Promise<ApiResponse<{ message: string; deleted_count: number }>> => {
+    return request({
+        url: API_ENDPOINTS.DOCUMENTS.BATCH_DELETE,
+        method: HTTP_METHODS.DELETE,
+        data: { ids }
+    })
+}
+
 // 导出API对象
 export const documentAPI = {
     getDocumentsPage,
@@ -110,7 +119,8 @@ export const documentAPI = {
     getClusterAnalysis,
     getLatestClusterAnalysis,
     uploadExcel,
-    uploadDocument
+    uploadDocument,
+    batchDeleteDocuments
 }
 
 export default documentAPI

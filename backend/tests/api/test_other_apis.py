@@ -15,11 +15,41 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 class TestDocumentAPI:
     """文档API测试"""
     
-    def test_upload_document_success(self, test_client, auth_headers):
-        """测试文档上传成功"""
-        # 实际API没有upload_document函数，而是upload_excel
-        # 这个测试需要跳过或修改
-        pytest.skip("API中没有upload_document端点，只有upload_excel")
+    def test_upload_excel_success(self, test_client, auth_headers):
+        """测试Excel文档上传成功"""
+        # 创建测试Excel文件
+        import io
+        import pandas as pd
+        
+        # 创建测试数据
+        test_data = {
+            'title': ['测试文档1', '测试文档2'],
+            'content': ['测试内容1', '测试内容2'],
+            'link': ['http://test1.com', 'http://test2.com'],
+            'description': ['测试描述1', '测试描述2'],
+            'author': ['作者1', '作者2'],
+            'tags': ['tag1,tag2', 'tag3,tag4']
+        }
+        
+        # 创建DataFrame并转换为Excel
+        df = pd.DataFrame(test_data)
+        excel_buffer = io.BytesIO()
+        df.to_excel(excel_buffer, index=False)
+        excel_buffer.seek(0)
+        
+        # 发送请求
+        response = test_client.post(
+            '/api/documents/upload-excel',
+            headers=auth_headers,
+            data={
+                'file': (excel_buffer, 'test.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            }
+        )
+        
+        # 验证响应
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert 'message' in data
     
     def test_get_documents_success(self, test_client, auth_headers):
         """测试获取文档列表成功"""
@@ -36,13 +66,44 @@ class TestDocumentAPI:
     
     def test_delete_document_success(self, test_client, auth_headers):
         """测试删除文档成功"""
-        # 实际API没有删除文档的端点
-        pytest.skip("API中没有删除文档的端点")
+        with patch('apis.document.Session') as mock_session_class:
+            # 设置mock
+            mock_session = Mock()
+            mock_doc = Mock()
+            mock_doc.id = 1
+            mock_doc.title = '测试文档'
+            mock_session.exec.return_value.first.return_value = mock_doc
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            
+            # 发送请求
+            response = test_client.delete(
+                '/api/documents/1',
+                headers=auth_headers
+            )
+            
+            # 验证响应
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert 'message' in data
     
     def test_document_not_found(self, test_client, auth_headers):
         """测试文档不存在"""
-        # 实际API没有删除文档的端点
-        pytest.skip("API中没有删除文档的端点")
+        with patch('apis.document.Session') as mock_session_class:
+            # 设置mock
+            mock_session = Mock()
+            mock_session.exec.return_value.first.return_value = None
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            
+            # 发送请求
+            response = test_client.delete(
+                '/api/documents/999',
+                headers=auth_headers
+            )
+            
+            # 验证响应
+            assert response.status_code == 404
+            data = json.loads(response.data)
+            assert 'error' in data
 
 
 class TestRSSAPI:
@@ -61,43 +122,53 @@ class TestRSSAPI:
         data = json.loads(response.data)
         assert isinstance(data, list)
     
-    @pytest.mark.skip(reason="复杂的API测试，需要更深入的mock设置")
     def test_add_rss_source_success(self, test_client):
         """测试添加RSS源成功"""
-        # 发送请求
-        response = test_client.post(
-            '/api/rss/sources',
-            json={
-                'name': '新RSS源',
-                'url': 'https://example.com/new-rss',
-                'interval': 'ONE_DAY'
-            }
-        )
-        
-        # 验证响应
-        assert response.status_code == 201
-        data = json.loads(response.data)
-        assert data['name'] == '新RSS源'
+        with patch('apis.source.Session') as mock_session_class:
+            # 设置mock
+            mock_session = Mock()
+            mock_session.exec.return_value.first.return_value = None  # 没有重复的URL
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            
+            with patch('apis.source.Source') as mock_source_class:
+                mock_source_instance = Mock()
+                mock_source_instance.id = 1
+                mock_source_instance.name = '新RSS源'
+                mock_source_instance.url = 'https://example.com/new-rss'
+                mock_source_instance.interval = 'ONE_DAY'
+                mock_source_class.return_value = mock_source_instance
+                
+                # 发送请求
+                response = test_client.post(
+                    '/api/rss/sources',
+                    json={
+                        'name': '新RSS源',
+                        'url': 'https://example.com/new-rss',
+                        'interval': 'ONE_DAY'
+                    }
+                )
+                
+                # 验证响应
+                assert response.status_code == 201
+                data = json.loads(response.data)
+                assert data['name'] == '新RSS源'
     
-    @pytest.mark.skip(reason="复杂的API测试，需要更深入的mock设置")
     def test_update_rss_source_success(self, test_client):
         """测试更新RSS源成功"""
-        # 先创建一个RSS源
-        create_response = test_client.post(
-            '/api/rss/sources',
-            json={
-                'name': '测试RSS源',
-                'url': 'https://example.com/test-rss',
-                'interval': 'ONE_DAY'
-            }
-        )
-        
-        if create_response.status_code == 201:
-            source_id = json.loads(create_response.data)['id']
+        with patch('apis.source.Session') as mock_session_class:
+            # 设置mock
+            mock_session = Mock()
+            mock_source = Mock()
+            mock_source.id = 1
+            mock_source.name = '测试RSS源'
+            mock_source.url = 'https://example.com/test-rss'
+            mock_source.interval = 'ONE_DAY'
+            mock_session.exec.return_value.first.return_value = mock_source
+            mock_session_class.return_value.__enter__.return_value = mock_session
             
             # 更新RSS源
             response = test_client.put(
-                f'/api/rss/sources/{source_id}',
+                '/api/rss/sources/1',
                 json={
                     'name': '更新RSS源',
                     'url': 'https://example.com/updated-rss',
@@ -109,28 +180,21 @@ class TestRSSAPI:
             assert response.status_code == 200
             data = json.loads(response.data)
             assert data['name'] == '更新RSS源'
-        else:
-            pytest.skip("无法创建RSS源进行更新测试")
     
     def test_delete_rss_source_success(self, test_client, auth_headers):
         """测试删除RSS源成功"""
-        # 先创建一个RSS源
-        create_response = test_client.post(
-            '/api/rss/sources',
-            headers=auth_headers,
-            json={
-                'name': '测试RSS源',
-                'url': 'https://example.com/test-rss',
-                'interval': 'ONE_DAY'
-            }
-        )
-        
-        if create_response.status_code == 201:
-            source_id = json.loads(create_response.data)['id']
+        with patch('apis.source.Session') as mock_session_class:
+            # 设置mock
+            mock_session = Mock()
+            mock_source = Mock()
+            mock_source.id = 1
+            mock_source.name = '测试RSS源'
+            mock_session.exec.return_value.first.return_value = mock_source
+            mock_session_class.return_value.__enter__.return_value = mock_session
             
             # 删除RSS源
             response = test_client.delete(
-                f'/api/rss/sources/{source_id}',
+                '/api/rss/sources/1',
                 headers=auth_headers
             )
             
@@ -138,8 +202,6 @@ class TestRSSAPI:
             assert response.status_code == 200
             data = json.loads(response.data)
             assert 'message' in data
-        else:
-            pytest.skip("无法创建RSS源进行删除测试")
 
 
 class TestSchedulerAPI:
@@ -159,18 +221,34 @@ class TestSchedulerAPI:
         assert 'success' in data
         assert 'data' in data
     
-    @pytest.mark.skip(reason="复杂的API测试，需要更深入的mock设置")
     def test_start_scheduler_success(self, test_client):
         """测试启动调度器成功"""
-        # 发送请求
-        response = test_client.post(
-            '/api/scheduler/start'
-        )
-        
-        # 验证响应
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert 'success' in data
+        with patch('apis.scheduler.scheduler_service') as mock_scheduler:
+            # 设置mock
+            mock_scheduler.running = False
+            mock_scheduler.start.return_value = None
+            
+            with patch('apis.scheduler.Session') as mock_session_class:
+                mock_session = Mock()
+                mock_rss_source = Mock()
+                mock_rss_source.id = 1
+                mock_rss_source.name = '测试RSS源'
+                mock_rss_source.is_paused = False
+                
+                mock_session.exec.return_value.all.return_value = [mock_rss_source]
+                mock_session_class.return_value.__enter__.return_value = mock_session
+                
+                with patch('apis.scheduler.os.getenv') as mock_getenv:
+                    mock_getenv.return_value = 'true'  # 允许手动启动
+                    
+                    # 发送请求
+                    response = test_client.post('/api/scheduler/start')
+                    
+                    # 验证响应
+                    assert response.status_code == 200
+                    data = json.loads(response.data)
+                    assert 'success' in data
+                    assert data['success'] is True
     
     def test_stop_scheduler_success(self, test_client, auth_headers):
         """测试停止调度器成功"""
@@ -185,10 +263,33 @@ class TestSchedulerAPI:
         data = json.loads(response.data)
         assert 'success' in data
     
-    def test_trigger_scheduler_success(self, test_client, auth_headers):
-        """测试手动触发调度器成功"""
-        # 实际API没有trigger端点，只有fetch端点
-        pytest.skip("API中没有trigger端点，只有fetch端点")
+    def test_fetch_rss_now_success(self, test_client, auth_headers):
+        """测试立即获取RSS成功"""
+        with patch('apis.scheduler.fetch_rss_feeds') as mock_fetch:
+            # 设置mock
+            mock_fetch.return_value = True
+            
+            with patch('apis.scheduler.Session') as mock_session_class:
+                mock_session = Mock()
+                mock_rss_source = Mock()
+                mock_rss_source.id = 1
+                mock_rss_source.name = '测试RSS源'
+                mock_rss_source.is_paused = False
+                
+                mock_session.exec.return_value.first.return_value = mock_rss_source
+                mock_session_class.return_value.__enter__.return_value = mock_session
+                
+                # 发送请求
+                response = test_client.post(
+                    '/api/scheduler/fetch/1',
+                    headers=auth_headers
+                )
+                
+                # 验证响应
+                assert response.status_code == 200
+                data = json.loads(response.data)
+                assert 'success' in data
+                assert data['success'] is True
 
 
 class TestAnalyticsAPI:
@@ -196,13 +297,57 @@ class TestAnalyticsAPI:
     
     def test_get_analytics_success(self, test_client, auth_headers):
         """测试获取分析数据成功"""
-        # 实际API中没有analytics模块
-        pytest.skip("API中没有analytics模块")
+        with patch('apis.analytics.Session') as mock_session_class:
+            # 设置mock
+            mock_session = Mock()
+            mock_analysis = Mock()
+            mock_analysis.id = 1
+            mock_analysis.title = '测试分析'
+            mock_analysis.analysis_type = 'clustering'
+            mock_analysis.results = {'clusters': 3}
+            
+            mock_session.exec.return_value.all.return_value = [mock_analysis]
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            
+            # 发送请求
+            response = test_client.get(
+                '/api/analytics',
+                headers=auth_headers
+            )
+            
+            # 验证响应
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert isinstance(data, list)
+            assert len(data) == 1
+            assert data[0]['title'] == '测试分析'
     
     def test_get_analytics_with_filters(self, test_client, auth_headers):
         """测试带过滤器的分析数据"""
-        # 实际API中没有analytics模块
-        pytest.skip("API中没有analytics模块")
+        with patch('apis.analytics.Session') as mock_session_class:
+            # 设置mock
+            mock_session = Mock()
+            mock_analysis = Mock()
+            mock_analysis.id = 1
+            mock_analysis.title = '测试分析'
+            mock_analysis.analysis_type = 'clustering'
+            mock_analysis.results = {'clusters': 3}
+            
+            mock_session.exec.return_value.all.return_value = [mock_analysis]
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            
+            # 发送请求
+            response = test_client.get(
+                '/api/analytics?type=clustering',
+                headers=auth_headers
+            )
+            
+            # 验证响应
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert isinstance(data, list)
+            assert len(data) == 1
+            assert data[0]['analysis_type'] == 'clustering'
 
 
 class TestErrorHandling:

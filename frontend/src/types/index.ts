@@ -7,7 +7,7 @@ export * from './api'
 export * from './document'
 
 // 数据源相关类型
-export * from './rss'
+export * from './source'
 
 // 分析统计相关类型
 export * from './analytics'
@@ -41,7 +41,7 @@ export type {
   SourceConfig,
   CreateSourceRequest,
   UpdateSourceRequest,
-} from './rss'
+} from './source'
 
 export type {
   // Analytics

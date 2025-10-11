@@ -3,6 +3,7 @@ from sqlmodel import Session, create_engine, select
 from models.user import User
 from utils.jwt_utils import create_access_token, create_refresh_token, verify_token
 from utils.logging_config import app_logger
+from services.auth_service import AuthService
 import os
 from dotenv import load_dotenv
 from typing import Optional, Dict, Any
@@ -14,12 +15,25 @@ load_dotenv()
 # 创建蓝图
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """验证密码（用于测试兼容性）"""
+    auth_service = AuthService()
+    return auth_service.verify_password(plain_password, hashed_password)
+
 # 获取数据库引擎
 def get_db_engine():
     db_path = os.getenv("DATABASE_PATH")
     if not db_path:
         raise ValueError("DATABASE_PATH environment variable is not set")
-    return create_engine(f"sqlite:///{db_path}")
+    return create_engine(
+        f"sqlite:///{db_path}",
+        pool_size=20,
+        max_overflow=30,
+        pool_timeout=60,
+        pool_recycle=3600,
+        pool_pre_ping=True,
+        echo=False
+    )
 
 # 用户登录
 @auth_bp.route('/login', methods=['POST'])
@@ -398,3 +412,12 @@ def update_profile():
             "message": "Internal server error",
             "data": None
         }), 500
+
+def hash_password(password: str) -> str:
+    """哈希密码（用于测试兼容性）"""
+    try:
+        auth_service = get_auth_service()
+        return auth_service.hash_password(password)
+    except Exception as e:
+        app_logger.error(f"Error hashing password: {str(e)}")
+        return ""

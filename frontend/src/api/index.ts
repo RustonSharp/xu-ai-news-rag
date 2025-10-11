@@ -6,7 +6,8 @@ import type { ApiResponse } from '@/types'
 // 导入所有 API 模块
 import { authAPI } from './modules/auth'
 import { documentAPI } from './modules/document'
-import { rssAPI } from './modules/rss'
+import { rssAPI, sourceAPI } from './modules/rss'
+import { webAPI } from './modules/web'
 import { analyticsAPI } from './modules/analytics'
 import { assistantAPI } from './modules/assistant'
 import { schedulerAPI } from './modules/scheduler'
@@ -23,6 +24,8 @@ interface APIInstance {
   auth: typeof authAPI
   documents: typeof documentAPI
   rss: typeof rssAPI
+  source: typeof sourceAPI
+  web: typeof webAPI
   analytics: typeof analyticsAPI
   assistant: typeof assistantAPI
   scheduler: typeof schedulerAPI
@@ -42,6 +45,8 @@ export {
   authAPI,
   documentAPI,
   rssAPI,
+  sourceAPI,
+  webAPI,
   analyticsAPI,
   assistantAPI,
   schedulerAPI
@@ -52,6 +57,8 @@ const api: APIInstance = {
   auth: authAPI,
   documents: documentAPI,
   rss: rssAPI,
+  source: sourceAPI,
+  web: webAPI,
   analytics: analyticsAPI,
   assistant: assistantAPI,
   scheduler: schedulerAPI
@@ -65,6 +72,8 @@ export const createAPIInstance = (config: APIConfig = {}): APIInstance => {
     auth: authAPI,
     documents: documentAPI,
     rss: rssAPI,
+    source: sourceAPI,
+    web: webAPI,
     analytics: analyticsAPI,
     assistant: assistantAPI,
     scheduler: schedulerAPI

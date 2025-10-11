@@ -10,6 +10,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 修改: 使用相对导入代替绝对导入
 from .logging_config import app_logger
+from config.settings import settings
 
 
 class EmailSender:
@@ -111,10 +112,10 @@ def get_email_sender() -> EmailSender:
     Returns:
         EmailSender: 邮件发送器实例
     """
-    smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = int(os.getenv("SMTP_PORT", "465"))
-    username = os.getenv("EMAIL_USERNAME")
-    password = os.getenv("EMAIL_PASSWORD")
+    smtp_server = settings.SMTP_SERVER
+    smtp_port = settings.SMTP_PORT
+    username = settings.EMAIL_USERNAME
+    password = settings.EMAIL_PASSWORD
     
     if not username or not password:
         raise ValueError("EMAIL_USERNAME and EMAIL_PASSWORD must be set in environment variables. 注意：EMAIL_PASSWORD 应该是邮箱的SMTP授权码，而不是登录密码")

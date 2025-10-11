@@ -23,7 +23,7 @@ const mockData = {
       pub_date: '2024-01-15T10:30:00Z',
       author: 'AI研究院',
       tags: 'AI,人工智能',
-      rss_source_id: 1,
+      source_id: 1,
       crawled_at: '2024-01-15T10:30:00Z'
     },
     {
@@ -34,7 +34,7 @@ const mockData = {
       pub_date: '2024-01-14T15:20:00Z',
       author: '技术博客',
       tags: '机器学习,ML',
-      rss_source_id: 1,
+      source_id: 1,
       crawled_at: '2024-01-14T15:20:00Z'
     },
     {
@@ -45,7 +45,7 @@ const mockData = {
       pub_date: '2024-01-13T09:15:00Z',
       author: '开源社区',
       tags: '深度学习,框架',
-      rss_source_id: 2,
+      source_id: 2,
       crawled_at: '2024-01-13T09:15:00Z'
     }
   ],
@@ -254,7 +254,7 @@ export const mockAPI = {
 
     async getDocumentsBySourceId(sourceId) {
       await delay()
-      const documents = mockData.documents.filter(doc => doc.rss_source_id === sourceId)
+      const documents = mockData.documents.filter(doc => doc.source_id === sourceId)
       return {
         code: 200,
         message: '获取源文档成功',
@@ -309,7 +309,7 @@ export const mockAPI = {
         pub_date: new Date().toISOString(),
         author: formData.get('author') || '未知作者',
         tags: formData.get('tags') || '',
-        rss_source_id: parseInt(formData.get('rss_source_id')) || 1,
+        source_id: parseInt(formData.get('source_id')) || 1,
         crawled_at: new Date().toISOString()
       }
       mockData.documents.push(newDoc)
