@@ -8,16 +8,11 @@ from models.document import Document
 from models.user import User
 from models.analysis import Analysis
 
-# Try to load dotenv to support reading environment variables from .env file
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    app_logger.warning("Note: python-dotenv library is not installed, environment variables will be read from the system.")
-    app_logger.info("If you need to load environment variables from .env file, please run: pip install python-dotenv")
+# Import settings for database configuration
+from config.settings import settings
 
 # Create engine instance
-db_path = os.getenv("DATABASE_PATH")
+db_path = settings.DATABASE_PATH
 if not db_path:
     app_logger.error("DATABASE_PATH environment variable is not set.")
     engine = None

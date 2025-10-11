@@ -3,8 +3,7 @@ Authentication service for user management.
 """
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
-from sqlmodel import Session
-from repositories.user_repository import UserRepository
+from sqlmodel import Session, select, func, and_, or_, desc
 from models.user import User
 from utils.jwt_utils import create_access_token, verify_token
 from utils.logging_config import app_logger
@@ -19,17 +18,17 @@ class AuthService:
     
     def __init__(self, session: Session):
         self.session = session
-        self.user_repo = UserRepository(session)
     
     def authenticate_user(self, username: str, password: str, session: Optional[Session] = None) -> Optional[Dict[str, Any]]:
         """Authenticate user with username and password."""
         try:
-            user = self.user_repo.authenticate_user(username, password)
-            if not user:
+            current_session = session or self.session
+            user = self._get_by_username(username, current_session)
+            if not user or not user.check_password(password):
                 return None
             
             # Update last login
-            self.user_repo.update_last_login(user.id)
+            self._update_last_login(user.id, current_session)
             
             # Create access token
             token_data = {
@@ -59,7 +58,23 @@ class AuthService:
                    full_name: Optional[str] = None) -> Dict[str, Any]:
         """Create a new user."""
         try:
-            user = self.user_repo.create_user(username, email, password, full_name)
+            # Check if username or email already exists
+            if self._get_by_username(username):
+                raise ValueError(f"Username {username} already exists")
+            
+            if self._get_by_email(email):
+                raise ValueError(f"Email {email} already exists")
+            
+            user = User(
+                username=username,
+                email=email,
+                full_name=full_name or username
+            )
+            user.set_password(password)
+            
+            self.session.add(user)
+            self.session.commit()
+            self.session.refresh(user)
             
             return {
                 "id": user.id,
@@ -70,6 +85,7 @@ class AuthService:
                 "created_at": user.created_at.isoformat()
             }
         except Exception as e:
+            self.session.rollback()
             app_logger.error(f"Error creating user {username}: {str(e)}")
             raise
     
@@ -84,7 +100,7 @@ class AuthService:
             if not user_id:
                 return None
             
-            user = self.user_repo.get_by_id(User, int(user_id))
+            user = self._get_by_id(int(user_id))
             if not user or not user.is_active:
                 return None
             
@@ -111,7 +127,7 @@ class AuthService:
             if not user_id:
                 return None
             
-            user = self.user_repo.get_by_id(User, int(user_id))
+            user = self._get_by_id(int(user_id))
             if not user or not user.is_active:
                 return None
             
@@ -135,15 +151,39 @@ class AuthService:
     def deactivate_user(self, user_id: int) -> bool:
         """Deactivate a user account."""
         try:
-            return self.user_repo.deactivate_user(user_id)
+            user = self._get_by_id(user_id)
+            if not user:
+                return False
+            
+            user.is_active = False
+            self.session.commit()
+            self.session.refresh(user)
+            app_logger.info(f"Deactivated user ID: {user_id}")
+            return True
         except Exception as e:
+            self.session.rollback()
             app_logger.error(f"Error deactivating user {user_id}: {str(e)}")
             return False
     
     def get_user_statistics(self) -> Dict[str, Any]:
         """Get user statistics."""
         try:
-            return self.user_repo.get_user_statistics()
+            total_users = self._count()
+            
+            # Get active users count
+            statement = select(func.count(User.id)).where(User.is_active == True)
+            active_users = self.session.exec(statement).one()
+            
+            # Get users created in last 30 days
+            cutoff_date = datetime.now() - timedelta(days=30)
+            statement = select(func.count(User.id)).where(User.created_at >= cutoff_date)
+            new_users = self.session.exec(statement).one()
+            
+            return {
+                "total_users": total_users,
+                "active_users": active_users,
+                "new_users_last_30_days": new_users
+            }
         except Exception as e:
             app_logger.error(f"Error getting user statistics: {str(e)}")
             return {
@@ -155,7 +195,21 @@ class AuthService:
     def search_users(self, search_term: str, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
         """Search users by username, email, or full name."""
         try:
-            users = self.user_repo.search_users(search_term, skip, limit)
+            statement = (
+                select(User)
+                .where(
+                    or_(
+                        User.username.contains(search_term),
+                        User.email.contains(search_term),
+                        User.full_name.contains(search_term)
+                    )
+                )
+                .order_by(User.username.asc())
+                .offset(skip)
+                .limit(limit)
+            )
+            users = list(self.session.exec(statement))
+            
             return [
                 {
                     "id": user.id,
@@ -175,7 +229,21 @@ class AuthService:
     def get_active_users(self, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
         """Get active users."""
         try:
-            users = self.user_repo.get_active_users(skip, limit)
+            cutoff_date = datetime.now() - timedelta(days=30)
+            statement = (
+                select(User)
+                .where(
+                    and_(
+                        User.is_active == True,
+                        User.last_login >= cutoff_date
+                    )
+                )
+                .order_by(desc(User.last_login))
+                .offset(skip)
+                .limit(limit)
+            )
+            users = list(self.session.exec(statement))
+            
             return [
                 {
                     "id": user.id,
@@ -233,3 +301,59 @@ class AuthService:
         except Exception as e:
             app_logger.error(f"Error verifying password: {str(e)}")
             return False
+    
+    # Private helper methods (formerly in UserRepository)
+    def _get_by_id(self, user_id: int) -> Optional[User]:
+        """Get user by ID."""
+        try:
+            return self.session.get(User, user_id)
+        except Exception as e:
+            app_logger.error(f"Error getting user by ID {user_id}: {str(e)}")
+            raise
+    
+    def _get_by_username(self, username: str, session: Optional[Session] = None) -> Optional[User]:
+        """Get user by username."""
+        try:
+            current_session = session or self.session
+            statement = select(User).where(User.username == username)
+            return current_session.exec(statement).first()
+        except Exception as e:
+            app_logger.error(f"Error getting user by username {username}: {str(e)}")
+            raise
+    
+    def _get_by_email(self, email: str, session: Optional[Session] = None) -> Optional[User]:
+        """Get user by email."""
+        try:
+            current_session = session or self.session
+            statement = select(User).where(User.email == email)
+            return current_session.exec(statement).first()
+        except Exception as e:
+            app_logger.error(f"Error getting user by email {email}: {str(e)}")
+            raise
+    
+    def _update_last_login(self, user_id: int, session: Optional[Session] = None) -> bool:
+        """Update user's last login time."""
+        try:
+            current_session = session or self.session
+            user = current_session.get(User, user_id)
+            if not user:
+                return False
+            
+            user.last_login = datetime.now()
+            current_session.commit()
+            current_session.refresh(user)
+            app_logger.info(f"Updated last login for user ID: {user_id}")
+            return True
+        except Exception as e:
+            current_session.rollback()
+            app_logger.error(f"Error updating last login for user ID {user_id}: {str(e)}")
+            raise
+    
+    def _count(self) -> int:
+        """Count total users."""
+        try:
+            statement = select(func.count()).select_from(User)
+            return self.session.exec(statement).one()
+        except Exception as e:
+            app_logger.error(f"Error counting users: {str(e)}")
+            raise

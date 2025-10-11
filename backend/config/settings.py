@@ -22,6 +22,7 @@ class Settings:
     
     # RSS Scheduler
     AUTO_START_SCHEDULER: bool = os.getenv("AUTO_START_SCHEDULER", "true").lower() == "true"
+    ALLOW_MANUAL_SCHEDULER_START: bool = os.getenv("ALLOW_MANUAL_SCHEDULER_START", "true").lower() == "true"
     
     # AI Models
     EMBEDDING_MODEL_NAME: str = os.getenv("EMBEDDING_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
@@ -35,6 +36,12 @@ class Settings:
     
     # Email Notifications
     NOTIFICATION_EMAILS: List[str] = os.getenv("NOTIFICATION_EMAILS", "").split(",") if os.getenv("NOTIFICATION_EMAILS") else []
+    
+    # SMTP Configuration
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "465"))
+    EMAIL_USERNAME: Optional[str] = os.getenv("EMAIL_USERNAME")
+    EMAIL_PASSWORD: Optional[str] = os.getenv("EMAIL_PASSWORD")
     
     # CORS
     CORS_ORIGINS: List[str] = [
@@ -62,6 +69,25 @@ class Settings:
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE: str = os.getenv("LOG_FILE", "logs/app.log")
+    
+    # Detailed Logging Configuration
+    LOGGING_CONSOLE_ENABLED: bool = os.getenv("LOGGING_CONSOLE_ENABLED", "true").lower() == "true"
+    LOGGING_CONSOLE_FORMAT: str = os.getenv("LOGGING_CONSOLE_FORMAT", "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>")
+    
+    LOGGING_FILE_ENABLED: bool = os.getenv("LOGGING_FILE_ENABLED", "true").lower() == "true"
+    LOGGING_FILE_PATH: str = os.getenv("LOGGING_FILE_PATH", "./logs/app.log")
+    LOGGING_FILE_ROTATION: str = os.getenv("LOGGING_FILE_ROTATION", "500 MB")
+    LOGGING_FILE_RETENTION: str = os.getenv("LOGGING_FILE_RETENTION", "30 days")
+    LOGGING_FILE_COMPRESSION: str = os.getenv("LOGGING_FILE_COMPRESSION", "zip")
+    LOGGING_FILE_FORMAT: str = os.getenv("LOGGING_FILE_FORMAT", "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}")
+    
+    LOGGING_ERROR_FILE_ENABLED: bool = os.getenv("LOGGING_ERROR_FILE_ENABLED", "true").lower() == "true"
+    LOGGING_ERROR_FILE_PATH: str = os.getenv("LOGGING_ERROR_FILE_PATH", "./logs/error.log")
+    LOGGING_ERROR_FILE_LEVEL: str = os.getenv("LOGGING_ERROR_FILE_LEVEL", "ERROR")
+    LOGGING_ERROR_FILE_ROTATION: str = os.getenv("LOGGING_ERROR_FILE_ROTATION", "100 MB")
+    LOGGING_ERROR_FILE_RETENTION: str = os.getenv("LOGGING_ERROR_FILE_RETENTION", "60 days")
+    LOGGING_ERROR_FILE_COMPRESSION: str = os.getenv("LOGGING_ERROR_FILE_COMPRESSION", "zip")
+    LOGGING_ERROR_FILE_FORMAT: str = os.getenv("LOGGING_ERROR_FILE_FORMAT", "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message} | {extra}")
 
 
 # Global settings instance

@@ -2,15 +2,16 @@
 Analytics service for data analysis operations.
 """
 from typing import Dict, Any, List, Optional
-from sqlmodel import Session
-from repositories.analysis_repository import AnalysisRepository
-from repositories.document_repository import DocumentRepository
-from repositories.source_repository import SourceRepository
+from datetime import datetime, timedelta
+from sqlmodel import Session, select, func, desc
+from models.analysis import Analysis
+from models.document import Document
+from models.source import Source
 from services.analytics.clustering_service import clustering_service
-from schemas.analytics_schema import (
-    ClusterAnalysisResponse, ClusterAnalysisRequest, 
-    AnalyticsStatsResponse, DocumentStatsResponse
+from schemas.responses import (
+    ClusterAnalysisResponse, AnalyticsStatsResponse, DocumentStatsResponse
 )
+from schemas.requests import ClusterAnalysisRequest
 from utils.logging_config import app_logger
 import json
 
@@ -20,9 +21,6 @@ class AnalyticsService:
     
     def __init__(self, session: Session):
         self.session = session
-        self.analysis_repo = AnalysisRepository(session)
-        self.document_repo = DocumentRepository(session)
-        self.source_repo = SourceRepository(session)
     
     def perform_cluster_analysis(self, request: ClusterAnalysisRequest) -> ClusterAnalysisResponse:
         """Perform cluster analysis on documents."""
@@ -31,7 +29,7 @@ class AnalyticsService:
             
             # Check if we should use cached results
             if not request.force_refresh:
-                latest_analysis = self.analysis_repo.get_latest_analysis()
+                latest_analysis = self._get_latest_analysis()
                 if latest_analysis:
                     app_logger.info("Using cached cluster analysis results")
                     return self._format_cluster_analysis_response(latest_analysis)
@@ -50,7 +48,7 @@ class AnalyticsService:
                 )
             
             # Save analysis to database
-            analysis_record = self.analysis_repo.create_cluster_analysis(
+            analysis_record = self._create_cluster_analysis(
                 method=analysis_result.get("clustering_method", "unknown"),
                 silhouette_score=analysis_result.get("silhouette_score", 0.0),
                 total_documents=analysis_result.get("total_documents", 0),
@@ -75,7 +73,7 @@ class AnalyticsService:
     def get_latest_cluster_analysis(self) -> ClusterAnalysisResponse:
         """Get the latest cluster analysis results."""
         try:
-            latest_analysis = self.analysis_repo.get_latest_analysis()
+            latest_analysis = self._get_latest_analysis()
             if not latest_analysis:
                 return ClusterAnalysisResponse(
                     clusters=[],
@@ -102,11 +100,11 @@ class AnalyticsService:
         """Get overall analytics statistics."""
         try:
             # Get basic counts
-            total_documents = self.document_repo.count()
-            total_sources = self.source_repo.count()
+            total_documents = self._count_documents()
+            total_sources = self._count_sources()
             
             # Get latest analysis info
-            latest_analysis = self.analysis_repo.get_latest_analysis()
+            latest_analysis = self._get_latest_analysis()
             last_analysis_date = latest_analysis.created_at.isoformat() if latest_analysis else None
             total_clusters = latest_analysis.total_clusters if latest_analysis else 0
             
@@ -136,13 +134,13 @@ class AnalyticsService:
         """Get document statistics."""
         try:
             # Get total documents
-            total_documents = self.document_repo.count()
+            total_documents = self._count_documents()
             
             # Get documents by source
-            documents_by_source = self.document_repo.get_document_count_by_source()
+            documents_by_source = self._get_document_count_by_source()
             
             # Get recent documents
-            recent_documents = self.document_repo.get_recent_documents(days=7, limit=10)
+            recent_documents = self._get_recent_documents(days=7, limit=10)
             recent_docs_data = []
             for doc in recent_documents:
                 recent_docs_data.append({
@@ -153,7 +151,7 @@ class AnalyticsService:
                 })
             
             # Get top tags
-            top_tags = self.document_repo.get_top_tags(limit=20)
+            top_tags = self._get_top_tags(limit=20)
             
             # Get documents by date (last 30 days)
             from datetime import datetime, timedelta
@@ -187,7 +185,7 @@ class AnalyticsService:
     def get_analysis_history(self, days: int = 30) -> List[Dict[str, Any]]:
         """Get analysis history."""
         try:
-            analyses = self.analysis_repo.get_recent_analyses(days=days, limit=50)
+            analyses = self._get_recent_analyses(days=days, limit=50)
             
             history = []
             for analysis in analyses:
@@ -240,3 +238,112 @@ class AnalyticsService:
                 clustering_method="error",
                 analysis_date=""
             )
+    
+    # Private helper methods (formerly in AnalysisRepository)
+    def _get_latest_analysis(self) -> Optional[Analysis]:
+        """Get the latest analysis by creation date."""
+        try:
+            statement = select(Analysis).order_by(desc(Analysis.created_at)).limit(1)
+            return self.session.exec(statement).first()
+        except Exception as e:
+            app_logger.error(f"Error getting latest analysis: {str(e)}")
+            raise
+    
+    def _create_cluster_analysis(self, method: str, silhouette_score: float, 
+                                total_documents: int, total_clusters: int, 
+                                report_json: str) -> Analysis:
+        """Create a new cluster analysis record."""
+        try:
+            analysis = Analysis(
+                method=method,
+                silhouette_score=silhouette_score,
+                total_documents=total_documents,
+                total_clusters=total_clusters,
+                report_json=report_json
+            )
+            self.session.add(analysis)
+            self.session.commit()
+            self.session.refresh(analysis)
+            app_logger.info(f"Created cluster analysis with ID: {analysis.id}")
+            return analysis
+        except Exception as e:
+            self.session.rollback()
+            app_logger.error(f"Error creating cluster analysis: {str(e)}")
+            raise
+    
+    def _get_recent_analyses(self, days: int = 30, limit: int = 50) -> List[Analysis]:
+        """Get recent analyses."""
+        try:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            statement = (
+                select(Analysis)
+                .where(Analysis.created_at >= cutoff_date)
+                .order_by(desc(Analysis.created_at))
+                .limit(limit)
+            )
+            return list(self.session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error getting recent analyses: {str(e)}")
+            raise
+    
+    def _count_documents(self) -> int:
+        """Count total documents."""
+        try:
+            statement = select(func.count()).select_from(Document)
+            return self.session.exec(statement).one()
+        except Exception as e:
+            app_logger.error(f"Error counting documents: {str(e)}")
+            raise
+    
+    def _count_sources(self) -> int:
+        """Count total sources."""
+        try:
+            statement = select(func.count()).select_from(Source)
+            return self.session.exec(statement).one()
+        except Exception as e:
+            app_logger.error(f"Error counting sources: {str(e)}")
+            raise
+    
+    def _get_document_count_by_source(self) -> Dict[int, int]:
+        """Get document count by source."""
+        try:
+            statement = (
+                select(Document.source_id, func.count(Document.id))
+                .group_by(Document.source_id)
+            )
+            results = self.session.exec(statement).all()
+            return {source_id: count for source_id, count in results}
+        except Exception as e:
+            app_logger.error(f"Error getting document count by source: {str(e)}")
+            raise
+    
+    def _get_recent_documents(self, days: int = 7, limit: int = 10) -> List[Document]:
+        """Get recent documents."""
+        try:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            statement = (
+                select(Document)
+                .where(Document.crawled_at >= cutoff_date)
+                .order_by(desc(Document.crawled_at))
+                .limit(limit)
+            )
+            return list(self.session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error getting recent documents: {str(e)}")
+            raise
+    
+    def _get_top_tags(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get top tags."""
+        try:
+            statement = (
+                select(Document.tags, func.count(Document.id))
+                .where(Document.tags.isnot(None))
+                .group_by(Document.tags)
+                .order_by(desc(func.count(Document.id)))
+                .limit(limit)
+            )
+            results = self.session.exec(statement).all()
+            return [{"tag": tag, "count": count} for tag, count in results]
+        except Exception as e:
+            app_logger.error(f"Error getting top tags: {str(e)}")
+            raise

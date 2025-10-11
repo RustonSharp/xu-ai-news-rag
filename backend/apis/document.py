@@ -3,10 +3,12 @@ from sqlmodel import Session
 from core.dependencies import get_db_session_sync
 from services.document_service import DocumentService
 from services.analytics_service import AnalyticsService
-from schemas.document_schema import (
-    DocumentSearchParams, DocumentUploadResponse
+from schemas.requests import (
+    DocumentSearchParams, ClusterAnalysisRequest
 )
-from schemas.analytics_schema import ClusterAnalysisRequest
+from schemas.responses import (
+    DocumentUploadResponse
+)
 from utils.logging_config import app_logger
 from werkzeug.utils import secure_filename
 import pandas as pd

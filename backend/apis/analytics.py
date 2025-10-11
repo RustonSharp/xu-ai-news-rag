@@ -4,7 +4,7 @@ Analytics API for data analysis operations.
 from flask import Blueprint, request, jsonify
 from core.dependencies import get_db_session_sync
 from services.analytics_service import AnalyticsService
-from schemas.analytics_schema import ClusterAnalysisRequest
+from schemas.requests import ClusterAnalysisRequest
 from utils.logging_config import app_logger
 
 # 创建蓝图

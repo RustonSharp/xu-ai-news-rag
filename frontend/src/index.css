@@ -1,3 +1,8 @@
+/* Tailwind CSS directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* 全局样式重置和基础样式 */
 /* CSS变量已移至App.css中统一管理主题切换 */
 
@@ -7,7 +12,9 @@
   padding: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
 }
@@ -39,7 +46,9 @@ button {
   outline: none;
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: inherit;
   outline: none;
 }
@@ -68,33 +77,33 @@ input, textarea, select {
   body {
     font-size: 14px;
   }
-  
+
   .container {
     padding: 0 16px;
   }
-  
+
   .grid {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  
+
   .card {
     padding: 16px;
   }
-  
+
   .btn {
     padding: 8px 16px;
     font-size: 14px;
   }
-  
+
   .form-group {
     margin-bottom: 16px;
   }
-  
+
   .table-responsive {
     overflow-x: auto;
   }
-  
+
   .nav-links {
     flex-direction: column;
     gap: 8px;
@@ -105,16 +114,16 @@ input, textarea, select {
   .container {
     padding: 0 12px;
   }
-  
+
   .card {
     padding: 12px;
   }
-  
+
   .btn {
     padding: 6px 12px;
     font-size: 13px;
   }
-  
+
   .form-input {
     padding: 8px 12px;
   }
@@ -144,11 +153,11 @@ input, textarea, select {
     background: white;
     color: black;
   }
-  
+
   .no-print {
     display: none;
   }
-  
+
   .card {
     border: 1px solid #000;
     box-shadow: none;

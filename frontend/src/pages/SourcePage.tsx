@@ -423,7 +423,7 @@ const SourcePage: React.FC = () => {
       </div>
 
       {/* Data source list */}
-      <div className="card">
+      <div className="card sources-container">
         {loading ? (
           <div className="loading">
             <div className="spinner" />
@@ -435,45 +435,48 @@ const SourcePage: React.FC = () => {
               <div key={source.id} className="source-item">
                 <div className="source-header">
                   <div className="source-info">
-                    <div className="source-title-row">
-                      <h3>{source.name}</h3>
-                      <div className="source-status" title={source.last_error || ''}>
-                        {getStatusIcon(source)}
-                        <span className={`status-text ${source.status}`}>
-                          {source.sync_errors && source.sync_errors > 0 ? 'Error' :
-                            source.status === 'active' ? 'Running' :
-                              source.status === 'paused' ? 'Paused' : 'Unknown'}
-                        </span>
-                        {/* {source.sync_errors && source.sync_errors > 0 && (
-                          <span className="error-count">({source.sync_errors})</span>
-                        )} */}
+                    {/* 上半部分：标题、状态、按钮 */}
+                    <div className="source-top-section">
+                      <div className="source-title-row">
+                        <h3>{source.name}</h3>
+                        <div className="source-status" title={source.last_error || ''}>
+                          {getStatusIcon(source)}
+                          <span className={`status-text ${source.status}`}>
+                            {source.sync_errors && source.sync_errors > 0 ? 'Error' :
+                              source.status === 'active' ? 'Running' :
+                                source.status === 'paused' ? 'Paused' : 'Unknown'}
+                          </span>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => handleToggleSource(source.id, !source.enabled)}
-                        className={`btn btn-sm ${source.enabled ? 'btn-secondary' : 'btn-primary'}`}
-                      >
-                        {source.enabled ? <Pause size={14} /> : <Play size={14} />}
-                        {source.enabled ? 'Pause' : 'Enable'}
-                      </button>
+                      <div className="source-actions">
+                        <button
+                          onClick={() => handleToggleSource(source.id, !source.enabled)}
+                          className={`btn btn-sm ${source.enabled ? 'btn-secondary' : 'btn-primary'}`}
+                        >
+                          {source.enabled ? <Pause size={14} /> : <Play size={14} />}
+                          {source.enabled ? 'Pause' : 'Enable'}
+                        </button>
 
-                      <button
-                        onClick={() => handleRunNow(source.id)}
-                        className="btn btn-sm btn-secondary"
-                        disabled={!source.enabled}
-                      >
-                        <RefreshCw size={14} />
-                        Run Now
-                      </button>
+                        <button
+                          onClick={() => handleRunNow(source.id)}
+                          className="btn btn-sm btn-secondary"
+                          disabled={!source.enabled}
+                        >
+                          <RefreshCw size={14} />
+                          Run Now
+                        </button>
 
-                      <button
-                        onClick={() => handleEditSource(source)}
-                        className="btn-icon"
-                      >
-                        <Edit3 size={14} />
-                      </button>
+                        <button
+                          onClick={() => handleEditSource(source)}
+                          className="btn-icon"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="source-bottom-row">
+                    {/* 下半部分：链接、删除按钮 */}
+                    <div className="source-bottom-section">
                       <a
                         href={source.url}
                         target="_blank"
@@ -490,35 +493,28 @@ const SourcePage: React.FC = () => {
                         <Trash2 size={14} />
                       </button>
                     </div>
-
-                    <p className="source-description">{source.description}</p>
-                    <div className="source-tags">
-                      {source.tags?.map((tag, index) => (
-                        <span key={index} className="tag">{tag}</span>
-                      ))}
-                    </div>
                   </div>
-                </div>
 
-                <div className="source-stats">
-                  <div className="stats-row">
-                    <div className="stat">
-                      <span className="stat-label">Collection Frequency</span>
-                      <span className="stat-value">{source.schedule}</span>
+                  <div className="source-stats">
+                    <div className="stats-row">
+                      <div className="stat">
+                        <span className="stat-label">Collection Frequency</span>
+                        <span className="stat-value">{source.schedule}</span>
+                      </div>
+                      <div className="stat">
+                        <span className="stat-label">Article Count</span>
+                        <span className="stat-value">{source.total_documents || 0}</span>
+                      </div>
                     </div>
-                    <div className="stat">
-                      <span className="stat-label">Article Count</span>
-                      <span className="stat-value">{source.total_documents || 0}</span>
-                    </div>
-                  </div>
-                  <div className="stats-row">
-                    <div className="stat">
-                      <span className="stat-label">Last Run</span>
-                      <span className="stat-value">{formatDate(source.lastRun)}</span>
-                    </div>
-                    <div className="stat">
-                      <span className="stat-label">Next Run</span>
-                      <span className="stat-value">{formatDate(source.nextRun)}</span>
+                    <div className="stats-row">
+                      <div className="stat">
+                        <span className="stat-label">Last Run</span>
+                        <span className="stat-value">{formatDate(source.lastRun)}</span>
+                      </div>
+                      <div className="stat">
+                        <span className="stat-label">Next Run</span>
+                        <span className="stat-value">{formatDate(source.nextRun)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -716,9 +712,12 @@ const SourcePage: React.FC = () => {
       )}
 
       <style>{`
+        * {
+          box-sizing: border-box;
+        }
+
         .sources-page {
-          max-width: 1200px;
-          margin: 0 auto;
+          box-sizing: border-box;
         }
 
         .page-header {
@@ -775,19 +774,28 @@ const SourcePage: React.FC = () => {
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
+        .sources-container {
+          box-sizing: border-box;
+        }
+
         .sources-list {
           display: grid;
+          grid-template-columns: 1fr;
           gap: 24px;
+          width: 100%;
         }
 
         .source-item {
           background: var(--panel);
           border: 1px solid var(--border);
           border-radius: var(--radius-lg);
-          padding: 0;
+          padding: 12px 0 6px 0;
           transition: all 0.2s ease;
           overflow: hidden;
           position: relative;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
         }
 
         .source-item:hover {
@@ -798,25 +806,52 @@ const SourcePage: React.FC = () => {
         .source-header {
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
-          padding: 16px;
+          align-items: center;
+          padding: 0 12px;
+          width: 100%;
+          box-sizing: border-box;
+          gap: 20px;
+          flex: 1;
         }
 
         .source-info {
-          flex: 2;
           min-width: 0;
           display: flex;
           flex-direction: column;
           justify-content: center;
-          height: 100%;
-          gap: 16px;
+          gap: 24px;
+          overflow: hidden;
+          align-self: center;
+        }
+
+        .source-top-section {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .source-bottom-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .source-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
         }
 
         .source-title-row {
           display: flex;
           align-items: center;
-          gap: 16px;
-          flex-wrap: wrap;
+          gap: 12px;
+          flex-wrap: nowrap;
+          flex: 1;
+          min-width: 0;
         }
 
         .source-title-row h3 {
@@ -825,14 +860,20 @@ const SourcePage: React.FC = () => {
           font-size: 18px;
           font-weight: 600;
           line-height: 1.2;
-          flex-shrink: 0;
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .source-bottom-row {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          gap: 16px;
+          gap: 12px;
+          width: 100%;
+          overflow: hidden;
         }
 
         .source-bottom-row .source-url {
@@ -848,12 +889,13 @@ const SourcePage: React.FC = () => {
         .source-status {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 6px 12px;
+          gap: 6px;
+          padding: 4px 10px;
           background: var(--elev);
           border-radius: 6px;
           border: 1px solid var(--border);
           flex-shrink: 0;
+          white-space: nowrap;
         }
 
         .status-text {
@@ -882,13 +924,6 @@ const SourcePage: React.FC = () => {
           margin-left: 4px;
         }
 
-        .source-description {
-          color: var(--muted);
-          margin: 0;
-          line-height: 1.4;
-          font-size: 13px;
-          flex-shrink: 0;
-        }
 
         .source-url {
           display: flex;
@@ -903,7 +938,11 @@ const SourcePage: React.FC = () => {
           border-radius: var(--radius);
           border: 1px solid var(--border);
           transition: all 0.2s ease;
+          flex: 1;
           min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .source-url:hover {
@@ -911,20 +950,6 @@ const SourcePage: React.FC = () => {
           color: var(--primary-dark);
         }
 
-        .source-tags {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
-
-        .tag {
-          background: rgba(91, 157, 255, 0.1);
-          color: var(--primary);
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-size: 11px;
-          font-weight: 500;
-        }
 
 
         .source-stats {
@@ -932,10 +957,11 @@ const SourcePage: React.FC = () => {
           flex-direction: column;
           gap: 0;
           background: var(--elev);
-          border-top: 1px solid var(--border);
-          min-width: 0;
-          flex: 1;
-          min-width: 250px;
+          border-radius: var(--radius);
+          border: 1px solid var(--border);
+          width: 480px;
+          flex-shrink: 0;
+          box-sizing: border-box;
         }
 
         .stats-row {
@@ -947,12 +973,12 @@ const SourcePage: React.FC = () => {
         .stat {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          padding: 14px;
+          gap: 6px;
+          padding: 14px 12px;
           text-align: center;
           position: relative;
-          min-width: 130px;
-          flex-shrink: 0;
+          flex: 1;
+          box-sizing: border-box;
         }
 
         .stat:first-child::after {
@@ -970,17 +996,20 @@ const SourcePage: React.FC = () => {
         }
 
         .stat-label {
-          font-size: 11px;
+          font-size: 13px;
           color: var(--muted);
           text-transform: uppercase;
-          letter-spacing: 0.8px;
+          letter-spacing: 0.5px;
           font-weight: 600;
+          line-height: 1.2;
         }
 
         .stat-value {
-          font-size: 16px;
+          font-size: 15px;
           font-weight: 600;
           color: var(--text);
+          line-height: 1.3;
+          word-break: break-word;
         }
 
         .empty-state {
@@ -1201,8 +1230,10 @@ const SourcePage: React.FC = () => {
         }
 
         .btn-sm {
-          padding: 6px 12px;
+          padding: 4px 10px;
           font-size: 12px;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .btn-icon {
@@ -1213,6 +1244,12 @@ const SourcePage: React.FC = () => {
           padding: 8px;
           border-radius: var(--radius);
           transition: all 0.2s ease;
+          flex-shrink: 0;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .btn-icon:hover {
@@ -1257,19 +1294,44 @@ const SourcePage: React.FC = () => {
 
           .source-header {
             flex-direction: column;
-            gap: 16px;
+            align-items: stretch;
+            gap: 12px;
+          }
+
+          .source-stats {
+            width: 100%;
+            margin-top: 16px;
           }
 
           .source-info {
             height: auto;
-            justify-content: flex-start;
-            gap: 16px;
+            justify-content: center;
+            gap: 24px;
           }
 
-          .source-title-row {
+          .source-top-section {
             flex-direction: column;
             align-items: flex-start;
             gap: 12px;
+          }
+
+          .source-bottom-section {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+
+          .source-actions {
+            width: 100%;
+            justify-content: flex-start;
+          }
+
+          .source-title-row {
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            width: 100%;
           }
 
           .source-bottom-row {
@@ -1281,6 +1343,7 @@ const SourcePage: React.FC = () => {
           .source-stats {
             flex-direction: column;
             overflow-x: visible;
+            width: 100%;
           }
 
           .stats-row {
@@ -1288,9 +1351,11 @@ const SourcePage: React.FC = () => {
           }
 
           .stat {
-            min-width: 110px;
-            padding: 14px;
+            min-width: 140px;
+            padding: 14px 12px;
             text-align: center;
+            flex: 1;
+            box-sizing: border-box;
           }
 
           .stat:first-child::after {
