@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from sqlmodel import Session
 from repositories.source_repository import SourceRepository
+from models.source import Source
 from schemas.source_schema import (
     SourceCreate, SourceUpdate, SourceResponse, SourceListResponse,
     SourceStatsResponse, SourceTriggerResponse, SourceSearchParams
@@ -68,7 +69,7 @@ class SourceService:
     def get_source(self, source_id: int) -> Optional[SourceResponse]:
         """获取数据源详情"""
         try:
-            source = self.source_repo.get_by_id(source_id)
+            source = self.source_repo.get_by_id(Source, source_id)
             if not source:
                 return None
             return SourceResponse.model_validate(source)
@@ -141,7 +142,7 @@ class SourceService:
             if 'interval' in update_dict:
                 update_dict['next_sync'] = self._calculate_next_sync_time(update_dict['interval'])
             
-            source = self.source_repo.update(source_id, update_dict)
+            source = self.source_repo.update(Source, source_id, update_dict)
             if not source:
                 return None
             
@@ -155,7 +156,7 @@ class SourceService:
     def delete_source(self, source_id: int) -> bool:
         """删除数据源"""
         try:
-            return self.source_repo.delete(source_id)
+            return self.source_repo.delete(Source, source_id)
         except Exception as e:
             app_logger.error(f"Error deleting source {source_id}: {str(e)}")
             raise
@@ -163,7 +164,7 @@ class SourceService:
     def trigger_collection(self, source_id: int) -> SourceTriggerResponse:
         """触发数据源采集"""
         try:
-            source = self.source_repo.get_by_id(source_id)
+            source = self.source_repo.get_by_id(Source, source_id)
             if not source:
                 return SourceTriggerResponse(
                     message="数据源不存在",
@@ -528,7 +529,7 @@ class SourceService:
     def get_rss_source_by_id(self, source_id: int, session: Session) -> Optional[SourceResponse]:
         """根据ID获取RSS源（向后兼容）"""
         try:
-            source = self.source_repo.get_by_id(source_id)
+            source = self.source_repo.get_by_id(Source, source_id)
             if not source or source.source_type != 'rss':
                 return None
             return SourceResponse.model_validate(source)
@@ -552,7 +553,7 @@ class SourceService:
                 source_type='rss',
                 interval=source_data.get('interval', 'ONE_DAY'),
                 description=source_data.get('description', ''),
-                tags=source_data.get('tags', []),
+                tags=','.join(source_data.get('tags', [])) if source_data.get('tags') else None,
                 config=source_data.get('config', {})
             )
             
@@ -582,12 +583,12 @@ class SourceService:
     def pause_rss_source(self, source_id: int, session: Session) -> bool:
         """暂停RSS源"""
         try:
-            source = self.source_repo.get_by_id(source_id)
+            source = self.source_repo.get_by_id(Source, source_id)
             if not source or source.source_type != 'rss':
                 return False
             
             update_data = {'is_paused': True}
-            updated_source = self.source_repo.update(source_id, update_data)
+            updated_source = self.source_repo.update(Source, source_id, update_data)
             return updated_source is not None
         except Exception as e:
             app_logger.error(f"Error pausing RSS source {source_id}: {str(e)}")
@@ -596,12 +597,12 @@ class SourceService:
     def resume_rss_source(self, source_id: int, session: Session) -> bool:
         """恢复RSS源"""
         try:
-            source = self.source_repo.get_by_id(source_id)
+            source = self.source_repo.get_by_id(Source, source_id)
             if not source or source.source_type != 'rss':
                 return False
             
             update_data = {'is_paused': False}
-            updated_source = self.source_repo.update(source_id, update_data)
+            updated_source = self.source_repo.update(Source, source_id, update_data)
             return updated_source is not None
         except Exception as e:
             app_logger.error(f"Error resuming RSS source {source_id}: {str(e)}")

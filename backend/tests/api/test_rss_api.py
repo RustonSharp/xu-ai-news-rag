@@ -128,7 +128,7 @@ class TestRSSSourceAPI:
             mock_session.exec.return_value.first.return_value = None  # 没有重复的URL
             mock_session_class.return_value.__enter__.return_value = mock_session
             
-            with patch('apis.source.RSSSource') as mock_source_class:
+            with patch('apis.source.Source') as mock_source_class:
                 mock_source_instance = Mock()
                 mock_source_instance.id = 1
                 mock_source_instance.name = '新RSS源'

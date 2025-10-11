@@ -49,8 +49,8 @@ class TestSourceService:
     
     def test_get_rss_source_by_id_success(self, mock_database_session, mock_rss_source):
         """测试根据ID获取RSS源成功"""
-        # 设置mock
-        mock_database_session.exec.return_value.first.return_value = mock_rss_source
+        # 设置mock - get_by_id使用session.get()方法
+        mock_database_session.get.return_value = mock_rss_source
         
         # 创建服务实例
         source_service = SourceService(mock_database_session)
@@ -65,8 +65,8 @@ class TestSourceService:
     
     def test_get_rss_source_by_id_not_found(self, mock_database_session):
         """测试根据ID获取RSS源不存在"""
-        # 设置mock
-        mock_database_session.exec.return_value.first.return_value = None
+        # 设置mock - get_by_id使用session.get()方法
+        mock_database_session.get.return_value = None
         
         # 创建服务实例
         source_service = SourceService(mock_database_session)
@@ -90,16 +90,36 @@ class TestSourceService:
             'is_paused': False
         }
         
-        with patch('services.source_service.RSSSource') as mock_source_class:
-            mock_source_instance = Mock()
-            mock_source_class.return_value = mock_source_instance
-            
-            result = source_service.create_rss_source(source_data, mock_database_session)
-            
-            # 验证
-            assert result is not None
-            mock_database_session.add.assert_called_once()
-            mock_database_session.commit.assert_called_once()
+        # Mock source_repo.create方法
+        from datetime import datetime
+        mock_created_source = Mock()
+        mock_created_source.id = 1
+        mock_created_source.name = '新RSS源'
+        mock_created_source.url = 'http://new.com/rss'
+        mock_created_source.source_type = 'rss'
+        mock_created_source.interval = 'ONE_DAY'
+        mock_created_source.description = ''
+        mock_created_source.tags = None
+        mock_created_source.config = {}  # 字典而不是字符串
+        mock_created_source.is_paused = False
+        mock_created_source.is_active = True
+        mock_created_source.total_documents = 0
+        mock_created_source.last_document_count = 0
+        mock_created_source.sync_errors = 0
+        mock_created_source.last_error = None
+        mock_created_source.last_sync = None
+        mock_created_source.next_sync = None
+        mock_created_source.created_at = datetime.now()
+        mock_created_source.updated_at = datetime.now()
+        
+        source_service.source_repo.create = Mock(return_value=mock_created_source)
+        
+        result = source_service.create_rss_source(source_data, mock_database_session)
+        
+        # 验证
+        assert result is not None
+        assert result.id == 1
+        assert result.name == '新RSS源'
     
     def test_create_rss_source_duplicate_url(self, mock_database_session, mock_rss_source):
         """测试创建重复URL的RSS源"""
@@ -117,15 +137,14 @@ class TestSourceService:
             'is_paused': False
         }
         
-        result = source_service.create_rss_source(source_data, mock_database_session)
-        
-        # 验证
-        assert result is None
+        # 验证应该抛出异常
+        with pytest.raises(ValueError, match="RSS源URL已存在"):
+            source_service.create_rss_source(source_data, mock_database_session)
     
     def test_update_rss_source_success(self, mock_database_session, mock_rss_source):
         """测试更新RSS源成功"""
-        # 设置mock
-        mock_database_session.exec.return_value.first.return_value = mock_rss_source
+        # 设置mock - get_by_id使用session.get()方法
+        mock_database_session.get.return_value = mock_rss_source
         
         # 创建服务实例
         source_service = SourceService(mock_database_session)
@@ -140,8 +159,8 @@ class TestSourceService:
     
     def test_update_rss_source_not_found(self, mock_database_session):
         """测试更新不存在的RSS源"""
-        # 设置mock
-        mock_database_session.exec.return_value.first.return_value = None
+        # 设置mock - get_by_id使用session.get()方法
+        mock_database_session.get.return_value = None
         
         # 创建服务实例
         source_service = SourceService(mock_database_session)
@@ -155,8 +174,8 @@ class TestSourceService:
     
     def test_delete_rss_source_success(self, mock_database_session, mock_rss_source):
         """测试删除RSS源成功"""
-        # 设置mock
-        mock_database_session.exec.return_value.first.return_value = mock_rss_source
+        # 设置mock - get_by_id使用session.get()方法
+        mock_database_session.get.return_value = mock_rss_source
         
         # 创建服务实例
         source_service = SourceService(mock_database_session)
@@ -171,8 +190,8 @@ class TestSourceService:
     
     def test_delete_rss_source_not_found(self, mock_database_session):
         """测试删除不存在的RSS源"""
-        # 设置mock
-        mock_database_session.exec.return_value.first.return_value = None
+        # 设置mock - get_by_id使用session.get()方法
+        mock_database_session.get.return_value = None
         
         # 创建服务实例
         source_service = SourceService(mock_database_session)
@@ -185,8 +204,8 @@ class TestSourceService:
     
     def test_pause_rss_source_success(self, mock_database_session, mock_rss_source):
         """测试暂停RSS源成功"""
-        # 设置mock
-        mock_database_session.exec.return_value.first.return_value = mock_rss_source
+        # 设置mock - get_by_id使用session.get()方法
+        mock_database_session.get.return_value = mock_rss_source
         
         # 创建服务实例
         source_service = SourceService(mock_database_session)
@@ -203,7 +222,7 @@ class TestSourceService:
         """测试恢复RSS源成功"""
         # 设置mock
         mock_rss_source.is_paused = True
-        mock_database_session.exec.return_value.first.return_value = mock_rss_source
+        mock_database_session.get.return_value = mock_rss_source
         
         # 创建服务实例
         source_service = SourceService(mock_database_session)
@@ -237,11 +256,17 @@ class TestSourceService:
         # 创建服务实例
         source_service = SourceService(mock_database_session)
         
-        # 执行测试
-        result = source_service.validate_rss_url("http://example.com/rss")
-        
-        # 验证
-        assert result is True
+        # Mock feedparser.parse
+        with patch('services.source_service.feedparser.parse') as mock_parse:
+            mock_feed = Mock()
+            mock_feed.entries = [Mock(), Mock()]  # 模拟有2个条目
+            mock_parse.return_value = mock_feed
+            
+            # 执行测试
+            result = source_service.validate_rss_url("http://example.com/rss")
+            
+            # 验证
+            assert result is True
     
     def test_validate_rss_url_invalid(self, mock_database_session):
         """测试验证无效RSS URL"""
@@ -256,16 +281,25 @@ class TestSourceService:
     
     def test_get_rss_source_statistics_success(self, mock_database_session):
         """测试获取RSS源统计成功"""
-        # 设置mock
-        mock_database_session.exec.return_value.one.return_value = 5
-        
         # 创建服务实例
         source_service = SourceService(mock_database_session)
+        
+        # Mock source_repo.get_source_statistics方法
+        mock_stats = {
+            'total_sources': 5,
+            'active_sources': 4,
+            'paused_sources': 1,
+            'sources_due': 2,
+            'total_documents': 100,
+            'last_sync_errors': 0
+        }
+        source_service.source_repo.get_source_statistics = Mock(return_value=mock_stats)
         
         # 执行测试
         result = source_service.get_rss_source_statistics(mock_database_session)
         
         # 验证
         assert result is not None
+        assert result['total_sources'] == 5
         assert 'total_sources' in result
         assert result['total_sources'] == 5

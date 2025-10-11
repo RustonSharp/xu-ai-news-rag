@@ -318,3 +318,12 @@ def get_sources_due_for_sync():
     except Exception as e:
         app_logger.error(f"Error getting sources due for sync: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+def validate_rss_url(url: str) -> bool:
+    """验证RSS URL（用于测试兼容性）"""
+    try:
+        source_service = get_source_service()
+        return source_service.validate_rss_url(url)
+    except Exception as e:
+        app_logger.error(f"Error validating RSS URL: {str(e)}")
+        return False

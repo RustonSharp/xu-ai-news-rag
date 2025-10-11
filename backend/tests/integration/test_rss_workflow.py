@@ -85,7 +85,7 @@ class TestRSSWorkflowIntegration:
                     'is_paused': False
                 }
                 
-                with patch('services.source_service.RSSSource') as mock_source_class:
+                with patch('services.source_service.Source') as mock_source_class:
                     mock_source_instance = Mock()
                     mock_source_instance.id = 1
                     mock_source_instance.name = "测试RSS源"
@@ -332,7 +332,7 @@ class TestRSSWorkflowIntegration:
                     'is_paused': False
                 }
                 
-                with patch('services.source_service.RSSSource') as mock_source_class:
+                with patch('services.source_service.Source') as mock_source_class:
                     mock_source_instance = Mock()
                     mock_source_instance.id = 1
                     mock_source_instance.name = "测试RSS源"

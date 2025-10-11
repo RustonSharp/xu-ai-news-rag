@@ -259,11 +259,11 @@ class DocumentService:
 
     def get_document_by_id(self, document_id: int) -> Optional[Document]:
         """Get document by ID."""
-        return self.document_repo.get_by_id(document_id)
+        return self.document_repo.get_by_id(Document, document_id)
     
     def delete_document(self, document_id: int) -> bool:
         """Delete document by ID."""
-        return self.document_repo.delete(document_id)
+        return self.document_repo.delete(Document, document_id)
 
     def search_documents(self, query: str, limit: int = 20, offset: int = 0) -> List[Document]:
         """Search documents by title or description."""
@@ -334,7 +334,7 @@ class DocumentService:
     def get_document_by_id(self, document_id: int, session: Session) -> Optional[Document]:
         """Get document by ID (backward compatibility)."""
         try:
-            return self.document_repo.get_by_id(document_id)
+            return self.document_repo.get_by_id(Document, document_id)
         except Exception as e:
             app_logger.error(f"Error getting document {document_id}: {str(e)}")
             raise
@@ -392,7 +392,7 @@ class DocumentService:
     def update_document(self, document_id: int, update_data: Dict[str, Any], session: Session) -> Optional[Document]:
         """Update document (backward compatibility)."""
         try:
-            return self.document_repo.update(document_id, update_data)
+            return self.document_repo.update(Document, document_id, update_data)
         except Exception as e:
             app_logger.error(f"Error updating document {document_id}: {str(e)}")
             raise
@@ -400,7 +400,7 @@ class DocumentService:
     def delete_document(self, document_id: int, session: Session) -> bool:
         """Delete document (backward compatibility)."""
         try:
-            return self.document_repo.delete(document_id)
+            return self.document_repo.delete(Document, document_id)
         except Exception as e:
             app_logger.error(f"Error deleting document {document_id}: {str(e)}")
             raise

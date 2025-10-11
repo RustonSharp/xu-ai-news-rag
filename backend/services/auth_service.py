@@ -5,6 +5,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from sqlmodel import Session
 from repositories.user_repository import UserRepository
+from models.user import User
 from utils.jwt_utils import create_access_token, verify_token
 from utils.logging_config import app_logger
 from config.settings import settings
@@ -83,7 +84,7 @@ class AuthService:
             if not user_id:
                 return None
             
-            user = self.user_repo.get_by_id(int(user_id))
+            user = self.user_repo.get_by_id(User, int(user_id))
             if not user or not user.is_active:
                 return None
             
@@ -110,7 +111,7 @@ class AuthService:
             if not user_id:
                 return None
             
-            user = self.user_repo.get_by_id(int(user_id))
+            user = self.user_repo.get_by_id(User, int(user_id))
             if not user or not user.is_active:
                 return None
             

@@ -48,7 +48,7 @@ backend/
 
 ```bash
 # 运行所有测试
-python -m pytest tests/ -v
+refactor
 
 # 运行特定测试文件
 python -m pytest tests/simple_test.py -v

@@ -16,6 +16,21 @@ def get_assistant():
     """获取助手实例（用于测试兼容性）"""
     return get_assistant_service()
 
+def create_assistant():
+    """创建助手实例（用于测试兼容性）"""
+    return get_assistant_service()
+
+def query_with_sources(query: str) -> dict:
+    """查询助手并返回结果（用于测试兼容性）"""
+    try:
+        assistant_service = get_assistant_service()
+        query_request = AssistantQueryRequest(query=query)
+        result = assistant_service.process_query(query_request)
+        return result.dict()
+    except Exception as e:
+        app_logger.error(f"Error in query_with_sources: {str(e)}")
+        return {"error": str(e)}
+
 @assistant_bp.route('/query', methods=['POST'])
 def query_assistant():
     """处理用户查询的API端点"""

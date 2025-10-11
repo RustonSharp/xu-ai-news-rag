@@ -412,3 +412,12 @@ def update_profile():
             "message": "Internal server error",
             "data": None
         }), 500
+
+def hash_password(password: str) -> str:
+    """哈希密码（用于测试兼容性）"""
+    try:
+        auth_service = get_auth_service()
+        return auth_service.hash_password(password)
+    except Exception as e:
+        app_logger.error(f"Error hashing password: {str(e)}")
+        return ""
