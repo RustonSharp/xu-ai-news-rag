@@ -426,9 +426,6 @@ const UploadPage: React.FC = () => {
 
       <style>{`
         .upload-page {
-          max-width: 1000px;
-          margin: 0 auto;
-          padding: 24px;
         }
 
         .page-header {

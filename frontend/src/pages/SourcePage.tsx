@@ -717,9 +717,6 @@ const SourcePage: React.FC = () => {
         }
 
         .sources-page {
-          max-width: 1200px;
-          margin: 0 auto;
-          width: 100%;
           box-sizing: border-box;
         }
 
@@ -778,7 +775,6 @@ const SourcePage: React.FC = () => {
         }
 
         .sources-container {
-          width: 100%;
           box-sizing: border-box;
         }
 

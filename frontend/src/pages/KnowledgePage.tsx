@@ -434,10 +434,6 @@ const DocsPage: React.FC = () => {
       </div>
 
       <style>{`
-        .docs-page {
-          max-width: 1200px;
-          margin: 0 auto;
-        }
 
         .page-header {
           display: flex;
