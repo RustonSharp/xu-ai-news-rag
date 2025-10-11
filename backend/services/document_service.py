@@ -14,6 +14,7 @@ from models.document import Document
 from services.knowledge_base.vector_store_service import vector_store_service
 from utils.logging_config import app_logger
 from utils.email_sender import send_notification_email
+from config.settings import settings
 import os
 
 
@@ -226,7 +227,7 @@ class DocumentService:
             if document_list:  # Only create thread if there are documents to store
                 # Send email notification
                 try:
-                    to_emails = os.getenv("NOTIFICATION_EMAILS", "").split(",")
+                    to_emails = settings.NOTIFICATION_EMAILS
                     subject = f"New Documents from RSS Source ID {rss_source.id}"
                     message = f"Fetched and stored {len(document_list)} new documents from RSS source: {rss_source.url}\n\n"
                     for doc in document_list:

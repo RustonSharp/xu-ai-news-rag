@@ -14,7 +14,7 @@ from models.user import User
 from models.document import Document
 from models.source import Source
 from models.analysis import Analysis
-from models.enums.interval import IntervalEnum
+from models.source import SourceInterval
 
 
 class TestUserModel:
@@ -261,30 +261,34 @@ class TestAnalysisModel:
         assert analysis1 != analysis3
 
 
-class TestIntervalEnum:
-    """间隔枚举测试"""
+class TestSourceInterval:
+    """数据源间隔枚举测试"""
     
     def test_interval_values(self):
         """测试间隔值"""
         # 验证
-        assert IntervalEnum.SIX_HOUR == "SIX_HOUR"
-        assert IntervalEnum.TWELVE_HOUR == "TWELVE_HOUR"
-        assert IntervalEnum.ONE_DAY == "ONE_DAY"
+        assert SourceInterval.SIX_HOUR == "SIX_HOUR"
+        assert SourceInterval.TWELVE_HOUR == "TWELVE_HOUR"
+        assert SourceInterval.ONE_DAY == "ONE_DAY"
+        assert SourceInterval.THREE_DAY == "THREE_DAY"
+        assert SourceInterval.WEEKLY == "WEEKLY"
     
     def test_interval_from_string(self):
         """测试从字符串创建间隔"""
         # 验证
-        assert IntervalEnum("SIX_HOUR") == IntervalEnum.SIX_HOUR
-        assert IntervalEnum("ONE_DAY") == IntervalEnum.ONE_DAY
-        assert IntervalEnum("TWELVE_HOUR") == IntervalEnum.TWELVE_HOUR
+        assert SourceInterval("SIX_HOUR") == SourceInterval.SIX_HOUR
+        assert SourceInterval("ONE_DAY") == SourceInterval.ONE_DAY
+        assert SourceInterval("TWELVE_HOUR") == SourceInterval.TWELVE_HOUR
+        assert SourceInterval("THREE_DAY") == SourceInterval.THREE_DAY
+        assert SourceInterval("WEEKLY") == SourceInterval.WEEKLY
     
     def test_interval_invalid_value(self):
         """测试无效间隔值"""
         with pytest.raises(ValueError):
-            IntervalEnum("INVALID_INTERVAL")
+            SourceInterval("INVALID_INTERVAL")
     
     def test_interval_str_representation(self):
         """测试间隔字符串表示"""
         # 验证
-        assert str(IntervalEnum.SIX_HOUR) == "IntervalEnum.SIX_HOUR"
-        assert str(IntervalEnum.ONE_DAY) == "IntervalEnum.ONE_DAY"
+        assert str(SourceInterval.SIX_HOUR) == "SourceInterval.SIX_HOUR"
+        assert str(SourceInterval.ONE_DAY) == "SourceInterval.ONE_DAY"

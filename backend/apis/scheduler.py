@@ -5,6 +5,7 @@ from services.scheduler_service import scheduler_service
 from core.database import db_manager
 from sqlmodel import Session, select
 from models.source import Source
+from config.settings import settings
 import os
 
 # 创建RSS调度器API蓝图
@@ -59,7 +60,7 @@ def start_scheduler():
     """启动调度器"""
     try:
         # 检查是否允许手动启动调度器
-        allow_manual_start = os.getenv("ALLOW_MANUAL_SCHEDULER_START", "true").lower() == "true"
+        allow_manual_start = settings.ALLOW_MANUAL_SCHEDULER_START
         if not allow_manual_start:
             return jsonify({
                 "success": False,

@@ -11,6 +11,7 @@ from models.document import Document
 from core.database import db_manager
 from services.document_service import DocumentService
 from utils.logging_config import app_logger
+from config.settings import settings
 import os
 
 
@@ -22,7 +23,7 @@ class SchedulerService:
         self.threads = {}
         self.lock = threading.Lock()
         # Automatically start scheduler based on environment variable
-        auto_start = os.getenv("AUTO_START_SCHEDULER", "true").lower() == "true"
+        auto_start = settings.AUTO_START_SCHEDULER
         if auto_start:
             self.start_scheduler()
     

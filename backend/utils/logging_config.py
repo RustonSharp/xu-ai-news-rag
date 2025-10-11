@@ -1,10 +1,7 @@
 import os
 import sys
 from loguru import logger
-from dotenv import load_dotenv
-
-# 加载环境变量
-load_dotenv()
+from config.settings import settings
 
 def setup_logging():
     """
@@ -14,24 +11,24 @@ def setup_logging():
     logger.remove()
     
     # 获取日志配置
-    log_level = os.getenv("LOGGING_LEVEL", "INFO")
-    console_enabled = os.getenv("LOGGING_CONSOLE_ENABLED", "true").lower() == "true"
-    console_format = os.getenv("LOGGING_CONSOLE_FORMAT", "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>")
+    log_level = settings.LOG_LEVEL
+    console_enabled = settings.LOGGING_CONSOLE_ENABLED
+    console_format = settings.LOGGING_CONSOLE_FORMAT
     
-    file_enabled = os.getenv("LOGGING_FILE_ENABLED", "true").lower() == "true"
-    file_path = os.getenv("LOGGING_FILE_PATH", "./logs/app.log")
-    file_rotation = os.getenv("LOGGING_FILE_ROTATION", "500 MB")
-    file_retention = os.getenv("LOGGING_FILE_RETENTION", "30 days")
-    file_compression = os.getenv("LOGGING_FILE_COMPRESSION", "zip")
-    file_format = os.getenv("LOGGING_FILE_FORMAT", "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}")
+    file_enabled = settings.LOGGING_FILE_ENABLED
+    file_path = settings.LOGGING_FILE_PATH
+    file_rotation = settings.LOGGING_FILE_ROTATION
+    file_retention = settings.LOGGING_FILE_RETENTION
+    file_compression = settings.LOGGING_FILE_COMPRESSION
+    file_format = settings.LOGGING_FILE_FORMAT
     
-    error_file_enabled = os.getenv("LOGGING_ERROR_FILE_ENABLED", "true").lower() == "true"
-    error_file_path = os.getenv("LOGGING_ERROR_FILE_PATH", "./logs/error.log")
-    error_file_level = os.getenv("LOGGING_ERROR_FILE_LEVEL", "ERROR")
-    error_file_rotation = os.getenv("LOGGING_ERROR_FILE_ROTATION", "100 MB")
-    error_file_retention = os.getenv("LOGGING_ERROR_FILE_RETENTION", "60 days")
-    error_file_compression = os.getenv("LOGGING_ERROR_FILE_COMPRESSION", "zip")
-    error_file_format = os.getenv("LOGGING_ERROR_FILE_FORMAT", "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message} | {extra}")
+    error_file_enabled = settings.LOGGING_ERROR_FILE_ENABLED
+    error_file_path = settings.LOGGING_ERROR_FILE_PATH
+    error_file_level = settings.LOGGING_ERROR_FILE_LEVEL
+    error_file_rotation = settings.LOGGING_ERROR_FILE_ROTATION
+    error_file_retention = settings.LOGGING_ERROR_FILE_RETENTION
+    error_file_compression = settings.LOGGING_ERROR_FILE_COMPRESSION
+    error_file_format = settings.LOGGING_ERROR_FILE_FORMAT
     
     # 配置控制台日志
     if console_enabled:

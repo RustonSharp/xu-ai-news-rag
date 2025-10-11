@@ -6,6 +6,7 @@ from sqlmodel import create_engine, Session
 from typing import Generator
 from contextlib import contextmanager
 from utils.logging_config import app_logger
+from config.settings import settings
 
 
 class DatabaseManager:
@@ -13,7 +14,7 @@ class DatabaseManager:
     
     def __init__(self):
         self._engine = None
-        self._database_path = os.getenv("DATABASE_PATH")
+        self._database_path = settings.DATABASE_PATH
         if not self._database_path:
             raise ValueError("DATABASE_PATH environment variable is not set")
     
