@@ -5,12 +5,12 @@ import threading
 import datetime
 import time
 import re
+from datetime import timedelta
 from typing import List, Dict, Any, Optional
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func, and_, or_, desc
 from bs4 import BeautifulSoup
 from models.source import Source, SourceType
 from models.document import Document
-from repositories.document_repository import DocumentRepository
 from services.knowledge_base.vector_store_service import vector_store_service
 from utils.logging_config import app_logger
 from utils.email_sender import send_notification_email
@@ -22,7 +22,6 @@ class DocumentService:
     
     def __init__(self, session: Session):
         self.session = session
-        self.document_repo = DocumentRepository(session)
     
     def _get_or_create_file_source(self) -> Source:
         """
@@ -255,41 +254,41 @@ class DocumentService:
 
     def get_documents_by_source(self, source_id: int, limit: int = 20, offset: int = 0) -> List[Document]:
         """Get documents by source ID."""
-        return self.document_repo.get_by_source_id(source_id, limit, offset)
+        return self._get_by_source_id(source_id, limit, offset)
 
     def get_document_by_id(self, document_id: int) -> Optional[Document]:
         """Get document by ID."""
-        return self.document_repo.get_by_id(Document, document_id)
+        return self._get_by_id(document_id)
     
     def delete_document(self, document_id: int) -> bool:
         """Delete document by ID."""
-        return self.document_repo.delete(Document, document_id)
+        return self._delete(document_id)
 
     def search_documents(self, query: str, limit: int = 20, offset: int = 0) -> List[Document]:
         """Search documents by title or description."""
-        return self.document_repo.search(query, limit, offset)
+        return self._search(query, limit, offset)
 
     def get_recent_documents(self, days: int = 7, limit: int = 20) -> List[Document]:
         """Get recent documents."""
-        return self.document_repo.get_recent_documents(days, limit)
+        return self._get_recent_documents(days, limit)
 
     def get_document_count_by_source(self) -> Dict[str, int]:
         """Get document count by source."""
-        return self.document_repo.get_document_count_by_source()
+        return self._get_document_count_by_source()
 
     def get_top_tags(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get top tags."""
-        return self.document_repo.get_top_tags(limit)
+        return self._get_top_tags(limit)
     
     def get_documents_with_params(self, search_params) -> Dict[str, Any]:
         """Get documents with pagination and filtering."""
-        from schemas.document_schema import DocumentListResponse, DocumentResponse
+        from schemas.responses import DocumentListResponse, DocumentResponse
         
         # Calculate offset
         offset = (search_params.page - 1) * search_params.size
         
         # Get documents from repository
-        documents = self.document_repo.get_paginated(
+        documents = self._get_paginated(
             page=search_params.page,
             size=search_params.size,
             search=search_params.search,
@@ -326,7 +325,7 @@ class DocumentService:
     def get_documents(self, session: Session) -> List[Document]:
         """Get all documents (backward compatibility)."""
         try:
-            return self.document_repo.get_all()
+            return self._get_all()
         except Exception as e:
             app_logger.error(f"Error getting documents: {str(e)}")
             raise
@@ -334,7 +333,7 @@ class DocumentService:
     def get_document_by_id(self, document_id: int, session: Session) -> Optional[Document]:
         """Get document by ID (backward compatibility)."""
         try:
-            return self.document_repo.get_by_id(Document, document_id)
+            return self._get_by_id(document_id)
         except Exception as e:
             app_logger.error(f"Error getting document {document_id}: {str(e)}")
             raise
@@ -343,7 +342,7 @@ class DocumentService:
         """Get paginated documents (backward compatibility)."""
         try:
             offset = (page - 1) * size
-            return self.document_repo.get_paginated(page, size)['items']
+            return self._get_paginated(page, size)['items']
         except Exception as e:
             app_logger.error(f"Error getting paginated documents: {str(e)}")
             raise
@@ -351,7 +350,7 @@ class DocumentService:
     def search_documents(self, query: str, session: Session) -> List[Document]:
         """Search documents (backward compatibility)."""
         try:
-            return self.document_repo.search(query)
+            return self._search(query)
         except Exception as e:
             app_logger.error(f"Error searching documents: {str(e)}")
             raise
@@ -359,7 +358,7 @@ class DocumentService:
     def get_documents_by_source(self, source_id: int, session: Session) -> List[Document]:
         """Get documents by source (backward compatibility)."""
         try:
-            return self.document_repo.get_by_source_id(source_id)
+            return self._get_by_source_id(source_id)
         except Exception as e:
             app_logger.error(f"Error getting documents by source {source_id}: {str(e)}")
             raise
@@ -367,7 +366,7 @@ class DocumentService:
     def get_documents_by_date_range(self, start_date, end_date, session: Session) -> List[Document]:
         """Get documents by date range (backward compatibility)."""
         try:
-            return self.document_repo.get_by_date_range(start_date, end_date)
+            return self._get_by_date_range(start_date, end_date)
         except Exception as e:
             app_logger.error(f"Error getting documents by date range: {str(e)}")
             raise
@@ -375,7 +374,7 @@ class DocumentService:
     def get_document_statistics(self, session: Session) -> Dict[str, Any]:
         """Get document statistics (backward compatibility)."""
         try:
-            return self.document_repo.get_statistics()
+            return self._get_statistics()
         except Exception as e:
             app_logger.error(f"Error getting document statistics: {str(e)}")
             raise
@@ -384,7 +383,7 @@ class DocumentService:
         """Create document (backward compatibility)."""
         try:
             document = Document(**document_data)
-            return self.document_repo.create(document)
+            return self._create(document)
         except Exception as e:
             app_logger.error(f"Error creating document: {str(e)}")
             raise
@@ -392,7 +391,7 @@ class DocumentService:
     def update_document(self, document_id: int, update_data: Dict[str, Any], session: Session) -> Optional[Document]:
         """Update document (backward compatibility)."""
         try:
-            return self.document_repo.update(Document, document_id, update_data)
+            return self._update(document_id, update_data)
         except Exception as e:
             app_logger.error(f"Error updating document {document_id}: {str(e)}")
             raise
@@ -400,7 +399,7 @@ class DocumentService:
     def delete_document(self, document_id: int, session: Session) -> bool:
         """Delete document (backward compatibility)."""
         try:
-            return self.document_repo.delete(Document, document_id)
+            return self._delete(document_id)
         except Exception as e:
             app_logger.error(f"Error deleting document {document_id}: {str(e)}")
             raise
@@ -528,3 +527,278 @@ class DocumentService:
                 "message": f"Error batch deleting documents: {str(e)}",
                 "deleted_count": 0
             }
+    
+    # Private helper methods (formerly in DocumentRepository)
+    def _get_by_id(self, document_id: int) -> Optional[Document]:
+        """Get document by ID."""
+        try:
+            return self.session.get(Document, document_id)
+        except Exception as e:
+            app_logger.error(f"Error getting document by ID {document_id}: {str(e)}")
+            raise
+
+    def _get_by_link(self, link: str) -> Optional[Document]:
+        """Get document by link."""
+        try:
+            statement = select(Document).where(Document.link == link)
+            return self.session.exec(statement).first()
+        except Exception as e:
+            app_logger.error(f"Error getting document by link {link}: {str(e)}")
+            raise
+    
+    def _get_by_source_id(self, source_id: int, skip: int = 0, limit: int = 100) -> List[Document]:
+        """Get documents by source ID."""
+        try:
+            statement = (
+                select(Document)
+                .where(Document.source_id == source_id)
+                .order_by(desc(Document.crawled_at))
+                .offset(skip)
+                .limit(limit)
+            )
+            return list(self.session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error getting documents by source ID {source_id}: {str(e)}")
+            raise
+    
+    def _get_by_date_range(self, start_date: datetime, end_date: datetime, skip: int = 0, limit: int = 100) -> List[Document]:
+        """Get documents by date range."""
+        try:
+            statement = (
+                select(Document)
+                .where(
+                    and_(
+                        Document.crawled_at >= start_date,
+                        Document.crawled_at <= end_date
+                    )
+                )
+                .order_by(desc(Document.crawled_at))
+                .offset(skip)
+                .limit(limit)
+            )
+            return list(self.session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error getting documents by date range: {str(e)}")
+            raise
+    
+    def _search(self, query: str, skip: int = 0, limit: int = 100) -> List[Document]:
+        """Search documents by title or content."""
+        try:
+            statement = (
+                select(Document)
+                .where(
+                    or_(
+                        Document.title.contains(query),
+                        Document.content.contains(query)
+                    )
+                )
+                .order_by(desc(Document.crawled_at))
+                .offset(skip)
+                .limit(limit)
+            )
+            return list(self.session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error searching documents: {str(e)}")
+            raise
+    
+    def _get_recent_documents(self, days: int = 7, limit: int = 10) -> List[Document]:
+        """Get recent documents."""
+        try:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            statement = (
+                select(Document)
+                .where(Document.crawled_at >= cutoff_date)
+                .order_by(desc(Document.crawled_at))
+                .limit(limit)
+            )
+            return list(self.session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error getting recent documents: {str(e)}")
+            raise
+    
+    def _get_document_count_by_source(self) -> Dict[int, int]:
+        """Get document count by source."""
+        try:
+            statement = (
+                select(Document.source_id, func.count(Document.id))
+                .group_by(Document.source_id)
+            )
+            results = self.session.exec(statement).all()
+            return {source_id: count for source_id, count in results}
+        except Exception as e:
+            app_logger.error(f"Error getting document count by source: {str(e)}")
+            raise
+    
+    def _get_top_tags(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get top tags."""
+        try:
+            # This is a simplified implementation
+            # In practice, you might want to implement proper tag extraction and counting
+            statement = (
+                select(Document.tags, func.count(Document.id))
+                .where(Document.tags.isnot(None))
+                .group_by(Document.tags)
+                .order_by(desc(func.count(Document.id)))
+                .limit(limit)
+            )
+            results = self.session.exec(statement).all()
+            return [{"tag": tag, "count": count} for tag, count in results]
+        except Exception as e:
+            app_logger.error(f"Error getting top tags: {str(e)}")
+            raise
+    
+    def _get_paginated(self, page: int, size: int, search: Optional[str] = None, 
+                      doc_type: Optional[str] = None, source: Optional[str] = None,
+                      start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict[str, Any]:
+        """Get paginated documents with filtering."""
+        try:
+            skip = (page - 1) * size
+            
+            # Build base query
+            statement = select(Document)
+            count_statement = select(func.count()).select_from(Document)
+            
+            # Apply filters
+            conditions = []
+            
+            # Search filter (title or description)
+            if search:
+                search_condition = or_(
+                    Document.title.contains(search),
+                    Document.description.contains(search)
+                )
+                conditions.append(search_condition)
+            
+            # Source filter
+            if source:
+                try:
+                    source_id = int(source)
+                    conditions.append(Document.source_id == source_id)
+                except ValueError:
+                    # If source is not a valid integer, ignore it
+                    pass
+            
+            # Date range filter
+            if start_date:
+                try:
+                    start_dt = datetime.datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                    conditions.append(Document.crawled_at >= start_dt)
+                except ValueError:
+                    # If date format is invalid, ignore it
+                    pass
+            
+            if end_date:
+                try:
+                    end_dt = datetime.datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                    conditions.append(Document.crawled_at <= end_dt)
+                except ValueError:
+                    # If date format is invalid, ignore it
+                    pass
+            
+            # Apply conditions to both statements
+            if conditions:
+                statement = statement.where(and_(*conditions))
+                count_statement = count_statement.where(and_(*conditions))
+            
+            # Apply ordering, offset, and limit
+            statement = statement.order_by(desc(Document.crawled_at)).offset(skip).limit(size)
+            
+            # Execute queries
+            documents = list(self.session.exec(statement))
+            total = self.session.exec(count_statement).one()
+            
+            return {
+                "items": documents,
+                "total": total,
+                "page": page,
+                "size": size,
+                "total_pages": (total + size - 1) // size
+            }
+        except Exception as e:
+            app_logger.error(f"Error getting paginated documents: {str(e)}")
+            raise
+    
+    def _get_all(self, skip: int = 0, limit: int = 100) -> List[Document]:
+        """Get all documents."""
+        try:
+            statement = select(Document).order_by(desc(Document.crawled_at)).offset(skip).limit(limit)
+            return list(self.session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error getting all documents: {str(e)}")
+            raise
+    
+    def _create(self, document: Document) -> Document:
+        """Create a new document."""
+        try:
+            self.session.add(document)
+            self.session.commit()
+            self.session.refresh(document)
+            app_logger.info(f"Created document with ID: {document.id}")
+            return document
+        except Exception as e:
+            self.session.rollback()
+            app_logger.error(f"Error creating document: {str(e)}")
+            raise
+    
+    def _update(self, document_id: int, update_data: Dict[str, Any]) -> Optional[Document]:
+        """Update document by ID."""
+        try:
+            document = self.session.get(Document, document_id)
+            if not document:
+                return None
+            
+            for key, value in update_data.items():
+                if hasattr(document, key):
+                    setattr(document, key, value)
+            
+            self.session.commit()
+            self.session.refresh(document)
+            app_logger.info(f"Updated document with ID: {document_id}")
+            return document
+        except Exception as e:
+            self.session.rollback()
+            app_logger.error(f"Error updating document with ID {document_id}: {str(e)}")
+            raise
+    
+    def _delete(self, document_id: int) -> bool:
+        """Delete document by ID."""
+        try:
+            document = self.session.get(Document, document_id)
+            if not document:
+                return False
+            
+            self.session.delete(document)
+            self.session.commit()
+            app_logger.info(f"Deleted document with ID: {document_id}")
+            return True
+        except Exception as e:
+            self.session.rollback()
+            app_logger.error(f"Error deleting document with ID {document_id}: {str(e)}")
+            raise
+    
+    def _get_statistics(self) -> Dict[str, Any]:
+        """Get document statistics."""
+        try:
+            total_documents = self.session.exec(select(func.count()).select_from(Document)).one()
+            
+            # Get documents by source
+            statement = (
+                select(Document.source_id, func.count(Document.id))
+                .group_by(Document.source_id)
+            )
+            by_source = dict(self.session.exec(statement).all())
+            
+            # Get recent documents count (last 7 days)
+            cutoff_date = datetime.now() - timedelta(days=7)
+            recent_count = self.session.exec(
+                select(func.count()).select_from(Document).where(Document.crawled_at >= cutoff_date)
+            ).one()
+            
+            return {
+                "total_documents": total_documents,
+                "documents_by_source": by_source,
+                "recent_documents": recent_count
+            }
+        except Exception as e:
+            app_logger.error(f"Error getting document statistics: {str(e)}")
+            raise

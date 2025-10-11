@@ -2,7 +2,8 @@ from flask import Blueprint, request, jsonify
 from utils.logging_config import app_logger
 from core.dependencies import get_db_session_sync
 from services.assistant_service import AssistantService
-from schemas.assistant_schema import AssistantQueryRequest, AssistantHealthResponse
+from schemas.requests import AssistantQueryRequest
+from schemas.responses import AssistantHealthResponse
 
 # 创建蓝图
 assistant_bp = Blueprint('assistant', __name__, url_prefix='/api/assistant')

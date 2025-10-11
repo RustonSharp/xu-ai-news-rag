@@ -22,7 +22,7 @@ The backend is built with Flask and provides a RESTful API for managing news sou
 
 ## Architecture
 
-The backend follows a modular architecture with the following main components:
+The backend follows a simplified, streamlined architecture optimized for personal projects:
 
 - **API Layer**: Flask Blueprints for different functionalities (auth, source, document, assistant, scheduler, analytics)
 - **Data Models**: SQLModel for database entities (User, Document, Source, Analysis)
@@ -30,10 +30,17 @@ The backend follows a modular architecture with the following main components:
 - **Vector Database**: FAISS for efficient similarity search with reranking support
 - **Document Processing**: Text splitting, embedding, and clustering capabilities with UMAP and HDBSCAN
 - **Scheduler**: Background data collection with configurable intervals
-- **Repository Pattern**: Data access layer with base repository and specialized repositories
-- **Service Layer**: Business logic separation with dedicated services
-- **Schema Validation**: Pydantic schemas for request/response validation
+- **Service Layer**: Unified business logic layer that handles both business operations and data access
+- **Schema Validation**: Consolidated Pydantic schemas for request/response validation (requests.py, responses.py)
 - **Testing Framework**: Comprehensive test suite with pytest, coverage reporting, and CI/CD support
+
+### Simplified Architecture Benefits
+
+- **Reduced Complexity**: Eliminated the repository layer to reduce over-engineering
+- **Direct Database Access**: Services directly interact with SQLModel for better performance
+- **Consolidated Schemas**: All request/response schemas in two files for easier maintenance
+- **Cleaner Code**: Fewer abstraction layers make the codebase more maintainable
+- **Faster Development**: Less boilerplate code means faster feature development
 
 ## API Endpoints
 
@@ -304,28 +311,20 @@ backend/
 │   ├── source.py          # Source model
 │   ├── user.py            # User model
 │   └── enums/             # Enum definitions
-├── repositories/           # Data access layer
-│   ├── base_repository.py # Base repository
-│   ├── analysis_repository.py
-│   ├── document_repository.py
-│   ├── source_repository.py
-│   └── user_repository.py
-├── schemas/                # Pydantic schemas
-│   ├── analytics_schema.py
-│   ├── assistant_schema.py
-│   ├── document_schema.py
-│   └── source_schema.py
-├── services/               # Business logic layer
+├── schemas/                # Pydantic schemas (consolidated)
+│   ├── requests.py         # All request schemas
+│   └── responses.py        # All response schemas
+├── services/               # Unified business logic and data access layer
 │   ├── analytics/         # Analytics services
 │   ├── knowledge_base/    # Knowledge base services
 │   ├── search/            # Search services
-│   ├── analytics_service.py
-│   ├── assistant_service.py
-│   ├── auth_service.py
-│   ├── document_service.py
-│   ├── scheduler_service.py
-│   ├── source_service.py
-│   └── web_scraper_service.py
+│   ├── analytics_service.py    # Analytics + data access
+│   ├── assistant_service.py    # Assistant + data access
+│   ├── auth_service.py         # Authentication + data access
+│   ├── document_service.py     # Document management + data access
+│   ├── scheduler_service.py    # Scheduler + data access
+│   ├── source_service.py       # Source management + data access
+│   └── web_scraper_service.py  # Web scraping
 ├── tests/                  # Test suite
 │   ├── unit/              # Unit tests
 │   ├── integration/       # Integration tests

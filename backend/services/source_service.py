@@ -3,12 +3,13 @@
 """
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from sqlmodel import Session
-from repositories.source_repository import SourceRepository
-from models.source import Source
-from schemas.source_schema import (
-    SourceCreate, SourceUpdate, SourceResponse, SourceListResponse,
-    SourceStatsResponse, SourceTriggerResponse, SourceSearchParams
+from sqlmodel import Session, select, func, and_, or_, desc
+from models.source import Source, SourceType, SourceInterval
+from schemas.requests import (
+    SourceCreate, SourceUpdate, SourceSearchParams
+)
+from schemas.responses import (
+    SourceResponse, SourceListResponse, SourceStatsResponse, SourceTriggerResponse
 )
 from services.knowledge_base.vector_store_service import vector_store_service
 from utils.logging_config import app_logger
@@ -26,13 +27,12 @@ class SourceService:
     
     def __init__(self, session: Session):
         self.session = session
-        self.source_repo = SourceRepository(session)
     
     def create_source(self, source_data: SourceCreate) -> SourceResponse:
         """创建新的数据源"""
         try:
             # 检查URL是否已存在
-            existing_source = self.source_repo.get_by_url(source_data.url)
+            existing_source = self._get_by_url(source_data.url)
             if existing_source:
                 raise ValueError("数据源URL已存在")
             
@@ -40,7 +40,6 @@ class SourceService:
             next_sync = self._calculate_next_sync_time(source_data.interval)
             
             # 创建数据源模型实例
-            from models.source import Source
             source = Source(
                 name=source_data.name,
                 url=source_data.url,
@@ -59,17 +58,20 @@ class SourceService:
                 last_error=None
             )
             
-            source = self.source_repo.create(source)
+            self.session.add(source)
+            self.session.commit()
+            self.session.refresh(source)
             
             return SourceResponse.model_validate(source)
         except Exception as e:
+            self.session.rollback()
             app_logger.error(f"Error creating source: {str(e)}")
             raise
     
     def get_source(self, source_id: int) -> Optional[SourceResponse]:
         """获取数据源详情"""
         try:
-            source = self.source_repo.get_by_id(Source, source_id)
+            source = self._get_by_id(source_id)
             if not source:
                 return None
             return SourceResponse.model_validate(source)
@@ -93,19 +95,19 @@ class SourceService:
             
             # 获取数据源
             if search_params.search:
-                sources = self.source_repo.search_sources(
+                sources = self._search_sources(
                     search_params.search,
                     skip=(search_params.page - 1) * search_params.size,
                     limit=search_params.size
                 )
                 total = len(sources)  # 简化处理
             else:
-                sources = self.source_repo.filter_by(
+                sources = self._filter_by(
                     filters,
                     skip=(search_params.page - 1) * search_params.size,
                     limit=search_params.size
                 )
-                total = self.source_repo.count()
+                total = self._count()
             
             # 转换为响应格式
             source_responses = [SourceResponse.from_orm(source) for source in sources]
@@ -127,7 +129,7 @@ class SourceService:
         try:
             # 检查URL是否被其他数据源使用
             if update_data.url:
-                existing_source = self.source_repo.get_by_url(update_data.url)
+                existing_source = self._get_by_url(update_data.url)
                 if existing_source and existing_source.id != source_id:
                     raise ValueError("数据源URL已被其他数据源使用")
             
@@ -142,7 +144,7 @@ class SourceService:
             if 'interval' in update_dict:
                 update_dict['next_sync'] = self._calculate_next_sync_time(update_dict['interval'])
             
-            source = self.source_repo.update(Source, source_id, update_dict)
+            source = self._update(source_id, update_dict)
             if not source:
                 return None
             
@@ -156,7 +158,7 @@ class SourceService:
     def delete_source(self, source_id: int) -> bool:
         """删除数据源"""
         try:
-            return self.source_repo.delete(Source, source_id)
+            return self._delete(source_id)
         except Exception as e:
             app_logger.error(f"Error deleting source {source_id}: {str(e)}")
             raise
@@ -164,7 +166,7 @@ class SourceService:
     def trigger_collection(self, source_id: int) -> SourceTriggerResponse:
         """触发数据源采集"""
         try:
-            source = self.source_repo.get_by_id(Source, source_id)
+            source = self._get_by_id(source_id)
             if not source:
                 return SourceTriggerResponse(
                     message="数据源不存在",
@@ -189,7 +191,7 @@ class SourceService:
             # 更新同步时间
             now = datetime.now()
             next_sync = self._calculate_next_sync_time(source.interval)
-            self.source_repo.update_sync_time(
+            self._update_sync_time(
                 source_id, now, next_sync, 
                 documents_fetched, 0, None
             )
@@ -214,7 +216,7 @@ class SourceService:
     def get_sources_due_for_sync(self) -> List[SourceResponse]:
         """获取需要同步的数据源"""
         try:
-            sources = self.source_repo.get_sources_due_for_sync()
+            sources = self._get_sources_due_for_sync()
             return [SourceResponse.model_validate(source) for source in sources]
         except Exception as e:
             app_logger.error(f"Error getting sources due for sync: {str(e)}")
@@ -223,7 +225,7 @@ class SourceService:
     def get_source_statistics(self) -> SourceStatsResponse:
         """获取数据源统计信息"""
         try:
-            stats = self.source_repo.get_source_statistics()
+            stats = self._get_source_statistics()
             return SourceStatsResponse(**stats)
         except Exception as e:
             app_logger.error(f"Error getting source statistics: {str(e)}")
@@ -277,13 +279,9 @@ class SourceService:
             for entry in rss_feed.entries:
                 try:
                     # 检查文档是否已存在
-                    from repositories.document_repository import DocumentRepository
-                    doc_repo = DocumentRepository(self.session)
-                    existing_doc = doc_repo.session.exec(
-                        doc_repo.session.query(doc_repo.model_class).filter(
-                            doc_repo.model_class.link == entry.link
-                        )
-                    ).first()
+                    from services.document_service import DocumentService
+                    doc_service = DocumentService(self.session)
+                    existing_doc = doc_service._get_by_link(entry.link)
                     
                     if existing_doc:
                         continue
@@ -303,6 +301,8 @@ class SourceService:
                     
                     # 创建文档
                     from models.document import Document
+                    from services.document_service import DocumentService
+                    doc_service = DocumentService(self.session)
                     document = Document(
                         title=clean_title,
                         link=entry.link,
@@ -314,7 +314,7 @@ class SourceService:
                     )
                     
                     # 创建文档
-                    document = doc_repo.create(document)
+                    document = doc_service._create(document)
                     documents_created += 1
                     
                     # 准备知识库数据
@@ -385,8 +385,9 @@ class SourceService:
                     
                     # 创建文档
                     from models.document import Document
-                    from repositories.document_repository import DocumentRepository
-                    doc_repo = DocumentRepository(self.session)
+                    from services.document_service import DocumentService
+                    # DocumentRepository functionality is now in DocumentService
+                    doc_service = DocumentService(self.session)
                     document = Document(
                         title=title,
                         link=source.url,
@@ -398,7 +399,7 @@ class SourceService:
                     )
                     
                     # 创建文档
-                    document = doc_repo.create(document)
+                    document = doc_service._create(document)
                     documents_created += 1
                     
                     # 准备知识库数据
@@ -520,7 +521,7 @@ class SourceService:
     def get_rss_sources(self, session: Session) -> List[SourceResponse]:
         """获取RSS源列表（向后兼容）"""
         try:
-            sources = self.source_repo.filter_by({'source_type': 'rss'})
+            sources = self._filter_by({'source_type': 'rss'})
             return [SourceResponse.model_validate(source) for source in sources]
         except Exception as e:
             app_logger.error(f"Error getting RSS sources: {str(e)}")
@@ -529,7 +530,7 @@ class SourceService:
     def get_rss_source_by_id(self, source_id: int, session: Session) -> Optional[SourceResponse]:
         """根据ID获取RSS源（向后兼容）"""
         try:
-            source = self.source_repo.get_by_id(Source, source_id)
+            source = self._get_by_id(source_id)
             if not source or source.source_type != 'rss':
                 return None
             return SourceResponse.model_validate(source)
@@ -541,12 +542,12 @@ class SourceService:
         """创建RSS源（向后兼容）"""
         try:
             # 检查URL是否已存在
-            existing_source = self.source_repo.get_by_url(source_data['url'])
+            existing_source = self._get_by_url(source_data['url'])
             if existing_source:
                 raise ValueError("RSS源URL已存在")
             
             # 创建SourceCreate对象
-            from schemas.source_schema import SourceCreate
+            from schemas.requests import SourceCreate
             create_data = SourceCreate(
                 name=source_data['name'],
                 url=source_data['url'],
@@ -565,7 +566,7 @@ class SourceService:
     def update_rss_source(self, source_id: int, update_data: Dict[str, Any], session: Session) -> Optional[SourceResponse]:
         """更新RSS源（向后兼容）"""
         try:
-            from schemas.source_schema import SourceUpdate
+            from schemas.requests import SourceUpdate
             update_schema = SourceUpdate(**update_data)
             return self.update_source(source_id, update_schema)
         except Exception as e:
@@ -583,12 +584,12 @@ class SourceService:
     def pause_rss_source(self, source_id: int, session: Session) -> bool:
         """暂停RSS源"""
         try:
-            source = self.source_repo.get_by_id(Source, source_id)
+            source = self._get_by_id(source_id)
             if not source or source.source_type != 'rss':
                 return False
             
             update_data = {'is_paused': True}
-            updated_source = self.source_repo.update(Source, source_id, update_data)
+            updated_source = self._update(source_id, update_data)
             return updated_source is not None
         except Exception as e:
             app_logger.error(f"Error pausing RSS source {source_id}: {str(e)}")
@@ -597,12 +598,12 @@ class SourceService:
     def resume_rss_source(self, source_id: int, session: Session) -> bool:
         """恢复RSS源"""
         try:
-            source = self.source_repo.get_by_id(Source, source_id)
+            source = self._get_by_id(source_id)
             if not source or source.source_type != 'rss':
                 return False
             
             update_data = {'is_paused': False}
-            updated_source = self.source_repo.update(Source, source_id, update_data)
+            updated_source = self._update(source_id, update_data)
             return updated_source is not None
         except Exception as e:
             app_logger.error(f"Error resuming RSS source {source_id}: {str(e)}")
@@ -611,7 +612,7 @@ class SourceService:
     def get_active_rss_sources(self, session: Session) -> List[SourceResponse]:
         """获取活跃的RSS源"""
         try:
-            sources = self.source_repo.filter_by({
+            sources = self._filter_by({
                 'source_type': 'rss',
                 'is_paused': False,
                 'is_active': True
@@ -638,7 +639,7 @@ class SourceService:
     def get_rss_source_statistics(self, session: Session) -> Dict[str, Any]:
         """获取RSS源统计信息"""
         try:
-            stats = self.source_repo.get_source_statistics()
+            stats = self._get_source_statistics()
             # 过滤只返回RSS源的统计
             rss_stats = {
                 'total_sources': stats.get('total_sources', 0),
@@ -650,4 +651,209 @@ class SourceService:
             return rss_stats
         except Exception as e:
             app_logger.error(f"Error getting RSS source statistics: {str(e)}")
+            raise
+    
+    # Private helper methods (formerly in SourceRepository)
+    def _get_by_id(self, source_id: int) -> Optional[Source]:
+        """Get source by ID."""
+        try:
+            return self.session.get(Source, source_id)
+        except Exception as e:
+            app_logger.error(f"Error getting source by ID {source_id}: {str(e)}")
+            raise
+    
+    def _get_by_url(self, url: str, session: Optional[Session] = None) -> Optional[Source]:
+        """Get source by URL."""
+        try:
+            current_session = session or self.session
+            statement = select(Source).where(Source.url == url)
+            return current_session.exec(statement).first()
+        except Exception as e:
+            app_logger.error(f"Error getting source by URL {url}: {str(e)}")
+            raise
+    
+    def _update(self, source_id: int, update_data: Dict[str, Any], session: Optional[Session] = None) -> Optional[Source]:
+        """Update source by ID."""
+        try:
+            current_session = session or self.session
+            source = current_session.get(Source, source_id)
+            if not source:
+                return None
+            
+            for key, value in update_data.items():
+                if hasattr(source, key):
+                    setattr(source, key, value)
+            
+            current_session.commit()
+            current_session.refresh(source)
+            app_logger.info(f"Updated source with ID: {source_id}")
+            return source
+        except Exception as e:
+            current_session.rollback()
+            app_logger.error(f"Error updating source with ID {source_id}: {str(e)}")
+            raise
+    
+    def _delete(self, source_id: int, session: Optional[Session] = None) -> bool:
+        """Delete source by ID."""
+        try:
+            current_session = session or self.session
+            source = current_session.get(Source, source_id)
+            if not source:
+                return False
+            
+            current_session.delete(source)
+            current_session.commit()
+            app_logger.info(f"Deleted source with ID: {source_id}")
+            return True
+        except Exception as e:
+            current_session.rollback()
+            app_logger.error(f"Error deleting source with ID {source_id}: {str(e)}")
+            raise
+    
+    def _count(self) -> int:
+        """Count total sources."""
+        try:
+            statement = select(func.count()).select_from(Source)
+            return self.session.exec(statement).one()
+        except Exception as e:
+            app_logger.error(f"Error counting sources: {str(e)}")
+            raise
+    
+    def _search_sources(self, search_term: str, skip: int = 0, limit: int = 100) -> List[Source]:
+        """Search sources by name, URL, or description."""
+        try:
+            statement = (
+                select(Source)
+                .where(
+                    or_(
+                        Source.name.contains(search_term),
+                        Source.url.contains(search_term),
+                        Source.description.contains(search_term),
+                        Source.tags.contains(search_term)
+                    )
+                )
+                .order_by(Source.name.asc())
+                .offset(skip)
+                .limit(limit)
+            )
+            return list(self.session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error searching sources: {str(e)}")
+            raise
+    
+    def _filter_by(self, filters: Dict[str, Any], skip: int = 0, limit: int = 100) -> List[Source]:
+        """Filter sources by multiple criteria."""
+        try:
+            conditions = []
+            for field, value in filters.items():
+                if hasattr(Source, field):
+                    field_attr = getattr(Source, field)
+                    if isinstance(value, list):
+                        conditions.append(field_attr.in_(value))
+                    else:
+                        conditions.append(field_attr == value)
+            
+            if not conditions:
+                statement = select(Source).offset(skip).limit(limit)
+            else:
+                statement = select(Source).where(and_(*conditions)).offset(skip).limit(limit)
+            
+            return list(self.session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error filtering sources: {str(e)}")
+            raise
+    
+    def _get_sources_due_for_sync(self) -> List[Source]:
+        """Get sources due for sync."""
+        try:
+            now = datetime.now()
+            statement = (
+                select(Source)
+                .where(
+                    and_(
+                        Source.is_active == True,
+                        Source.is_paused == False,
+                        or_(
+                            Source.next_sync <= now,
+                            Source.next_sync.is_(None)
+                        )
+                    )
+                )
+                .order_by(Source.next_sync.asc())
+            )
+            return list(self.session.exec(statement))
+        except Exception as e:
+            app_logger.error(f"Error getting sources due for sync: {str(e)}")
+            raise
+    
+    def _update_sync_time(self, source_id: int, last_sync: datetime, next_sync: datetime, 
+                        documents_fetched: int = 0, sync_errors: int = 0, last_error: str = None) -> bool:
+        """Update source sync time."""
+        try:
+            source = self._get_by_id(source_id)
+            if not source:
+                return False
+            
+            source.last_sync = last_sync
+            source.next_sync = next_sync
+            source.last_document_count = documents_fetched
+            source.total_documents += documents_fetched
+            source.sync_errors = sync_errors
+            source.last_error = last_error
+            source.updated_at = datetime.now()
+            
+            self.session.commit()
+            self.session.refresh(source)
+            app_logger.info(f"Updated sync time for source ID: {source_id}")
+            return True
+        except Exception as e:
+            self.session.rollback()
+            app_logger.error(f"Error updating sync time for source ID {source_id}: {str(e)}")
+            raise
+    
+    def _get_source_statistics(self) -> Dict[str, Any]:
+        """Get source statistics."""
+        try:
+            total_sources = self._count()
+            
+            # 按类型统计
+            statement = (
+                select(Source.source_type, func.count(Source.id))
+                .group_by(Source.source_type)
+            )
+            type_counts = dict(self.session.exec(statement).all())
+            
+            # 按间隔统计
+            statement = (
+                select(Source.interval, func.count(Source.id))
+                .group_by(Source.interval)
+            )
+            interval_counts = dict(self.session.exec(statement).all())
+            
+            # 活跃数据源
+            statement = select(func.count(Source.id)).where(Source.is_active == True)
+            active_sources = self.session.exec(statement).one()
+            
+            # 暂停的数据源
+            statement = select(func.count(Source.id)).where(Source.is_paused == True)
+            paused_sources = self.session.exec(statement).one()
+            
+            # 需要同步的数据源
+            sources_due = len(self._get_sources_due_for_sync())
+            
+            # 总文档数
+            statement = select(func.sum(Source.total_documents))
+            total_documents = self.session.exec(statement).one() or 0
+            
+            return {
+                "total_sources": total_sources,
+                "sources_by_type": type_counts,
+                "sources_by_interval": interval_counts,
+                "active_sources": active_sources,
+                "paused_sources": paused_sources,
+                "sources_due_for_sync": sources_due,
+                "total_documents": total_documents
+            }
+        except Exception as e:
+            app_logger.error(f"Error getting source statistics: {str(e)}")
             raise

@@ -112,14 +112,14 @@ class TestSourceService:
         mock_created_source.created_at = datetime.now()
         mock_created_source.updated_at = datetime.now()
         
-        source_service.source_repo.create = Mock(return_value=mock_created_source)
-        
-        result = source_service.create_rss_source(source_data, mock_database_session)
-        
-        # 验证
-        assert result is not None
-        assert result.id == 1
-        assert result.name == '新RSS源'
+        # Mock the create_source method instead of repository
+        with patch.object(source_service, 'create_source', return_value=mock_created_source):
+            result = source_service.create_rss_source(source_data, mock_database_session)
+            
+            # 验证
+            assert result is not None
+            assert result.id == 1
+            assert result.name == '新RSS源'
     
     def test_create_rss_source_duplicate_url(self, mock_database_session, mock_rss_source):
         """测试创建重复URL的RSS源"""
@@ -293,13 +293,13 @@ class TestSourceService:
             'total_documents': 100,
             'last_sync_errors': 0
         }
-        source_service.source_repo.get_source_statistics = Mock(return_value=mock_stats)
-        
-        # 执行测试
-        result = source_service.get_rss_source_statistics(mock_database_session)
-        
-        # 验证
-        assert result is not None
-        assert result['total_sources'] == 5
-        assert 'total_sources' in result
-        assert result['total_sources'] == 5
+        # Mock the _get_source_statistics method instead of repository
+        with patch.object(source_service, '_get_source_statistics', return_value=mock_stats):
+            # 执行测试
+            result = source_service.get_rss_source_statistics(mock_database_session)
+            
+            # 验证
+            assert result is not None
+            assert result['total_sources'] == 5
+            assert 'total_sources' in result
+            assert result['total_sources'] == 5

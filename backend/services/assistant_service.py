@@ -8,9 +8,11 @@ from langchain.agents import initialize_agent, AgentType
 from langchain.agents import Tool
 from services.knowledge_base.vector_store_service import vector_store_service
 from services.search.online_search_service import online_search_service
-from schemas.assistant_schema import (
-    AssistantQueryRequest, AssistantQueryResponse, SearchResult,
-    AssistantHealthResponse, KnowledgeBaseStoreRequest, KnowledgeBaseResponse
+from schemas.requests import (
+    AssistantQueryRequest, KnowledgeBaseStoreRequest
+)
+from schemas.responses import (
+    AssistantQueryResponse, SearchResult, AssistantHealthResponse, KnowledgeBaseResponse
 )
 from utils.logging_config import app_logger
 from config.settings import settings

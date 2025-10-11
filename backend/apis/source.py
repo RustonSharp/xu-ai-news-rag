@@ -5,8 +5,11 @@ from flask import Blueprint, request, jsonify
 from sqlmodel import Session
 from core.dependencies import get_db_session_sync
 from services.source_service import SourceService
-from schemas.source_schema import (
-    SourceCreate, SourceUpdate, SourceSearchParams, SourceTriggerResponse
+from schemas.requests import (
+    SourceCreate, SourceUpdate, SourceSearchParams
+)
+from schemas.responses import (
+    SourceTriggerResponse
 )
 from utils.logging_config import app_logger
 from services.scheduler_service import scheduler_service
