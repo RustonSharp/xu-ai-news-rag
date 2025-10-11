@@ -2,6 +2,14 @@
 
 A modern React-based frontend application for an AI-powered news retrieval and generation system using Retrieval-Augmented Generation (RAG) technology.
 
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.2-blue?logo=react)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite)](https://vitejs.dev/)
+[![Material-UI](https://img.shields.io/badge/Material--UI-5.0-0081CB?logo=mui)](https://mui.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![Test Coverage](https://img.shields.io/badge/coverage-60%25-green)](https://vitest.dev/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 ## 🌟 Features
 
 - **Knowledge Management**: Browse, search, and manage documents in your knowledge base
@@ -11,17 +19,105 @@ A modern React-based frontend application for an AI-powered news retrieval and g
 - **Analytics Dashboard**: Visualize data trends and system statistics
 - **User Authentication**: Secure login and user management
 - **Responsive Design**: Works seamlessly across desktop and mobile devices
+- **Error Handling**: Comprehensive error boundaries and user-friendly error messages
+- **Performance Monitoring**: Built-in performance tracking and optimization
+- **Testing**: Comprehensive test coverage with Vitest and React Testing Library
 
 ## 🛠️ Tech Stack
 
-- **Framework**: React 18.2.0 with TypeScript
-- **Build Tool**: Vite 5.0.0
-- **Routing**: React Router DOM 6.20.1
-- **HTTP Client**: Axios 1.6.2
-- **UI Components**: Custom components with Tailwind CSS
-- **Icons**: Lucide React 0.294.0
-- **Charts**: Recharts 2.8.0
-- **Development**: ESLint, TypeScript
+### Core Framework
+- **React 18.2.0** with TypeScript 5.0
+- **Vite 5.0.0** for fast development and building
+- **React Router DOM 6.20.1** for client-side routing
+
+### UI & Styling
+- **Material-UI (MUI) 5.0** for component library
+- **Tailwind CSS 4.0** for utility-first styling
+- **Emotion** for CSS-in-JS styling
+- **Lucide React** for icons
+
+### State Management & Data
+- **React Context API** for global state management
+- **Axios 1.6.2** for HTTP requests
+- **Custom Hooks** for data fetching and state logic
+
+### Testing & Quality
+- **Vitest** for unit testing
+- **React Testing Library** for component testing
+- **ESLint** for code linting
+- **TypeScript** for type safety
+
+### Performance & Monitoring
+- **Code Splitting** with React.lazy
+- **Web Vitals** monitoring
+- **Custom Performance** tracking
+- **Bundle Analysis** with Vite
+
+### Development Tools
+- **TypeScript** for type safety
+- **ESLint** for code quality
+- **Prettier** for code formatting
+- **Hot Module Replacement** for fast development
+
+## 🏗️ Architecture
+
+### Frontend Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    React 18 + TypeScript                    │
+├─────────────────────────────────────────────────────────────┤
+│  UI Layer: Material-UI + Tailwind CSS + Custom Components  │
+├─────────────────────────────────────────────────────────────┤
+│  State Management: Context API + Custom Hooks              │
+├─────────────────────────────────────────────────────────────┤
+│  Data Layer: Axios + API Modules + Error Handling          │
+├─────────────────────────────────────────────────────────────┤
+│  Routing: React Router v6 + Protected Routes               │
+├─────────────────────────────────────────────────────────────┤
+│  Performance: Code Splitting + Lazy Loading + Monitoring   │
+├─────────────────────────────────────────────────────────────┤
+│  Testing: Vitest + React Testing Library + Coverage        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Component Structure
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ErrorBoundary.tsx    # Global error boundary
+│   ├── Layout.tsx           # Main layout wrapper
+│   ├── ProtectedRoute.tsx   # Route protection
+│   └── Toast.tsx            # Notification system
+├── contexts/            # React contexts
+│   ├── AuthContext.tsx      # Authentication state
+│   └── ThemeContext.tsx     # Theme management
+├── hooks/               # Custom hooks
+│   ├── useChat.ts           # Chat functionality
+│   ├── useDocuments.ts      # Document management
+│   └── useSources.ts        # RSS source management
+├── pages/               # Page components (lazy loaded)
+│   ├── LoginPage.tsx        # Authentication
+│   ├── KnowledgePage.tsx    # Document browsing
+│   ├── AssistantPage.tsx    # AI chat interface
+│   ├── SourcePage.tsx       # RSS management
+│   ├── AnalyticsPage.tsx    # Data visualization
+│   └── UploadPage.tsx       # File upload
+├── api/                 # API integration
+│   ├── modules/             # Feature-based API modules
+│   ├── request.ts           # Axios configuration
+│   └── endpoints.ts         # API endpoint definitions
+├── utils/               # Utility functions
+│   ├── errorHandler.ts      # Error handling utilities
+│   └── performance.ts       # Performance monitoring
+├── theme/               # MUI theme configuration
+│   └── muiTheme.ts          # Custom theme setup
+└── types/               # TypeScript type definitions
+    ├── api.ts               # API response types
+    ├── components.ts        # Component prop types
+    └── common.ts            # Shared types
+```
 
 ## 🚀 Quick Start
 
@@ -64,6 +160,38 @@ npm run build
 ```bash
 npm run preview
 ```
+
+## 🧪 Testing
+
+### Run Tests
+
+```bash
+# Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test:run
+
+# Run tests with UI
+npm run test:ui
+
+# Generate coverage report
+npm run coverage
+```
+
+### Test Structure
+
+- **Unit Tests**: Test individual functions and hooks
+- **Component Tests**: Test React components in isolation
+- **Integration Tests**: Test component interactions
+- **Coverage Target**: 60%+ code coverage
+
+### Testing Tools
+
+- **Vitest**: Fast unit test runner
+- **React Testing Library**: Component testing utilities
+- **Jest DOM**: Custom matchers for DOM testing
+- **User Event**: Simulate user interactions
 
 ## 📁 Project Structure
 
